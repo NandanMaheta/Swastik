@@ -18,6 +18,18 @@ var (
 	ErrUserNotFound      = errors.New("auth: user not found")
 )
 
+// Sentinel errors of sign-in, refresh and re-authentication (contracts/error-codes.md).
+var (
+	// ErrInvalidCredentials is the one generic sign-in failure (D-09): wrong identifier or password,
+	// locked, pending_verification, pending_approval, disabled, admin by mobile. It never says which.
+	ErrInvalidCredentials = errors.New("auth: invalid credentials")
+	// ErrRefreshRejected is every refresh failure (unknown, reuse, device mismatch, transport
+	// mismatch, expired, ended, user not active).
+	ErrRefreshRejected = errors.New("auth: refresh rejected")
+	// ErrReauthFailed is a wrong or locked current password on change-password.
+	ErrReauthFailed = errors.New("auth: re-authentication failed")
+)
+
 // Problem codes of contracts/error-codes.md (stable; UIs translate them).
 const (
 	CodeInvalidCredentials = "auth.invalid_credentials" //nolint:gosec // a problem code, not a credential

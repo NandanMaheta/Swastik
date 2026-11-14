@@ -116,68 +116,6 @@ var (
 	_ Throttle = (*Service)(nil)
 )
 
-// CreateClient creates a client in pending_verification (FR-050).
-func (s *Service) CreateClient(context.Context, NewClient, audit.Actor) (uuid.UUID, error) {
-	return uuid.Nil, errNotImplemented
-}
-
-// MarkEmailVerified records a verified email and returns the resulting status (FR-051).
-func (s *Service) MarkEmailVerified(context.Context, uuid.UUID, audit.Actor) (Status, error) {
-	return "", errNotImplemented
-}
-
-// MarkMobileVerified records a verified mobile and returns the resulting status (FR-051).
-func (s *Service) MarkMobileVerified(context.Context, uuid.UUID, audit.Actor) (Status, error) {
-	return "", errNotImplemented
-}
-
-// Approve moves a pending_approval user to active (FR-052).
-func (s *Service) Approve(context.Context, uuid.UUID, audit.Actor) error { return errNotImplemented }
-
-// Disable disables a user and ends all their sessions (FR-052).
-func (s *Service) Disable(context.Context, uuid.UUID, audit.Actor) error { return errNotImplemented }
-
-// Enable restores the status a disabled user had before (FR-052).
-func (s *Service) Enable(context.Context, uuid.UUID, audit.Actor) error { return errNotImplemented }
-
-// ResetPassword sets a new password after 004 verified the person (FR-053).
-func (s *Service) ResetPassword(context.Context, uuid.UUID, string, audit.Actor) error {
-	return errNotImplemented
-}
-
-// EndAllSessions ends every session of a user on behalf of a feature (FR-054).
-func (s *Service) EndAllSessions(context.Context, uuid.UUID, string, audit.Actor) (int, error) {
-	return 0, errNotImplemented
-}
-
-// ReplaceEmail replaces a stored email after 007 approved it (FR-055).
-func (s *Service) ReplaceEmail(context.Context, uuid.UUID, string, audit.Actor) error {
-	return errNotImplemented
-}
-
-// ReplaceMobile replaces a stored mobile after 007 approved it (FR-055).
-func (s *Service) ReplaceMobile(context.Context, uuid.UUID, string, audit.Actor) error {
-	return errNotImplemented
-}
-
-// GetUser returns the read-only view of a user.
-func (s *Service) GetUser(context.Context, uuid.UUID) (UserView, error) {
-	return UserView{}, errNotImplemented
-}
-
-// Check reports until when the subject is locked, nil when it is not.
-func (s *Service) Check(context.Context, uuid.UUID, string, string) (*time.Time, error) {
-	return nil, errNotImplemented
-}
-
-// Fail records one counted failure for the subject.
-func (s *Service) Fail(context.Context, uuid.UUID, string, string, ThrottlePolicy) (bool, *time.Time, error) {
-	return false, nil, errNotImplemented
-}
-
-// Clear removes the failure record of the subject.
-func (s *Service) Clear(context.Context, uuid.UUID, string, string) error { return errNotImplemented }
-
 // HousekeepingKind is the scheduler kind of the daily purge (plan P-20).
 const HousekeepingKind = "auth.housekeeping"
 

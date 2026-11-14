@@ -42,10 +42,10 @@ Legend: `[P]` parallel-safe (flat `internal/auth` package: develop as separate w
 - [ ] S10 **backend-dev**: store.go interface and sentinel errors, store_pg.go (users/org, sessions/refresh, mfa/recovery/challenges/throttles; only file with pgx types), Service skeleton (service.go Deps, errors.go problem mapping, audit.go catalogue).
   - Depends on: S09, 002-merged | Rules: none (mechanism) | Expected: green | Replaces: T046-T049
   - Done command: `cd apps/api && go test -race -run 'TestStore|TestAuthtest' ./internal/auth/...`
-- [ ] S11 **test-engineer**: Service tests A (fake clock, real Store): accounts status machine (BR_CLI_04), CreateClient/ResetPassword/Replace*/EndAllSessions, throttle service, client sign-in, sign-in gate generic failures, lockout through service.
+- [x] S11 **test-engineer**: Service tests A (fake clock, real Store): accounts status machine (BR_CLI_04), CreateClient/ResetPassword/Replace*/EndAllSessions, throttle service, client sign-in, sign-in gate generic failures, lockout through service.
   - Depends on: S10, 002-merged | Rules: BR-CLI-04, BR-CLI-05 | Expected: red | Replaces: T050,T051,T054,T056,T057,T066
   - Done command: `cd apps/api && go test -race -run 'TestAccounts|TestThrottle|TestSignIn|TestLockoutService' ./internal/auth/`
-- [ ] S12 **backend-dev**: accounts.go, accounts_more.go, throttle.go, signin.go (one Argon2 verify, short tx), lockout application in sign-in.
+- [x] S12 **backend-dev**: accounts.go, accounts_more.go, throttle.go, signin.go (one Argon2 verify, short tx), lockout application in sign-in.
   - Depends on: S11 | Rules: BR-CLI-04, BR-CLI-05 | Expected: green | Replaces: T052,T053,T055,T058,T067
   - Done command: `cd apps/api && go test -race -run 'TestAccounts|TestThrottle|TestSignIn|TestLockoutService' ./internal/auth/`
 - [ ] S13 **test-engineer**: Service tests B: refresh rotation/reuse/device mismatch/expiry boundaries, concurrency (N goroutines one R1; parallel sign-in), sessions, bearer and challenge verifiers, password change.

@@ -1,9 +1,13 @@
 package auth
 
 import (
+	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/NandanMaheta/swastik/apps/api/internal/platform/audit"
 )
 
 // Audit action catalogue (data-model.md "Audit action catalogue", US-11). One entry per event,
@@ -172,3 +176,34 @@ type HousekeepingPurgedAfter struct {
 	Challenges    int `json:"challenges"`
 	RefreshTokens int `json:"refresh_tokens"`
 }
+
+// ReasonWrongCurrentPassword is the failure reason of a wrong current password on change-password;
+// the attempt counts toward the same lockout as a wrong sign-in password (D-08).
+const ReasonWrongCurrentPassword = "wrong_current_password"
+
+// systemActor is the audit actor of events no signed-in user caused (the ID is stored as NULL).
+var systemActor = audit.Actor{Kind: audit.KindSystem}
+
+// writeAudit writes one catalogue entry in the transaction carried by ctx, stamped with the
+// injected clock. entity is the affected user, uuid.Nil when none (unknown identifiers).
+func (s *Service) writeAudit(ctx context.Context, org uuid.UUID, actor audit.Actor, entity uuid.UUID, action string, before, after any) error {
+	err := audit.Write(ctx, audit.Entry{
+		OrgID: org, Actor: actor, Entity: EntityUser, EntityID: entity, Action: action,
+		Before: before, After: after, At: s.now(),
+	})
+	if err != nil {
+		return fmt.Errorf("auth: audit %s: %w", action, err)
+	}
+	return nil
+}
+
+// inTx runs fn in the caller's transaction or a new one (db.TxRunner nests by joining).
+func (s *Service) inTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	if err := s.txr.InTx(ctx, fn); err != nil {
+		return fmt.Errorf("auth: %w", err)
+	}
+	return nil
+}
+
+// actorOf is a user as an audit actor, with the role as actor kind.
+func actorOf(u UserRow) audit.Actor { return audit.Actor{ID: u.ID, Kind: u.Role} }

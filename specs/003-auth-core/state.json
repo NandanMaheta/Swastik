@@ -227,7 +227,7 @@
       "owner": "backend-dev",
       "title": "accounts.go, accounts_more.go, throttle.go, signin.go (one Argon2 verify, short tx), lockout application in sign-in.",
       "done_command": "cd apps/api && go test -race -run 'TestAccounts|TestThrottle|TestSignIn|TestLockoutService' ./internal/auth/",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "S11"
       ],
