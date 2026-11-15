@@ -49,6 +49,13 @@ run "tick_job_staging" {
 
 run "tick_target_is_oidc_post_to_run_app" {
   command = plan
+  override_resource {
+    target = google_service_account.tick
+    values = {
+      name  = "projects/swastik-4fcc9/serviceAccounts/tick-staging@swastik-4fcc9.iam.gserviceaccount.com"
+      email = "tick-staging@swastik-4fcc9.iam.gserviceaccount.com"
+    }
+  }
 
   assert {
     condition     = google_cloud_scheduler_job.tick.http_target[0].http_method == "POST"
@@ -89,6 +96,13 @@ run "oidc_audience_matches_TICK_AUDIENCE_staging" {
 
 run "tick_job_production" {
   command = plan
+  override_resource {
+    target = google_service_account.tick
+    values = {
+      name  = "projects/swastik-4fcc9/serviceAccounts/tick-production@swastik-4fcc9.iam.gserviceaccount.com"
+      email = "tick-production@swastik-4fcc9.iam.gserviceaccount.com"
+    }
+  }
   variables {
     env = "production"
   }

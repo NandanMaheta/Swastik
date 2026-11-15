@@ -112,7 +112,7 @@ run "secrets_only_via_secret_key_ref_FR_003" {
   assert {
     condition = alltrue([
       for e in google_cloud_run_v2_service.api.template[0].containers[0].env :
-      (e.value == null || e.value == "") != (length(e.value_source) == 1)
+      (e.value == null || e.value == "") == (length(e.value_source) == 1)
     ])
     error_message = "every env var is either a plain value or a secret reference, never both/neither"
   }
