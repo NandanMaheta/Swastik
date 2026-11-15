@@ -32,6 +32,7 @@ type AuthConfig struct {
 	BlindIndex           crypto.BlindIndexer
 	WebOrigins           []string
 	TrustedProxyHops     int
+	ProxySharedSecrets   []string // accepted X-Swastik-Proxy-Key values (two while rotating); never logged
 	Argon2MaxConcurrency int
 }
 
@@ -48,6 +49,7 @@ func (a AuthConfig) LogValue() slog.Value {
 		slog.Bool("pii_keyring", a.PII != nil),
 		slog.Any("web_origins", a.WebOrigins),
 		slog.Int("trusted_proxy_hops", a.TrustedProxyHops),
+		slog.Int("proxy_shared_secrets", len(a.ProxySharedSecrets)),
 		slog.Int("argon2_max_concurrency", a.Argon2MaxConcurrency),
 	)
 }
@@ -154,9 +156,14 @@ func loadAuth(appEnv string) (AuthConfig, error) {
 		if err := requireVars(map[string]string{"WEB_ORIGINS": origins}, "WEB_ORIGINS"); err != nil {
 			return AuthConfig{}, err
 		}
-		if a.WebOrigins, err = parseOrigins(origins); err != nil {
+		if a.WebOrigins, err = parseOrigins(origins, strict); err != nil {
 			return AuthConfig{}, err
 		}
+	}
+
+	// Proxy shared secrets.
+	if a.ProxySharedSecrets, err = parseProxySecrets(os.Getenv("PROXY_SHARED_SECRETS"), strict); err != nil {
+		return AuthConfig{}, err
 	}
 
 	// Numeric settings.
@@ -231,7 +238,29 @@ func decodeKey(b64 string) ([]byte, error) {
 	return b, nil
 }
 
-func parseOrigins(raw string) ([]string, error) {
+// minProxySecretLen is the shortest accepted proxy shared secret.
+const minProxySecretLen = 32
+
+// parseProxySecrets splits PROXY_SHARED_SECRETS. Errors never echo a secret.
+func parseProxySecrets(raw string, required bool) ([]string, error) {
+	if strings.TrimSpace(raw) == "" {
+		if required {
+			return nil, errors.New("PROXY_SHARED_SECRETS is required")
+		}
+		return nil, nil
+	}
+	var out []string
+	for _, entry := range strings.Split(raw, ",") {
+		secret := strings.TrimSpace(entry)
+		if len(secret) < minProxySecretLen {
+			return nil, fmt.Errorf("PROXY_SHARED_SECRETS entries must each be at least %d characters", minProxySecretLen)
+		}
+		out = append(out, secret)
+	}
+	return out, nil
+}
+
+func parseOrigins(raw string, httpsOnly bool) ([]string, error) {
 	var out []string
 	for _, entry := range strings.Split(raw, ",") {
 		o := strings.TrimSpace(entry)
@@ -239,6 +268,9 @@ func parseOrigins(raw string) ([]string, error) {
 		if o == "" || err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" ||
 			u.Path != "" || u.RawQuery != "" || u.Fragment != "" || u.User != nil || strings.Contains(o, "*") {
 			return nil, errors.New("WEB_ORIGINS must be a comma-separated list of exact origins like https://host[:port]")
+		}
+		if httpsOnly && u.Scheme != "https" {
+			return nil, errors.New("WEB_ORIGINS must use https in staging and production")
 		}
 		out = append(out, o)
 	}

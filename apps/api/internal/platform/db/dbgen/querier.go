@@ -34,6 +34,9 @@ type Querier interface {
 	ConfirmPendingMFASecret(ctx context.Context, arg ConfirmPendingMFASecretParams) (int64, error)
 	// Single use and valid iff now < expires_at: exactly one concurrent caller gets a row.
 	ConsumeChallenge(ctx context.Context, arg ConsumeChallengeParams) (int64, error)
+	// Invalidates every unconsumed challenge of one user (password change and reset); the rows stay
+	// until housekeeping purges them. Locks only that user's challenge rows, after the user row.
+	ConsumeUserChallenges(ctx context.Context, arg ConsumeUserChallengesParams) (int64, error)
 	CountJobsByState(ctx context.Context, orgID uuid.UUID) (CountJobsByStateRow, error)
 	CountMessagesByState(ctx context.Context, orgID uuid.UUID) (CountMessagesByStateRow, error)
 	CountUsableRecoveryCodes(ctx context.Context, userID uuid.UUID) (int32, error)
@@ -104,8 +107,9 @@ type Querier interface {
 	ListFailedMessages(ctx context.Context, arg ListFailedMessagesParams) ([]OutboxMessage, error)
 	// Auth core queries (feature 003). Design: specs/003-auth-core/data-model.md.
 	// Every instant is a parameter (@now) taken from the injected clock; no behavioural query reads
-	// the database clock, and there is no string-built SQL. Lock order: users, device_sessions,
-	// refresh_tokens, admin_mfa, mfa_recovery_codes, mfa_challenges, auth_throttles.
+	// the database clock, and there is no string-built SQL. Lock order: the user row (or all admins by
+	// id) first; that user's rows after it (device_sessions, refresh_tokens, admin_mfa,
+	// mfa_recovery_codes, mfa_challenges); auth_throttles last; never two users except LockAdmins.
 	// ---- organisation ----
 	// Two rows are enough to tell "none", "one" and "many" apart.
 	ListFirstTwoOrgIDs(ctx context.Context) ([]uuid.UUID, error)
@@ -115,7 +119,7 @@ type Querier interface {
 	// nothing here calls now() (FR-032). Rows are claimed one at a time with FOR UPDATE SKIP LOCKED.
 	ListOrgIDs(ctx context.Context) ([]uuid.UUID, error)
 	LockAdminMFA(ctx context.Context, userID uuid.UUID) (AdminMfa, error)
-	// Every admin of the org, any status, ordered by id: the last-admin guard (lock order step 1).
+	// Every admin of the org, any status, ordered by id: the last-admin guard (the first lock of the order).
 	LockAdminsByOrg(ctx context.Context, orgID uuid.UUID) ([]User, error)
 	// The bootstrap lock (plan P-13): serialises `swastik admin create` across processes until commit.
 	LockBootstrap(ctx context.Context, key int64) error

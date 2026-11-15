@@ -268,7 +268,12 @@ func (s *Service) StartEnrolment(ctx context.Context, token string) (TOTPEnrolme
 		} else if err != nil && !errors.Is(err, ErrMFANotFound) {
 			return fmt.Errorf("auth: read authenticator: %w", err)
 		}
-		return s.store.SetPendingSecret(ctx, ch.OrgID, u.ID, enc, s.now())
+		now := s.now()
+		if err := s.store.SetPendingSecret(ctx, ch.OrgID, u.ID, enc, now); err != nil {
+			return err
+		}
+		return s.writeAudit(ctx, ch.OrgID, actorOf(u), u.ID, ActionMFAPendingSecretSet, nil,
+			PendingSecretSetAfter{Context: "enrol"})
 	})
 	if err != nil {
 		return TOTPEnrolment{}, err

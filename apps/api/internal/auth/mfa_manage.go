@@ -70,6 +70,10 @@ func (s *Service) StartAuthenticatorReplace(ctx context.Context, p authz.Princip
 		if err := s.store.SetPendingSecret(ctx, u.OrgID, u.ID, enc, now); err != nil {
 			return fmt.Errorf("auth: store pending secret: %w", err)
 		}
+		if err := s.writeAudit(ctx, u.OrgID, p.AuditActor(), u.ID, ActionMFAPendingSecretSet, nil,
+			PendingSecretSetAfter{Context: "replace"}); err != nil {
+			return err
+		}
 		out = enrolment
 		return nil
 	})
@@ -99,7 +103,7 @@ func (s *Service) reauthenticate(ctx context.Context, p authz.Principal, passwor
 		return fmt.Errorf("auth: verify password: %w", err)
 	}
 	if !ok {
-		return s.failReauthWith(ctx, user, subject, ReasonWrongPassword)
+		return s.failReauthWith(ctx, user, subject, ReasonWrongPassword, p.IP)
 	}
 	err = s.inTx(ctx, func(ctx context.Context) error {
 		u, err := s.store.LockUser(ctx, user.ID)
@@ -125,7 +129,7 @@ func (s *Service) reauthenticate(ctx context.Context, p authz.Principal, passwor
 		return fn(ctx, u, m, now)
 	})
 	if errors.Is(err, errWrongFactor) {
-		return s.failReauthWith(ctx, user, subject, factorReason)
+		return s.failReauthWith(ctx, user, subject, factorReason, p.IP)
 	}
 	return err
 }
@@ -195,7 +199,7 @@ func (s *Service) ConfirmAuthenticatorReplace(ctx context.Context, p authz.Princ
 		return s.writeAudit(ctx, u.OrgID, p.AuditActor(), u.ID, ActionMFAReplaced, nil, EndedSessionsAfter{EndedSessionIDs: ended})
 	})
 	if errors.Is(err, errWrongFactor) {
-		return s.failReauthWith(ctx, user, subject, ReasonWrongTOTP)
+		return s.failReauthWith(ctx, user, subject, ReasonWrongTOTP, p.IP)
 	}
 	return err
 }

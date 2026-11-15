@@ -21,6 +21,9 @@ type HandlerConfig struct {
 	WebOrigins []string
 	// TrustedProxyHops is the httpx.ClientIP hop count (0: RemoteAddr only).
 	TrustedProxyHops int
+	// ProxySecrets are the accepted X-Swastik-Proxy-Key values (PROXY_SHARED_SECRETS): a request
+	// carrying one may name the client address in X-Swastik-Client-IP. Empty trusts no such header.
+	ProxySecrets []string
 	// Limiter is the per-IP limiter of sign-in, refresh, mfa-verify and enrolment (P-17). Nil means
 	// the default: 30 requests per minute per IP.
 	Limiter *ratelimit.Limiter
@@ -263,6 +266,7 @@ func (h *handlers) registerSessions(api huma.API) {
 	huma.Register(api, huma.Operation{
 		OperationID: "auth-password-change", Method: http.MethodPost, Path: "/v1/auth/password/change", Tags: []string{"Auth"},
 		Summary: "Change the caller's password", Security: authz.Require(), DefaultStatus: http.StatusNoContent,
+		Middlewares: huma.Middlewares{h.ingress(false)},
 	}, h.changePassword)
 }
 
@@ -387,7 +391,7 @@ func (h *handlers) changePassword(ctx context.Context, in *changePasswordInput) 
 	if err := h.ready(); err != nil {
 		return nil, err
 	}
-	if err := h.svc.ChangePassword(ctx, authz.MustPrincipal(ctx), in.Body.CurrentPassword, in.Body.NewPassword); err != nil {
+	if err := h.svc.ChangePassword(ctx, h.principal(ctx), in.Body.CurrentPassword, in.Body.NewPassword); err != nil {
 		return nil, h.fail(ctx, err)
 	}
 	return &struct{}{}, nil

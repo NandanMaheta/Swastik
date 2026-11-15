@@ -72,6 +72,26 @@ func (q *Queries) ConsumeChallenge(ctx context.Context, arg ConsumeChallengePara
 	return result.RowsAffected(), nil
 }
 
+const consumeUserChallenges = `-- name: ConsumeUserChallenges :execrows
+UPDATE mfa_challenges SET consumed_at = $1
+WHERE user_id = $2 AND consumed_at IS NULL
+`
+
+type ConsumeUserChallengesParams struct {
+	Now    pgtype.Timestamptz `json:"now"`
+	UserID uuid.UUID          `json:"user_id"`
+}
+
+// Invalidates every unconsumed challenge of one user (password change and reset); the rows stay
+// until housekeeping purges them. Locks only that user's challenge rows, after the user row.
+func (q *Queries) ConsumeUserChallenges(ctx context.Context, arg ConsumeUserChallengesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, consumeUserChallenges, arg.Now, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const countUsableRecoveryCodes = `-- name: CountUsableRecoveryCodes :one
 SELECT count(*)::int AS usable FROM mfa_recovery_codes
 WHERE user_id = $1 AND used_at IS NULL AND revoked_at IS NULL
@@ -693,8 +713,9 @@ SELECT id FROM orgs ORDER BY id LIMIT 2
 
 // Auth core queries (feature 003). Design: specs/003-auth-core/data-model.md.
 // Every instant is a parameter (@now) taken from the injected clock; no behavioural query reads
-// the database clock, and there is no string-built SQL. Lock order: users, device_sessions,
-// refresh_tokens, admin_mfa, mfa_recovery_codes, mfa_challenges, auth_throttles.
+// the database clock, and there is no string-built SQL. Lock order: the user row (or all admins by
+// id) first; that user's rows after it (device_sessions, refresh_tokens, admin_mfa,
+// mfa_recovery_codes, mfa_challenges); auth_throttles last; never two users except LockAdmins.
 // ---- organisation ----
 // Two rows are enough to tell "none", "one" and "many" apart.
 func (q *Queries) ListFirstTwoOrgIDs(ctx context.Context) ([]uuid.UUID, error) {
@@ -791,7 +812,7 @@ const lockAdminsByOrg = `-- name: LockAdminsByOrg :many
 SELECT id, org_id, role, status, status_before_disabled, name, email, mobile, email_verified_at, mobile_verified_at, password_hash, password_changed_at, last_sign_in_at, created_at, updated_at FROM users WHERE org_id = $1 AND role = 'admin' ORDER BY id FOR UPDATE
 `
 
-// Every admin of the org, any status, ordered by id: the last-admin guard (lock order step 1).
+// Every admin of the org, any status, ordered by id: the last-admin guard (the first lock of the order).
 func (q *Queries) LockAdminsByOrg(ctx context.Context, orgID uuid.UUID) ([]User, error) {
 	rows, err := q.db.Query(ctx, lockAdminsByOrg, orgID)
 	if err != nil {

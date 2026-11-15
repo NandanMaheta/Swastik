@@ -19,6 +19,8 @@ const (
 	tokenAudience  = "swastik-api"
 	tokenType      = "at+jwt"
 	accessLifetime = 15 * time.Minute
+	// clockLeeway is the clock skew tolerated on iat and nbf (owner decision 2026-11-15); exp has none.
+	clockLeeway    = 5 * time.Second
 	maxTokenLength = 4096
 )
 
@@ -169,17 +171,18 @@ func (t *Tokens) verify(raw string) (AccessClaims, error) {
 	if err := tok.Claims(priv.Public().(ed25519.PublicKey), &std, &custom); err != nil {
 		return AccessClaims{}, fmt.Errorf("signature: %w", err)
 	}
-	// 5. Standard claims against the injected clock (never time.Now), no leeway.
+	// 5. Standard claims against the injected clock (never time.Now). go-jose applies one leeway to
+	// iat, nbf and exp; the owner allows clock skew on iat and nbf only, so exp is re-checked
+	// strictly in step 6 (a token at or after exp is refused whatever the leeway).
 	now := t.now()
 	if err := std.ValidateWithLeeway(jwt.Expected{
 		Issuer:      tokenIssuer,
 		AnyAudience: jwt.Audience{tokenAudience},
 		Time:        now,
-	}, 0); err != nil {
+	}, clockLeeway); err != nil {
 		return AccessClaims{}, fmt.Errorf("claims: %w", err)
 	}
-	// 6. What go-jose leaves to the caller: exp and iat present, and now < exp (go-jose accepts
-	// a token at exactly exp).
+	// 6. What go-jose leaves to the caller: exp and iat present, and a strict now < exp.
 	if std.Expiry == nil || std.IssuedAt == nil || !now.Before(std.Expiry.Time()) {
 		return AccessClaims{}, errors.New("time")
 	}

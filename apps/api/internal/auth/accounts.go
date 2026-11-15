@@ -72,6 +72,7 @@ func (s *Service) markVerified(ctx context.Context, id uuid.UUID, kind Identifie
 			return fmt.Errorf("auth: lock user: %w", err)
 		}
 		out = u.Status
+		before, after := StatusBefore{Status: u.Status}, StatusAfter{Status: u.Status}
 		now := s.now()
 		changed, err := s.store.MarkVerified(ctx, id, kind, now)
 		if err != nil {
@@ -88,6 +89,7 @@ func (s *Service) markVerified(ctx context.Context, id uuid.UUID, kind Identifie
 			switch {
 			case u.Status == StatusPendingVerification:
 				out = StatusPendingApproval
+				after.Status = out
 				if err := s.store.SetStatus(ctx, id, out, "", now); err != nil {
 					return fmt.Errorf("auth: set status: %w", err)
 				}
@@ -96,9 +98,10 @@ func (s *Service) markVerified(ctx context.Context, id uuid.UUID, kind Identifie
 				if err := s.store.SetStatus(ctx, id, StatusDisabled, StatusPendingApproval, now); err != nil {
 					return fmt.Errorf("auth: set status: %w", err)
 				}
+				before.StatusBeforeDisabled, after.StatusBeforeDisabled = u.StatusBeforeDisabled, StatusPendingApproval
 			}
 		}
-		return s.writeAudit(ctx, u.OrgID, by, id, action, StatusBefore{Status: u.Status}, StatusAfter{Status: out})
+		return s.writeAudit(ctx, u.OrgID, by, id, action, before, after)
 	})
 	if err != nil {
 		return "", err

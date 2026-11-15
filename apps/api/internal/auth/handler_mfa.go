@@ -94,14 +94,17 @@ func (h *handlers) registerMFA(api huma.API) {
 	huma.Register(api, huma.Operation{
 		OperationID: "auth-recovery-codes-regenerate", Method: http.MethodPost, Path: "/v1/auth/mfa/recovery-codes", Tags: []string{"Auth"},
 		Summary: "Replace the recovery codes", Security: authz.Require(authz.RoleAdmin),
+		Middlewares: huma.Middlewares{h.ingress(false)},
 	}, h.regenerateRecoveryCodes)
 	huma.Register(api, huma.Operation{
 		OperationID: "auth-authenticator-replace-start", Method: http.MethodPost, Path: "/v1/auth/mfa/authenticator", Tags: []string{"Auth"},
 		Summary: "Start replacing the authenticator", Security: authz.Require(authz.RoleAdmin),
+		Middlewares: huma.Middlewares{h.ingress(false)},
 	}, h.replaceStart)
 	huma.Register(api, huma.Operation{
 		OperationID: "auth-authenticator-replace-confirm", Method: http.MethodPost, Path: "/v1/auth/mfa/authenticator/confirm", Tags: []string{"Auth"},
 		Summary: "Confirm the new authenticator", Security: authz.Require(authz.RoleAdmin), DefaultStatus: http.StatusNoContent,
+		Middlewares: huma.Middlewares{h.ingress(false)},
 	}, h.replaceConfirm)
 }
 
@@ -176,7 +179,7 @@ func (h *handlers) regenerateRecoveryCodes(ctx context.Context, in *recoveryInpu
 	if err := h.ready(); err != nil {
 		return nil, err
 	}
-	codes, err := h.svc.RegenerateRecoveryCodes(ctx, authz.MustPrincipal(ctx), in.Body.Password, in.Body.Code)
+	codes, err := h.svc.RegenerateRecoveryCodes(ctx, h.principal(ctx), in.Body.Password, in.Body.Code)
 	if err != nil {
 		return nil, h.fail(ctx, err)
 	}
@@ -190,7 +193,7 @@ func (h *handlers) replaceStart(ctx context.Context, in *replaceStartInput) (*to
 	if err := exactlyOne(in.Body.Code, in.Body.RecoveryCode); err != nil {
 		return nil, err
 	}
-	e, err := h.svc.StartAuthenticatorReplace(ctx, authz.MustPrincipal(ctx), Reauth{
+	e, err := h.svc.StartAuthenticatorReplace(ctx, h.principal(ctx), Reauth{
 		Password: in.Body.Password, Code: in.Body.Code, RecoveryCode: in.Body.RecoveryCode,
 	})
 	if err != nil {
@@ -203,7 +206,7 @@ func (h *handlers) replaceConfirm(ctx context.Context, in *replaceConfirmIn) (*s
 	if err := h.ready(); err != nil {
 		return nil, err
 	}
-	if err := h.svc.ConfirmAuthenticatorReplace(ctx, authz.MustPrincipal(ctx), in.Body.Code); err != nil {
+	if err := h.svc.ConfirmAuthenticatorReplace(ctx, h.principal(ctx), in.Body.Code); err != nil {
 		return nil, h.fail(ctx, err)
 	}
 	return &struct{}{}, nil

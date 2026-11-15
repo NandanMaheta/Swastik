@@ -14,7 +14,9 @@ import (
 //   - IDs are uuid.UUID; every time comes from the caller (an @now parameter), never the database.
 //   - Reads run on the transaction in ctx when there is one, otherwise on the pool.
 //   - Methods documented "requires a transaction" return db.ErrNoTx, touching nothing, when ctx
-//     carries none. Lock methods take row locks in the order of data-model.md "Lock order".
+//     carries none. Lock methods take row locks in the order of data-model.md "Lock order": the
+//     user row (or all admins by id) first; that user's rows after it; never two users except
+//     LockAdmins.
 
 // Status is a user's lifecycle status (BR-CLI-04).
 type Status string
@@ -253,6 +255,9 @@ type Store interface {
 	// ConsumeChallenge sets consumed_at when the challenge is unconsumed and now < expires_at, and
 	// reports whether it did (single use, exactly one winner under concurrency).
 	ConsumeChallenge(ctx context.Context, id uuid.UUID, now time.Time) (bool, error)
+	// InvalidateUserChallenges consumes every unconsumed challenge of one user (password change and
+	// reset) and returns how many it consumed. Call it under the user's row lock.
+	InvalidateUserChallenges(ctx context.Context, userID uuid.UUID, now time.Time) (int, error)
 
 	// GetThrottle returns the zero state when no row exists. subject is the blind-index digest.
 	GetThrottle(ctx context.Context, orgID uuid.UUID, scope string, subject []byte) (ThrottleState, error)

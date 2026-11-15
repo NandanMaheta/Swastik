@@ -9,6 +9,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
+	"github.com/NandanMaheta/swastik/apps/api/internal/platform/authz"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/httpx"
 )
 
@@ -75,15 +76,27 @@ func (h *handlers) ingress(limited bool) func(huma.Context, func(huma.Context)) 
 	}
 }
 
+// principal is the authenticated principal with the address the ingress middleware resolved.
+func (h *handlers) principal(ctx context.Context) authz.Principal {
+	p := authz.MustPrincipal(ctx)
+	p.IP = ipOf(ctx)
+	return p
+}
+
 // clientIP is httpx.ClientIP over the Huma context.
 func (h *handlers) clientIP(ctx huma.Context) string {
 	r := &http.Request{RemoteAddr: ctx.RemoteAddr(), Header: http.Header{}}
 	ctx.EachHeader(func(name, value string) {
-		if strings.EqualFold(name, "X-Forwarded-For") {
+		switch {
+		case strings.EqualFold(name, "X-Forwarded-For"):
 			r.Header.Add("X-Forwarded-For", value)
+		case strings.EqualFold(name, "X-Swastik-Proxy-Key"):
+			r.Header.Add("X-Swastik-Proxy-Key", value)
+		case strings.EqualFold(name, "X-Swastik-Client-IP"):
+			r.Header.Add("X-Swastik-Client-IP", value)
 		}
 	})
-	return httpx.ClientIP(r, h.cfg.TrustedProxyHops)
+	return httpx.ClientIP(r, h.cfg.TrustedProxyHops, h.cfg.ProxySecrets...)
 }
 
 func ipOf(ctx context.Context) string {

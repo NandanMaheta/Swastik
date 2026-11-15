@@ -32,6 +32,7 @@ const (
 	ActionPasswordReset              = "auth.password.reset"
 	ActionMFAEnrolled                = "auth.mfa.enrolled"
 	ActionMFAReplaced                = "auth.mfa.replaced"
+	ActionMFAPendingSecretSet        = "auth.mfa.pending_secret_set" //nolint:gosec // an action name, not a credential
 	ActionMFARecoveryRegenerated     = "auth.mfa.recovery_codes_regenerated"
 	ActionMFARecoveryCodeUsed        = "auth.mfa.recovery_code_used"
 	ActionUserCreated                = "auth.user.created"
@@ -125,6 +126,12 @@ type PasswordResetAfter struct {
 	LockCleared     bool        `json:"lock_cleared"`
 }
 
+// PendingSecretSetAfter is the payload of ActionMFAPendingSecretSet; Context is "enrol" or
+// "replace". The secret itself, its URI and its ciphertext are never part of it.
+type PendingSecretSetAfter struct {
+	Context string `json:"context"`
+}
+
 // RecoveryCodesRegeneratedAfter is the payload of ActionMFARecoveryRegenerated.
 type RecoveryCodesRegeneratedAfter struct {
 	BatchID uuid.UUID `json:"batch_id"`
@@ -148,13 +155,18 @@ type UserCreatedAfter struct {
 // StatusAfter is the payload of the status events: the status after (and, on a disable, the
 // sessions that ended). The status before goes in Entry.Before as StatusBefore.
 type StatusAfter struct {
-	Status          Status      `json:"status"`
-	EndedSessionIDs []uuid.UUID `json:"ended_session_ids,omitempty"`
+	Status Status `json:"status"`
+	// StatusBeforeDisabled is the remembered status of a disabled user when a verification changed
+	// it (a disabled pending_verification user whose second contact was verified now remembers
+	// pending_approval); the user stays disabled.
+	StatusBeforeDisabled Status      `json:"status_before_disabled,omitempty"`
+	EndedSessionIDs      []uuid.UUID `json:"ended_session_ids,omitempty"`
 }
 
 // StatusBefore is the "before" payload of the status and verification events.
 type StatusBefore struct {
-	Status Status `json:"status"`
+	Status               Status `json:"status"`
+	StatusBeforeDisabled Status `json:"status_before_disabled,omitempty"` // set with StatusAfter.StatusBeforeDisabled
 }
 
 // ContactValue is the before and after payload of ActionUserContactReplaced; exactly one of

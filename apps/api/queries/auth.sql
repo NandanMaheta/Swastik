@@ -1,7 +1,8 @@
 -- Auth core queries (feature 003). Design: specs/003-auth-core/data-model.md.
 -- Every instant is a parameter (@now) taken from the injected clock; no behavioural query reads
--- the database clock, and there is no string-built SQL. Lock order: users, device_sessions,
--- refresh_tokens, admin_mfa, mfa_recovery_codes, mfa_challenges, auth_throttles.
+-- the database clock, and there is no string-built SQL. Lock order: the user row (or all admins by
+-- id) first; that user's rows after it (device_sessions, refresh_tokens, admin_mfa,
+-- mfa_recovery_codes, mfa_challenges); auth_throttles last; never two users except LockAdmins.
 
 -- ---- organisation ----
 
@@ -43,7 +44,7 @@ SELECT * FROM users WHERE mobile = @mobile;
 -- name: LockUserByID :one
 SELECT * FROM users WHERE id = @id FOR UPDATE;
 
--- Every admin of the org, any status, ordered by id: the last-admin guard (lock order step 1).
+-- Every admin of the org, any status, ordered by id: the last-admin guard (the first lock of the order).
 -- name: LockAdminsByOrg :many
 SELECT * FROM users WHERE org_id = @org_id AND role = 'admin' ORDER BY id FOR UPDATE;
 
@@ -226,6 +227,12 @@ SELECT * FROM mfa_challenges WHERE token_hash = @token_hash;
 -- name: ConsumeChallenge :execrows
 UPDATE mfa_challenges SET consumed_at = @now
 WHERE id = @id AND consumed_at IS NULL AND @now < expires_at;
+
+-- Invalidates every unconsumed challenge of one user (password change and reset); the rows stay
+-- until housekeeping purges them. Locks only that user's challenge rows, after the user row.
+-- name: ConsumeUserChallenges :execrows
+UPDATE mfa_challenges SET consumed_at = @now
+WHERE user_id = @user_id AND consumed_at IS NULL;
 
 -- ---- throttles ----
 

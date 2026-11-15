@@ -51,7 +51,7 @@ func (s *Service) changePasswordOnce(ctx context.Context, p authz.Principal, cur
 		if done, err := s.hasher.Verify(ctx, user.PasswordHash, next); err == nil && done {
 			return nil
 		}
-		return s.failReauth(ctx, user, subject)
+		return s.failReauth(ctx, user, subject, p.IP)
 	}
 	if current == next {
 		return &PolicyError{Code: PolicyUnchanged}
@@ -76,26 +76,38 @@ func (s *Service) changePasswordOnce(ctx context.Context, p authz.Principal, cur
 		if err != nil {
 			return fmt.Errorf("auth: end sessions: %w", err)
 		}
+		if _, err := s.store.InvalidateUserChallenges(ctx, u.ID, now); err != nil {
+			return err
+		}
 		return s.writeAudit(ctx, u.OrgID, p.AuditActor(), u.ID, ActionPasswordChanged, nil, EndedSessionsAfter{EndedSessionIDs: ended})
 	})
 }
 
 // failReauth counts a wrong current password toward the account lockout (D-08) and audits it.
-func (s *Service) failReauth(ctx context.Context, u UserRow, subject []byte) error {
-	return s.failReauthWith(ctx, u, subject, ReasonWrongCurrentPassword)
+func (s *Service) failReauth(ctx context.Context, u UserRow, subject []byte, ip string) error {
+	return s.failReauthWith(ctx, u, subject, ReasonWrongCurrentPassword, ip)
+}
+
+// accountIdentifierKind is the kind of the identifier an account signs in with: the email, or the
+// mobile number for an account without one.
+func accountIdentifierKind(u UserRow) IdentifierKind {
+	if u.Email == "" && u.Mobile != "" {
+		return KindMobile
+	}
+	return KindEmail
 }
 
 // failReauthWith counts one failed re-authentication (a wrong password or second factor) toward
 // the account lockout and audits it with the internal reason. It always returns ErrReauthFailed
 // unless the bookkeeping itself fails.
-func (s *Service) failReauthWith(ctx context.Context, u UserRow, subject []byte, reason string) error {
+func (s *Service) failReauthWith(ctx context.Context, u UserRow, subject []byte, reason, ip string) error {
 	err := s.inTx(ctx, func(ctx context.Context) error {
 		next, started, err := s.applyFailure(ctx, u.OrgID, scopeSignIn, subject, signInPolicy)
 		if err != nil {
 			return err
 		}
 		if err := s.writeAudit(ctx, u.OrgID, systemActor, u.ID, ActionSignInFailed, nil,
-			SignInFailedAfter{Reason: reason}); err != nil {
+			SignInFailedAfter{Reason: reason, IdentifierKind: string(accountIdentifierKind(u)), IP: ip}); err != nil {
 			return err
 		}
 		if !started {

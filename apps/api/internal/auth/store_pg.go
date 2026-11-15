@@ -586,6 +586,14 @@ func (s *pgStore) ConsumeChallenge(ctx context.Context, id uuid.UUID, now time.T
 	return rows > 0, nil
 }
 
+func (s *pgStore) InvalidateUserChallenges(ctx context.Context, userID uuid.UUID, now time.Time) (int, error) {
+	rows, err := s.q(ctx).ConsumeUserChallenges(ctx, dbgen.ConsumeUserChallengesParams{UserID: userID, Now: db.Timestamptz(now)})
+	if err != nil {
+		return 0, fmt.Errorf("auth: invalidate challenges: %w", err)
+	}
+	return int(rows), nil
+}
+
 // ---- throttles ----
 
 func throttleState(failures []pgtype.Timestamptz, lockedUntil pgtype.Timestamptz) ThrottleState {

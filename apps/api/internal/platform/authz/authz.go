@@ -45,6 +45,9 @@ const (
 type Principal struct {
 	UserID, OrgID, SessionID uuid.UUID
 	Role                     Role
+	// IP is the caller's address as resolved by httpx.ClientIP; set by the HTTP layer, empty for a
+	// caller that is not an HTTP request. It is for audit context only, never for authorization.
+	IP string
 }
 
 // AuditActor is the principal as an audit actor: the signed-in user, with the role as actor kind

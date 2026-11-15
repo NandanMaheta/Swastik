@@ -39,6 +39,9 @@ func (s *Service) ResetPassword(ctx context.Context, id uuid.UUID, newPassword s
 		if err != nil {
 			return fmt.Errorf("auth: end sessions: %w", err)
 		}
+		if _, err := s.store.InvalidateUserChallenges(ctx, id, now); err != nil {
+			return err
+		}
 		subject := s.throttleSubject(scopeSignIn, userThrottleKey(id))
 		st, err := s.store.GetThrottle(ctx, u.OrgID, scopeSignIn, subject)
 		if err != nil {

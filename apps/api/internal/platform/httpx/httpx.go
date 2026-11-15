@@ -15,10 +15,20 @@ import (
 var Version = "dev"
 
 // NewAPI returns the router and the Huma API (OpenAPI 3.1, RFC 9457 problem details by default).
-func NewAPI() (*http.ServeMux, huma.API) {
+func NewAPI() (*http.ServeMux, huma.API) { return NewAPIFor("") }
+
+// NewAPIFor is NewAPI for an APP_ENV. In staging and production the self-description routes
+// (/openapi.*, /docs, /schemas/*) are not served and responses carry no $schema link, so the
+// operation list is not advertised; the in-memory document (OpenAPI()) is unaffected, so
+// `swastik openapi` still emits the full spec.
+func NewAPIFor(env string) (*http.ServeMux, huma.API) {
 	mux := http.NewServeMux()
 	cfg := huma.DefaultConfig("Swastik API", Version)
 	cfg.Info.Description = "Internal IPO operations platform."
+	if env == "staging" || env == "production" {
+		cfg.OpenAPIPath, cfg.DocsPath, cfg.SchemasPath = "", "", ""
+		cfg.CreateHooks = nil
+	}
 	api := humago.New(mux, cfg)
 	return mux, api
 }

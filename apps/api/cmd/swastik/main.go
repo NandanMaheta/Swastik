@@ -88,6 +88,7 @@ func run(log *slog.Logger, args []string) error {
 // deps are the collaborators the API's operations need. The zero value registers only the
 // operations that need none.
 type deps struct {
+	Env      string // APP_ENV; the OpenAPI/docs routes are served only in local and ci
 	Pool     health.Pinger
 	Tick     scheduler.Ticker
 	TickAuth tickauth.Authenticator
@@ -96,6 +97,7 @@ type deps struct {
 	Auth             *auth.Service
 	WebOrigins       []string
 	TrustedProxyHops int
+	ProxySecrets     []string
 }
 
 // buildAPI registers every module's operations. New modules are wired here, in this order:
@@ -104,13 +106,13 @@ type deps struct {
 // declared Security.
 func buildAPI(d deps) huma.API {
 	httpx.InstallErrors()
-	_, api := httpx.NewAPI()
+	_, api := httpx.NewAPIFor(d.Env)
 	authz.Install(api, verifiersOf(d.Auth))
 	health.Register(api, health.NewService(d.Pool, httpx.Version, time.Now))
 	if d.Tick != nil {
 		scheduler.RegisterTick(api, d.Tick, d.TickAuth)
 	}
-	auth.Register(api, d.Auth, auth.HandlerConfig{WebOrigins: d.WebOrigins, TrustedProxyHops: d.TrustedProxyHops})
+	auth.Register(api, d.Auth, auth.HandlerConfig{WebOrigins: d.WebOrigins, TrustedProxyHops: d.TrustedProxyHops, ProxySecrets: d.ProxySecrets})
 	authz.AssertDeclared(api)
 	return api
 }
@@ -180,8 +182,9 @@ func serve(ctx context.Context, log *slog.Logger, cfg config.Config, pool *pgxpo
 	registerAuthJobs(sched, authSvc)
 
 	api := buildAPI(deps{ //nolint:contextcheck // the tick middleware takes its context from each request
-		Pool: pool, Tick: sched, TickAuth: selectTickAuth(ctx, log, cfg),
+		Env: cfg.Env, Pool: pool, Tick: sched, TickAuth: selectTickAuth(ctx, log, cfg),
 		Auth: authSvc, WebOrigins: cfg.Auth.WebOrigins, TrustedProxyHops: cfg.Auth.TrustedProxyHops,
+		ProxySecrets: cfg.Auth.ProxySharedSecrets,
 	})
 	// CORS wraps the whole API: an exact-origin allowlist with credentials, never a wildcard.
 	srv := httpx.NewServer(cfg.HTTPAddr, httpx.CORS(cfg.Auth.WebOrigins)(api.Adapter()), log)

@@ -42,8 +42,8 @@ jobs:
           gcloud run jobs deploy swastik-migrate --image $REG/api:${{ github.sha }} --args migrate,up \
             --region asia-south1 --set-secrets DATABASE_URL=database-url:latest --execute-now --wait
           gcloud run deploy swastik-api --image $REG/api:${{ github.sha }} --region asia-south1 \
-            --set-secrets DATABASE_URL=database-url:latest,JWT_SIGNING_KEYS=jwt-signing-keys:latest,PII_ENCRYPTION_KEYS=pii-encryption-keys:latest,BLIND_INDEX_KEY=blind-index-key:latest \
-            --set-env-vars "^;^APP_ENV=${{ vars.APP_ENV }};TICK_AUDIENCE=${{ vars.TICK_AUDIENCE }};TICK_SERVICE_ACCOUNT=${{ vars.TICK_SERVICE_ACCOUNT }};JWT_ACTIVE_KID=${{ vars.JWT_ACTIVE_KID }};PII_ACTIVE_KEY_ID=${{ vars.PII_ACTIVE_KEY_ID }};WEB_ORIGINS=${{ vars.WEB_ORIGINS }}"
+            --set-secrets DATABASE_URL=database-url:latest,JWT_SIGNING_KEYS=jwt-signing-keys:latest,PII_ENCRYPTION_KEYS=pii-encryption-keys:latest,BLIND_INDEX_KEY=blind-index-key:latest,PROXY_SHARED_SECRETS=proxy-shared-secrets:latest \
+            --set-env-vars "^;^APP_ENV=${{ vars.APP_ENV }};TICK_AUDIENCE=${{ vars.TICK_AUDIENCE }};TICK_SERVICE_ACCOUNT=${{ vars.TICK_SERVICE_ACCOUNT }};JWT_ACTIVE_KID=${{ vars.JWT_ACTIVE_KID }};PII_ACTIVE_KEY_ID=${{ vars.PII_ACTIVE_KEY_ID }};WEB_ORIGINS=${{ vars.WEB_ORIGINS }};TRUSTED_PROXY_HOPS=1"
           gcloud run deploy swastik-worker --image $REG/worker:${{ github.sha }} --region asia-south1 --no-allow-unauthenticated
       - name: Smoke test
         if: steps.cfg.outputs.skip != 'true'
