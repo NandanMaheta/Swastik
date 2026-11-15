@@ -226,7 +226,10 @@ components:
       additionalProperties: false
       properties:
         $schema:
-          description: Unused; always absent.
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/ClientIPO.json
+          format: uri
           readOnly: true
           type: string
         apply_flag:
@@ -665,6 +668,8 @@ components:
             - "null"
         lead_managers:
           items:
+            maxLength: 200
+            minLength: 1
             type: string
           maxItems: 20
           type:
@@ -716,6 +721,7 @@ components:
         segments:
           description: NSE_MAINBOARD and/or BSE_MAINBOARD. NSE_EMERGE and BSE_SME give ipo.sme_not_allowed; other values or repeats give ipo.invalid_segment.
           items:
+            maxLength: 32
             type: string
           maxItems: 4
           minItems: 1
@@ -776,6 +782,8 @@ components:
             - "null"
         lead_managers:
           items:
+            maxLength: 200
+            minLength: 1
             type: string
           maxItems: 20
           type:
@@ -826,6 +834,7 @@ components:
             - "null"
         segments:
           items:
+            maxLength: 32
             type: string
           maxItems: 4
           minItems: 1

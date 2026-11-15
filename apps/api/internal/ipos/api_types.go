@@ -10,8 +10,9 @@ import (
 )
 
 // Wire types of the IPO operations (contracts/ipos.openapi.yaml). Money is integer paise; dates are
-// IST civil dates (YYYY-MM-DD). Request schemas accept any short segment string so the service can
-// answer ipo.sme_not_allowed and ipo.invalid_segment (research R-05).
+// IST civil dates (YYYY-MM-DD). Request schemas accept any segment string of up to 32 characters
+// (and lead managers of 1 to 200) so the service can answer ipo.sme_not_allowed and
+// ipo.invalid_segment (research R-05); longer or empty items give validation_failed.
 
 const (
 	wireNSE = "NSE_MAINBOARD"
@@ -31,7 +32,7 @@ type IPODates struct {
 // IPODraft is the create body: only name and segments are required.
 type IPODraft struct {
 	Name                string    `json:"name" minLength:"1" maxLength:"200"`
-	Segments            []string  `json:"segments" minItems:"1" maxItems:"4" doc:"NSE_MAINBOARD and/or BSE_MAINBOARD. NSE_EMERGE and BSE_SME give ipo.sme_not_allowed; other values or repeats give ipo.invalid_segment."`
+	Segments            []string  `json:"segments" minItems:"1" maxItems:"4" maxLength:"32" doc:"NSE_MAINBOARD and/or BSE_MAINBOARD. NSE_EMERGE and BSE_SME give ipo.sme_not_allowed; other values or repeats give ipo.invalid_segment."`
 	NSESymbol           *string   `json:"nse_symbol,omitempty" pattern:"^[A-Z0-9&-]{1,20}$" nullable:"true"`
 	IssueSizePaise      *int64    `json:"issue_size_paise,omitempty" minimum:"1" maximum:"1000000000000000" nullable:"true"`
 	PriceBandFloorPaise *int64    `json:"price_band_floor_paise,omitempty" minimum:"1" maximum:"1000000000" nullable:"true"`
@@ -40,7 +41,7 @@ type IPODraft struct {
 	LotSize             *int32    `json:"lot_size,omitempty" minimum:"1" maximum:"1000000" nullable:"true"`
 	Dates               *IPODates `json:"dates,omitempty"`
 	Registrar           *string   `json:"registrar,omitempty" minLength:"1" maxLength:"200" nullable:"true"`
-	LeadManagers        []string  `json:"lead_managers,omitempty" maxItems:"20"`
+	LeadManagers        []string  `json:"lead_managers,omitempty" maxItems:"20" minLength:"1" maxLength:"200"`
 	OfferDocumentURL    *string   `json:"offer_document_url,omitempty" format:"uri" pattern:"^https://" maxLength:"2000" nullable:"true"`
 }
 
@@ -48,7 +49,7 @@ type IPODraft struct {
 type IPOReplace struct {
 	Version             int32    `json:"version" minimum:"1"`
 	Name                string   `json:"name" minLength:"1" maxLength:"200"`
-	Segments            []string `json:"segments" minItems:"1" maxItems:"4"`
+	Segments            []string `json:"segments" minItems:"1" maxItems:"4" maxLength:"32"`
 	NSESymbol           *string  `json:"nse_symbol" pattern:"^[A-Z0-9&-]{1,20}$" nullable:"true"`
 	IssueSizePaise      *int64   `json:"issue_size_paise" minimum:"1" maximum:"1000000000000000" nullable:"true"`
 	PriceBandFloorPaise *int64   `json:"price_band_floor_paise" minimum:"1" maximum:"1000000000" nullable:"true"`
@@ -57,7 +58,7 @@ type IPOReplace struct {
 	LotSize             *int32   `json:"lot_size" minimum:"1" maximum:"1000000" nullable:"true"`
 	Dates               IPODates `json:"dates"`
 	Registrar           *string  `json:"registrar" minLength:"1" maxLength:"200" nullable:"true"`
-	LeadManagers        []string `json:"lead_managers" maxItems:"20"`
+	LeadManagers        []string `json:"lead_managers" maxItems:"20" minLength:"1" maxLength:"200"`
 	OfferDocumentURL    *string  `json:"offer_document_url" format:"uri" pattern:"^https://" maxLength:"2000" nullable:"true"`
 }
 
@@ -102,11 +103,7 @@ type IPOFacts struct {
 
 // ClientIPO is a published IPO as clients see it. It never carries the source, override reasons,
 // audit history or the version (FR-051).
-//
-// Schema is declared (and never filled) so Huma does not wrap the body with its own "$schema" key:
-// the client view has an exact, minimal set of keys.
 type ClientIPO struct {
-	Schema string `json:"$schema,omitempty" readOnly:"true" doc:"Unused; always absent."`
 	IPOFacts
 	ApplyFlag *string `json:"apply_flag" enum:"APPLY,DO_NOT_APPLY"`
 	FlagNote  *string `json:"flag_note" nullable:"true"`

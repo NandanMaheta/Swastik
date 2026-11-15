@@ -147,6 +147,8 @@ func (s *Service) MarkSettled(ctx context.Context, org, id uuid.UUID) error
 
 Every mutation takes `by audit.Actor`, `org uuid.UUID` and `idemKey string` (empty means no key). It runs in one transaction: row lock → idempotency check → validate → write → steps → audit → listeners.
 
+Wire types: `IDPath` (the `{id}` path parameter), `IdemInput` (the `Idempotency-Key` header, 8 to 200 characters) and `IPOFacts` (the facts shared by the admin and client views) are exported so handlers and generated docs share one definition. The service stores a SHA-256 of the canonical request (action, id, version, body) with each key; the same key with a different request gives 422 `ipo.idempotency_key_reused`.
+
 ```go
 type Result struct { IPO IPO; Warnings []Warning; Replayed bool }
 

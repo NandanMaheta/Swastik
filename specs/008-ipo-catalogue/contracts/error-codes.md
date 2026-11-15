@@ -45,4 +45,3 @@ Example `detail`: `minimum application value ₹25,000 is outside ₹10,000–�
 | code | HTTP | When |
 |---|---|---|
 | `ipo.not_configured` | 503 | The IPO module is not wired/configured in this deployment. |
-| `validation_failed` | 422 | Malformed or invalid list cursor (bad-cursor). |

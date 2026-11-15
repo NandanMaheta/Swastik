@@ -26,14 +26,15 @@ func (s *Service) OverrideStatus(ctx context.Context, by audit.Actor, org, id uu
 	if len(is) > 0 {
 		return Result{}, &ValidationError{Code: "ipo.invalid_value", Issues: is}
 	}
+	hash := requestHash("status", id, version, string(to), reason)
 	var res Result
 	err := s.inTx(ctx, func(ctx context.Context) error {
 		cur, err := s.store.GetIPOForUpdate(ctx, org, id)
 		if err != nil {
 			return err
 		}
-		if again, err := s.replayed(ctx, org, id, actStatus, idemKey); err != nil || again {
-			res = Result{IPO: cur, Replayed: again}
+		if again, err := s.replayed(ctx, org, id, actStatus, idemKey, hash); err != nil || again {
+			res = Result{IPO: cur, Warnings: warnings(cur), Replayed: again}
 			return err
 		}
 		if cur.Version != version {
@@ -43,12 +44,12 @@ func (s *Service) OverrideStatus(ctx context.Context, by audit.Actor, org, id uu
 			return ErrNoChange
 		}
 		upd, err := s.applyStatus(ctx, cur, statusChange{
-			To: to, Source: SourceAdmin, By: by, Version: version, Reason: reason, IdemKey: idemKey, Override: true,
+			To: to, Source: SourceAdmin, By: by, Version: version, Reason: reason, IdemKey: idemKey, ReqHash: hash, Override: true,
 		})
 		if err != nil {
 			return err
 		}
-		res = Result{IPO: upd}
+		res = Result{IPO: upd, Warnings: warnings(upd)}
 		return nil
 	})
 	if err != nil {
@@ -81,11 +82,12 @@ func (s *Service) MarkSettled(ctx context.Context, org, id uuid.UUID) error {
 // Delete removes a never-published IPO and cancels its steps. A repeated key returns replayed.
 func (s *Service) Delete(ctx context.Context, by audit.Actor, org, id uuid.UUID, version int32, idemKey string) (bool, error) {
 	replayed := false
+	hash := requestHash("delete", id, version)
 	err := s.inTx(ctx, func(ctx context.Context) error {
 		cur, err := s.store.GetIPOForUpdate(ctx, org, id)
 		if isNotFound(err) {
 			// The row is gone: a known key means this is a replay of the delete that removed it.
-			if again, aerr := s.replayed(ctx, org, id, actDeleted, idemKey); aerr != nil {
+			if again, aerr := s.replayed(ctx, org, id, actDeleted, idemKey, hash); aerr != nil {
 				return aerr
 			} else if again {
 				replayed = true
@@ -111,7 +113,7 @@ func (s *Service) Delete(ctx context.Context, by audit.Actor, org, id uuid.UUID,
 		if _, err := s.d.Scheduler.CancelSubject(ctx, org, jobSubject(id)); err != nil {
 			return err
 		}
-		return s.writeAudit(ctx, by, org, id, actDeleted, withKey(snapshot(cur), idemKey), nil)
+		return s.writeAudit(ctx, by, org, id, actDeleted, withKey(snapshot(cur), idemKey, hash), nil)
 	})
 	return replayed, err
 }

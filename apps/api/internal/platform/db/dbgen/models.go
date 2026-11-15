@@ -93,6 +93,7 @@ type Ipo struct {
 	LastSyncedAt         pgtype.Timestamptz `json:"last_synced_at"`
 	FieldSources         []byte             `json:"field_sources"`
 	CreateIdempotencyKey pgtype.Text        `json:"create_idempotency_key"`
+	CreateRequestHash    pgtype.Text        `json:"create_request_hash"`
 	Version              int32              `json:"version"`
 	CreatedAt            pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`

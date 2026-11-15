@@ -17,6 +17,7 @@ type statusChange struct {
 	Step         string     // job kind (schedule only)
 	Reason       string     // override only
 	IdemKey      string
+	ReqHash      string
 	Override     bool // admin override: stamps last_override_at (FR-036)
 }
 
@@ -43,7 +44,7 @@ func (s *Service) applyStatus(ctx context.Context, cur IPO, c statusChange) (IPO
 	if c.Reason != "" {
 		after["reason"] = c.Reason
 	}
-	if err := s.writeAudit(ctx, c.By, cur.OrgID, cur.ID, actStatus, before, withKey(after, c.IdemKey)); err != nil {
+	if err := s.writeAudit(ctx, c.By, cur.OrgID, cur.ID, actStatus, before, withKey(after, c.IdemKey, c.ReqHash)); err != nil {
 		return IPO{}, err
 	}
 	err = s.emitStatus(ctx, StatusChanged{

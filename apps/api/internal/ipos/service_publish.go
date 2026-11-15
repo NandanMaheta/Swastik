@@ -17,13 +17,14 @@ func (s *Service) SetFlag(ctx context.Context, by audit.Actor, org, id uuid.UUID
 	if err := validateFlag(flag, note); err != nil {
 		return Result{}, err
 	}
+	hash := requestHash("flag", id, version, deref(flag), deref(note))
 	var res Result
 	err := s.inTx(ctx, func(ctx context.Context) error {
 		cur, err := s.store.GetIPOForUpdate(ctx, org, id)
 		if err != nil {
 			return err
 		}
-		if again, err := s.replayed(ctx, org, id, actFlagSet, idemKey); err != nil || again {
+		if again, err := s.replayed(ctx, org, id, actFlagSet, idemKey, hash); err != nil || again {
 			res = Result{IPO: cur, Warnings: warnings(cur), Replayed: again}
 			return err
 		}
@@ -45,7 +46,7 @@ func (s *Service) SetFlag(ctx context.Context, by audit.Actor, org, id uuid.UUID
 		}
 		before := fields{"apply_flag": deref(cur.Flag), "flag_note": deref(cur.FlagNote)}
 		after := fields{"apply_flag": deref(upd.Flag), "flag_note": deref(upd.FlagNote), "eligible": upd.Eligible()}
-		if err := s.writeAudit(ctx, by, org, id, actFlagSet, before, withKey(after, idemKey)); err != nil {
+		if err := s.writeAudit(ctx, by, org, id, actFlagSet, before, withKey(after, idemKey, hash)); err != nil {
 			return err
 		}
 		if cur.Eligible() != upd.Eligible() {
@@ -102,13 +103,14 @@ func (s *Service) setPublished(ctx context.Context, by audit.Actor, org, id uuid
 	if publish {
 		action, cause = actPublished, "publish"
 	}
+	hash := requestHash(action, id, version)
 	var res Result
 	err := s.inTx(ctx, func(ctx context.Context) error {
 		cur, err := s.store.GetIPOForUpdate(ctx, org, id)
 		if err != nil {
 			return err
 		}
-		if again, err := s.replayed(ctx, org, id, action, idemKey); err != nil || again {
+		if again, err := s.replayed(ctx, org, id, action, idemKey, hash); err != nil || again {
 			res = Result{IPO: cur, Warnings: warnings(cur), Replayed: again}
 			return err
 		}
@@ -130,7 +132,7 @@ func (s *Service) setPublished(ctx context.Context, by audit.Actor, org, id uuid
 		}
 		before := fields{"published": cur.Published, "eligible": cur.Eligible()}
 		after := fields{"published": upd.Published, "eligible": upd.Eligible()}
-		if err := s.writeAudit(ctx, by, org, id, action, before, withKey(after, idemKey)); err != nil {
+		if err := s.writeAudit(ctx, by, org, id, action, before, withKey(after, idemKey, hash)); err != nil {
 			return err
 		}
 		if cur.Eligible() != upd.Eligible() {

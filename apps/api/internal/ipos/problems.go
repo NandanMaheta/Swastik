@@ -53,6 +53,8 @@ func validationDetail(code string) string {
 		return "The dates are out of order."
 	case "ipo.publish_incomplete":
 		return "The IPO is missing what it needs to be published."
+	case codeKeyReused:
+		return "This Idempotency-Key was already used for a different request; use a new key."
 	default:
 		return "A value is not valid."
 	}

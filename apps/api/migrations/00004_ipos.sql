@@ -42,6 +42,7 @@ CREATE TABLE ipos (
     last_synced_at         timestamptz,
     field_sources          jsonb NOT NULL DEFAULT '{}' CHECK (jsonb_typeof(field_sources) = 'object'),
     create_idempotency_key text CHECK (char_length(create_idempotency_key) BETWEEN 8 AND 200),
+    create_request_hash    text CHECK (create_request_hash ~ '^[0-9a-f]{64}$'),
     version                integer NOT NULL DEFAULT 1 CHECK (version >= 1),
     created_at             timestamptz NOT NULL DEFAULT now(),
     updated_at             timestamptz NOT NULL DEFAULT now(),

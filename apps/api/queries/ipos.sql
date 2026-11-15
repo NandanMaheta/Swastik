@@ -4,7 +4,7 @@
 INSERT INTO ipos (
     org_id, name, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise,
     issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date,
-    listing_date, registrar, lead_managers, offer_document_url, create_idempotency_key,
+    listing_date, registrar, lead_managers, offer_document_url, create_idempotency_key, create_request_hash,
     status_changed_at, created_at, updated_at
 ) VALUES (
     @org_id, @name, @exchanges::text[], sqlc.narg('nse_symbol'), sqlc.narg('issue_size_paise'),
@@ -12,13 +12,16 @@ INSERT INTO ipos (
     sqlc.narg('lot_size'), sqlc.narg('open_date'), sqlc.narg('close_date'), sqlc.narg('allotment_date'),
     sqlc.narg('refund_date'), sqlc.narg('demat_credit_date'), sqlc.narg('listing_date'),
     sqlc.narg('registrar'), @lead_managers::text[], sqlc.narg('offer_document_url'),
-    sqlc.narg('create_idempotency_key'), @now, @now, @now
+    sqlc.narg('create_idempotency_key'), sqlc.narg('create_request_hash'), @now, @now, @now
 )
 ON CONFLICT (org_id, create_idempotency_key) WHERE create_idempotency_key IS NOT NULL DO NOTHING
 RETURNING *;
 
 -- name: GetIPOByCreateKey :one
 SELECT * FROM ipos WHERE org_id = @org_id AND create_idempotency_key = @key;
+
+-- name: GetCreateRequestHash :one
+SELECT create_request_hash FROM ipos WHERE org_id = @org_id AND create_idempotency_key = @key;
 
 -- name: GetIPO :one
 SELECT * FROM ipos WHERE org_id = @org_id AND id = @id;
@@ -119,7 +122,7 @@ ORDER BY open_date DESC NULLS FIRST, id DESC
 LIMIT @row_limit;
 
 -- name: FindIPOAuditByIdempotencyKey :one
-SELECT id FROM audit_log
+SELECT id, COALESCE(COALESCE(after, before) ->> 'request_hash', '')::text AS request_hash FROM audit_log
 WHERE org_id = @org_id AND entity = 'ipo' AND entity_id = @entity_id AND action = @action
   AND COALESCE(after, before) ->> 'idempotency_key' = @key::text
 LIMIT 1;

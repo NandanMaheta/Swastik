@@ -38,6 +38,9 @@ export const ipoErrorMessages = {
   "ipo.not_listed_yet": "This IPO has not been listed yet, so it cannot be settled.",
   "ipo.min_application_out_of_range":
     "The minimum application value is outside the usual range of 10,000 to 20,000 rupees.",
+  "ipo.not_configured": "IPOs are not available right now. Please try again later.",
+  "ipo.idempotency_key_reused":
+    "This request key was already used for a different request. Please try again.",
   "ipo.weekdays_only": "Suggested dates skip weekends only. Check exchange holidays.",
 } as const;
 

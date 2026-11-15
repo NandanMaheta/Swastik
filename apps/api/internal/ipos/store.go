@@ -64,6 +64,12 @@ func stale(err error) error {
 
 // InsertIPO inserts a draft; created is false when (org, idemKey) already exists.
 func (s *Store) InsertIPO(ctx context.Context, org uuid.UUID, d Draft, idemKey *string, now time.Time) (IPO, bool, error) {
+	return s.InsertIPOHashed(ctx, org, d, idemKey, "", now)
+}
+
+// InsertIPOHashed is InsertIPO that also stores the SHA-256 of the canonical create request, so a
+// replay with a different body can be told apart (empty hash stores none).
+func (s *Store) InsertIPOHashed(ctx context.Context, org uuid.UUID, d Draft, idemKey *string, hash string, now time.Time) (IPO, bool, error) {
 	q, err := s.q(ctx)
 	if err != nil {
 		return IPO{}, false, err
@@ -76,7 +82,7 @@ func (s *Store) InsertIPO(ctx context.Context, org uuid.UUID, d Draft, idemKey *
 		OpenDate: dateOf(d.Dates.Open), CloseDate: dateOf(d.Dates.Close), AllotmentDate: dateOf(d.Dates.Allotment),
 		RefundDate: dateOf(d.Dates.Refund), DematCreditDate: dateOf(d.Dates.DematCredit), ListingDate: dateOf(d.Dates.Listing),
 		Registrar: textOf(d.Registrar), LeadManagers: nonNilStrings(d.LeadManagers),
-		OfferDocumentUrl: textOf(d.OfferDocumentURL), CreateIdempotencyKey: textOf(idemKey),
+		OfferDocumentUrl: textOf(d.OfferDocumentURL), CreateIdempotencyKey: textOf(idemKey), CreateRequestHash: textOf(optKey(hash)),
 		Now: db.Timestamptz(now),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -99,6 +105,19 @@ func (s *Store) GetIPOByCreateKey(ctx context.Context, org uuid.UUID, key string
 		return IPO{}, notFound(err)
 	}
 	return toIPO(row), nil
+}
+
+// GetCreateRequestHash returns the request hash stored with a create key ("" when none).
+func (s *Store) GetCreateRequestHash(ctx context.Context, org uuid.UUID, key string) (string, error) {
+	q, err := s.q(ctx)
+	if err != nil {
+		return "", err
+	}
+	h, err := q.GetCreateRequestHash(ctx, dbgen.GetCreateRequestHashParams{OrgID: org, Key: db.Text(key)})
+	if err != nil {
+		return "", notFound(err)
+	}
+	return h.String, nil
 }
 
 // GetIPO reads one IPO of the org.
@@ -296,20 +315,32 @@ func (s *Store) ListPublishedIPOs(ctx context.Context, org uuid.UUID, f ClientFi
 
 // FindIPOAuditByIdempotencyKey finds the audit row an earlier call with the same key wrote.
 func (s *Store) FindIPOAuditByIdempotencyKey(ctx context.Context, org, id uuid.UUID, action, key string) (uuid.UUID, bool, error) {
+	got, _, ok, err := s.findAuditReplay(ctx, org, id, action, key)
+	return got, ok, err
+}
+
+// FindIPOAuditReplay is FindIPOAuditByIdempotencyKey that also returns the request hash the
+// earlier call recorded ("" for rows written without one).
+func (s *Store) FindIPOAuditReplay(ctx context.Context, org, id uuid.UUID, action, key string) (string, bool, error) {
+	_, h, ok, err := s.findAuditReplay(ctx, org, id, action, key)
+	return h, ok, err
+}
+
+func (s *Store) findAuditReplay(ctx context.Context, org, id uuid.UUID, action, key string) (uuid.UUID, string, bool, error) {
 	q, err := s.q(ctx)
 	if err != nil {
-		return uuid.Nil, false, err
+		return uuid.Nil, "", false, err
 	}
 	got, err := q.FindIPOAuditByIdempotencyKey(ctx, dbgen.FindIPOAuditByIdempotencyKeyParams{
 		OrgID: org, EntityID: uuid.NullUUID{UUID: id, Valid: true}, Action: action, Key: key,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return uuid.Nil, false, nil
+		return uuid.Nil, "", false, nil
 	}
 	if err != nil {
-		return uuid.Nil, false, fmt.Errorf("ipos: find audit: %w", err)
+		return uuid.Nil, "", false, fmt.Errorf("ipos: find audit: %w", err)
 	}
-	return got, true, nil
+	return got.ID, got.RequestHash, true, nil
 }
 
 func rowLimit(limit int) int32 {

@@ -12,13 +12,14 @@ import (
 // Update replaces the facts of an IPO (PUT). A save that changes nothing writes nothing.
 // Order: lock, replay, version, validate, write, steps, audit, DatesChanged.
 func (s *Service) Update(ctx context.Context, by audit.Actor, org, id uuid.UUID, version int32, in Draft, idemKey string) (Result, error) {
+	hash := requestHash("update", id, version, facts(in))
 	var res Result
 	err := s.inTx(ctx, func(ctx context.Context) error {
 		cur, err := s.store.GetIPOForUpdate(ctx, org, id)
 		if err != nil {
 			return err
 		}
-		if again, err := s.replayed(ctx, org, id, actUpdated, idemKey); err != nil || again {
+		if again, err := s.replayed(ctx, org, id, actUpdated, idemKey, hash); err != nil || again {
 			res = Result{IPO: cur, Warnings: warnings(cur), Replayed: again}
 			return err
 		}
@@ -47,7 +48,7 @@ func (s *Service) Update(ctx context.Context, by audit.Actor, org, id uuid.UUID,
 			return err
 		}
 		before, after := factsDiff(oldFacts, factsOfIPO(upd))
-		if err := s.writeAudit(ctx, by, org, id, actUpdated, before, withKey(after, idemKey)); err != nil {
+		if err := s.writeAudit(ctx, by, org, id, actUpdated, before, withKey(after, idemKey, hash)); err != nil {
 			return err
 		}
 		if !datesEqual(cur.Dates, upd.Dates) {

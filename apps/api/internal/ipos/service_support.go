@@ -2,6 +2,10 @@ package ipos
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
 	"reflect"
 	"time"
 
@@ -39,21 +43,48 @@ func (s *Service) writeAudit(ctx context.Context, by audit.Actor, org, id uuid.U
 	return audit.Write(ctx, e)
 }
 
-// withKey adds the idempotency key (the replay lookup of research R-04) when one was sent.
-func withKey(f fields, key string) fields {
+// codeKeyReused is the problem code for an Idempotency-Key replayed with a different request.
+const codeKeyReused = "ipo.idempotency_key_reused"
+
+// withKey adds the idempotency key (the replay lookup of research R-04) and the request hash
+// when one was sent.
+func withKey(f fields, key, hash string) fields {
 	if key != "" && f != nil {
-		f["idempotency_key"] = key
+		f["idempotency_key"], f["request_hash"] = key, hash
 	}
 	return f
 }
 
+// requestHash is the SHA-256 (hex) of the canonical request: the action plus every path, query
+// and body value that decides the outcome, including the version.
+func requestHash(parts ...any) string {
+	b, err := json.Marshal(parts) // map keys are sorted, so the encoding is canonical
+	if err != nil {
+		b = []byte(fmt.Sprint(parts...))
+	}
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
+}
+
+func keyReused() error {
+	return &ValidationError{Code: codeKeyReused, Issues: []FieldIssue{
+		{Field: "Idempotency-Key", Message: "this key was already used for a different request"}}}
+}
+
 // replayed reports whether an earlier call with this key already wrote this action for the IPO.
-func (s *Service) replayed(ctx context.Context, org, id uuid.UUID, action, key string) (bool, error) {
+// The same key with a different request hash is rejected (FR-007).
+func (s *Service) replayed(ctx context.Context, org, id uuid.UUID, action, key, hash string) (bool, error) {
 	if key == "" {
 		return false, nil
 	}
-	_, ok, err := s.store.FindIPOAuditByIdempotencyKey(ctx, org, id, action, key)
-	return ok, err
+	stored, ok, err := s.store.FindIPOAuditReplay(ctx, org, id, action, key)
+	if err != nil || !ok {
+		return false, err
+	}
+	if stored != "" && stored != hash {
+		return false, keyReused()
+	}
+	return true, nil
 }
 
 func optKey(key string) *string {

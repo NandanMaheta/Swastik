@@ -558,7 +558,11 @@ export interface components {
             new_password: string;
         };
         ClientIPO: {
-            /** @description Unused; always absent. */
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/ClientIPO.json
+             */
             readonly $schema?: string;
             /** @enum {string|null} */
             apply_flag: "APPLY" | "DO_NOT_APPLY" | null;

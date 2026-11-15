@@ -32,7 +32,7 @@ func (q *Queries) DeleteIPO(ctx context.Context, arg DeleteIPOParams) (int64, er
 }
 
 const findIPOAuditByIdempotencyKey = `-- name: FindIPOAuditByIdempotencyKey :one
-SELECT id FROM audit_log
+SELECT id, COALESCE(COALESCE(after, before) ->> 'request_hash', '')::text AS request_hash FROM audit_log
 WHERE org_id = $1 AND entity = 'ipo' AND entity_id = $2 AND action = $3
   AND COALESCE(after, before) ->> 'idempotency_key' = $4::text
 LIMIT 1
@@ -45,20 +45,41 @@ type FindIPOAuditByIdempotencyKeyParams struct {
 	Key      string        `json:"key"`
 }
 
-func (q *Queries) FindIPOAuditByIdempotencyKey(ctx context.Context, arg FindIPOAuditByIdempotencyKeyParams) (uuid.UUID, error) {
+type FindIPOAuditByIdempotencyKeyRow struct {
+	ID          uuid.UUID `json:"id"`
+	RequestHash string    `json:"request_hash"`
+}
+
+func (q *Queries) FindIPOAuditByIdempotencyKey(ctx context.Context, arg FindIPOAuditByIdempotencyKeyParams) (FindIPOAuditByIdempotencyKeyRow, error) {
 	row := q.db.QueryRow(ctx, findIPOAuditByIdempotencyKey,
 		arg.OrgID,
 		arg.EntityID,
 		arg.Action,
 		arg.Key,
 	)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
+	var i FindIPOAuditByIdempotencyKeyRow
+	err := row.Scan(&i.ID, &i.RequestHash)
+	return i, err
+}
+
+const getCreateRequestHash = `-- name: GetCreateRequestHash :one
+SELECT create_request_hash FROM ipos WHERE org_id = $1 AND create_idempotency_key = $2
+`
+
+type GetCreateRequestHashParams struct {
+	OrgID uuid.UUID   `json:"org_id"`
+	Key   pgtype.Text `json:"key"`
+}
+
+func (q *Queries) GetCreateRequestHash(ctx context.Context, arg GetCreateRequestHashParams) (pgtype.Text, error) {
+	row := q.db.QueryRow(ctx, getCreateRequestHash, arg.OrgID, arg.Key)
+	var create_request_hash pgtype.Text
+	err := row.Scan(&create_request_hash)
+	return create_request_hash, err
 }
 
 const getIPO = `-- name: GetIPO :one
-SELECT id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, version, created_at, updated_at FROM ipos WHERE org_id = $1 AND id = $2
+SELECT id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, create_request_hash, version, created_at, updated_at FROM ipos WHERE org_id = $1 AND id = $2
 `
 
 type GetIPOParams struct {
@@ -103,6 +124,7 @@ func (q *Queries) GetIPO(ctx context.Context, arg GetIPOParams) (Ipo, error) {
 		&i.LastSyncedAt,
 		&i.FieldSources,
 		&i.CreateIdempotencyKey,
+		&i.CreateRequestHash,
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -111,7 +133,7 @@ func (q *Queries) GetIPO(ctx context.Context, arg GetIPOParams) (Ipo, error) {
 }
 
 const getIPOByCreateKey = `-- name: GetIPOByCreateKey :one
-SELECT id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, version, created_at, updated_at FROM ipos WHERE org_id = $1 AND create_idempotency_key = $2
+SELECT id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, create_request_hash, version, created_at, updated_at FROM ipos WHERE org_id = $1 AND create_idempotency_key = $2
 `
 
 type GetIPOByCreateKeyParams struct {
@@ -156,6 +178,7 @@ func (q *Queries) GetIPOByCreateKey(ctx context.Context, arg GetIPOByCreateKeyPa
 		&i.LastSyncedAt,
 		&i.FieldSources,
 		&i.CreateIdempotencyKey,
+		&i.CreateRequestHash,
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -164,7 +187,7 @@ func (q *Queries) GetIPOByCreateKey(ctx context.Context, arg GetIPOByCreateKeyPa
 }
 
 const getIPOForShare = `-- name: GetIPOForShare :one
-SELECT id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, version, created_at, updated_at FROM ipos WHERE org_id = $1 AND id = $2 FOR SHARE
+SELECT id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, create_request_hash, version, created_at, updated_at FROM ipos WHERE org_id = $1 AND id = $2 FOR SHARE
 `
 
 type GetIPOForShareParams struct {
@@ -209,6 +232,7 @@ func (q *Queries) GetIPOForShare(ctx context.Context, arg GetIPOForShareParams) 
 		&i.LastSyncedAt,
 		&i.FieldSources,
 		&i.CreateIdempotencyKey,
+		&i.CreateRequestHash,
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -217,7 +241,7 @@ func (q *Queries) GetIPOForShare(ctx context.Context, arg GetIPOForShareParams) 
 }
 
 const getIPOForUpdate = `-- name: GetIPOForUpdate :one
-SELECT id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, version, created_at, updated_at FROM ipos WHERE org_id = $1 AND id = $2 FOR UPDATE
+SELECT id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, create_request_hash, version, created_at, updated_at FROM ipos WHERE org_id = $1 AND id = $2 FOR UPDATE
 `
 
 type GetIPOForUpdateParams struct {
@@ -262,6 +286,7 @@ func (q *Queries) GetIPOForUpdate(ctx context.Context, arg GetIPOForUpdateParams
 		&i.LastSyncedAt,
 		&i.FieldSources,
 		&i.CreateIdempotencyKey,
+		&i.CreateRequestHash,
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -270,7 +295,7 @@ func (q *Queries) GetIPOForUpdate(ctx context.Context, arg GetIPOForUpdateParams
 }
 
 const getPublishedIPO = `-- name: GetPublishedIPO :one
-SELECT id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, version, created_at, updated_at FROM ipos WHERE org_id = $1 AND id = $2 AND published
+SELECT id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, create_request_hash, version, created_at, updated_at FROM ipos WHERE org_id = $1 AND id = $2 AND published
 `
 
 type GetPublishedIPOParams struct {
@@ -315,6 +340,7 @@ func (q *Queries) GetPublishedIPO(ctx context.Context, arg GetPublishedIPOParams
 		&i.LastSyncedAt,
 		&i.FieldSources,
 		&i.CreateIdempotencyKey,
+		&i.CreateRequestHash,
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -327,7 +353,7 @@ const insertIPO = `-- name: InsertIPO :one
 INSERT INTO ipos (
     org_id, name, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise,
     issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date,
-    listing_date, registrar, lead_managers, offer_document_url, create_idempotency_key,
+    listing_date, registrar, lead_managers, offer_document_url, create_idempotency_key, create_request_hash,
     status_changed_at, created_at, updated_at
 ) VALUES (
     $1, $2, $3::text[], $4, $5,
@@ -335,10 +361,10 @@ INSERT INTO ipos (
     $9, $10, $11, $12,
     $13, $14, $15,
     $16, $17::text[], $18,
-    $19, $20, $20, $20
+    $19, $20, $21, $21, $21
 )
 ON CONFLICT (org_id, create_idempotency_key) WHERE create_idempotency_key IS NOT NULL DO NOTHING
-RETURNING id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, version, created_at, updated_at
+RETURNING id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, create_request_hash, version, created_at, updated_at
 `
 
 type InsertIPOParams struct {
@@ -361,6 +387,7 @@ type InsertIPOParams struct {
 	LeadManagers         []string           `json:"lead_managers"`
 	OfferDocumentUrl     pgtype.Text        `json:"offer_document_url"`
 	CreateIdempotencyKey pgtype.Text        `json:"create_idempotency_key"`
+	CreateRequestHash    pgtype.Text        `json:"create_request_hash"`
 	Now                  pgtype.Timestamptz `json:"now"`
 }
 
@@ -386,6 +413,7 @@ func (q *Queries) InsertIPO(ctx context.Context, arg InsertIPOParams) (Ipo, erro
 		arg.LeadManagers,
 		arg.OfferDocumentUrl,
 		arg.CreateIdempotencyKey,
+		arg.CreateRequestHash,
 		arg.Now,
 	)
 	var i Ipo
@@ -423,6 +451,7 @@ func (q *Queries) InsertIPO(ctx context.Context, arg InsertIPOParams) (Ipo, erro
 		&i.LastSyncedAt,
 		&i.FieldSources,
 		&i.CreateIdempotencyKey,
+		&i.CreateRequestHash,
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -431,7 +460,7 @@ func (q *Queries) InsertIPO(ctx context.Context, arg InsertIPOParams) (Ipo, erro
 }
 
 const listIPOsAdmin = `-- name: ListIPOsAdmin :many
-SELECT id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, version, created_at, updated_at FROM ipos
+SELECT id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, create_request_hash, version, created_at, updated_at FROM ipos
 WHERE org_id = $1
   AND ($2::text IS NULL OR status = $2)
   AND ($3::boolean IS NULL OR published = $3)
@@ -517,6 +546,7 @@ func (q *Queries) ListIPOsAdmin(ctx context.Context, arg ListIPOsAdminParams) ([
 			&i.LastSyncedAt,
 			&i.FieldSources,
 			&i.CreateIdempotencyKey,
+			&i.CreateRequestHash,
 			&i.Version,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -532,7 +562,7 @@ func (q *Queries) ListIPOsAdmin(ctx context.Context, arg ListIPOsAdminParams) ([
 }
 
 const listPublishedIPOs = `-- name: ListPublishedIPOs :many
-SELECT id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, version, created_at, updated_at FROM ipos
+SELECT id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, create_request_hash, version, created_at, updated_at FROM ipos
 WHERE org_id = $1 AND published
   AND ($2::text IS NULL OR status = $2)
   AND (NOT $3::boolean
@@ -604,6 +634,7 @@ func (q *Queries) ListPublishedIPOs(ctx context.Context, arg ListPublishedIPOsPa
 			&i.LastSyncedAt,
 			&i.FieldSources,
 			&i.CreateIdempotencyKey,
+			&i.CreateRequestHash,
 			&i.Version,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -625,7 +656,7 @@ UPDATE ipos SET
     version = version + 1,
     updated_at = $3
 WHERE org_id = $4 AND id = $5 AND version = $6
-RETURNING id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, version, created_at, updated_at
+RETURNING id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, create_request_hash, version, created_at, updated_at
 `
 
 type SetIPOFlagParams struct {
@@ -681,6 +712,7 @@ func (q *Queries) SetIPOFlag(ctx context.Context, arg SetIPOFlagParams) (Ipo, er
 		&i.LastSyncedAt,
 		&i.FieldSources,
 		&i.CreateIdempotencyKey,
+		&i.CreateRequestHash,
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -696,7 +728,7 @@ UPDATE ipos SET
     version = version + 1,
     updated_at = $2
 WHERE org_id = $3 AND id = $4 AND version = $5
-RETURNING id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, version, created_at, updated_at
+RETURNING id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, create_request_hash, version, created_at, updated_at
 `
 
 type SetIPOPublishedParams struct {
@@ -750,6 +782,7 @@ func (q *Queries) SetIPOPublished(ctx context.Context, arg SetIPOPublishedParams
 		&i.LastSyncedAt,
 		&i.FieldSources,
 		&i.CreateIdempotencyKey,
+		&i.CreateRequestHash,
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -766,7 +799,7 @@ UPDATE ipos SET
     version = version + 1,
     updated_at = $3
 WHERE org_id = $5 AND id = $6 AND version = $7
-RETURNING id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, version, created_at, updated_at
+RETURNING id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, create_request_hash, version, created_at, updated_at
 `
 
 type SetIPOStatusParams struct {
@@ -824,6 +857,7 @@ func (q *Queries) SetIPOStatus(ctx context.Context, arg SetIPOStatusParams) (Ipo
 		&i.LastSyncedAt,
 		&i.FieldSources,
 		&i.CreateIdempotencyKey,
+		&i.CreateRequestHash,
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -853,7 +887,7 @@ UPDATE ipos SET
     version = version + 1,
     updated_at = $18
 WHERE org_id = $19 AND id = $20 AND version = $21
-RETURNING id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, version, created_at, updated_at
+RETURNING id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, create_request_hash, version, created_at, updated_at
 `
 
 type UpdateIPOFactsParams struct {
@@ -939,6 +973,7 @@ func (q *Queries) UpdateIPOFacts(ctx context.Context, arg UpdateIPOFactsParams) 
 		&i.LastSyncedAt,
 		&i.FieldSources,
 		&i.CreateIdempotencyKey,
+		&i.CreateRequestHash,
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,

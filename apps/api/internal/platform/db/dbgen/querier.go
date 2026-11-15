@@ -58,13 +58,14 @@ type Querier interface {
 	FailJob(ctx context.Context, arg FailJobParams) (FailJobRow, error)
 	// Back to pending at available_at (already moved out of quiet hours), or dead when attempts are used up.
 	FailMessage(ctx context.Context, arg FailMessageParams) (FailMessageRow, error)
-	FindIPOAuditByIdempotencyKey(ctx context.Context, arg FindIPOAuditByIdempotencyKeyParams) (uuid.UUID, error)
+	FindIPOAuditByIdempotencyKey(ctx context.Context, arg FindIPOAuditByIdempotencyKeyParams) (FindIPOAuditByIdempotencyKeyRow, error)
 	FinishTickRun(ctx context.Context, arg FinishTickRunParams) error
 	// tick_runs is global, not per org: the retention job purges it only for the first org.
 	FirstOrgID(ctx context.Context) (uuid.UUID, error)
 	// ---- admin MFA ----
 	GetAdminMFA(ctx context.Context, userID uuid.UUID) (AdminMfa, error)
 	GetChallengeByHash(ctx context.Context, tokenHash []byte) (MfaChallenge, error)
+	GetCreateRequestHash(ctx context.Context, arg GetCreateRequestHashParams) (pgtype.Text, error)
 	GetIPO(ctx context.Context, arg GetIPOParams) (Ipo, error)
 	GetIPOByCreateKey(ctx context.Context, arg GetIPOByCreateKeyParams) (Ipo, error)
 	GetIPOForShare(ctx context.Context, arg GetIPOForShareParams) (Ipo, error)
