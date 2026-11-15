@@ -109,7 +109,7 @@ echo "$*" >>"$FAKE_OUT/calls.log"
 case "$1 $2 $3" in
   "secrets describe "*) grep -qxF "$3" "$FAKE_EXISTING" ;;
   "secrets create "*) exit 0 ;;
-  "secrets versions access") n="${*#*--secret=}"; n="${n%% *}"; cat "$FAKE_OUT/cur.$n" ;;
+  "secrets versions access") n=; p=; for a in "$@"; do case $a in --secret=*) n=${a#--secret=};; *) [ "$p" = --secret ] && n=$a;; esac; p=$a; done; cat "$FAKE_OUT/cur.$n" ;;
   "secrets versions add") cat >"$FAKE_OUT/$4.val" ;;
   *) exit 0 ;;
 esac

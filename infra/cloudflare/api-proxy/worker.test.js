@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import worker from "./worker.js";
 
 const UPSTREAM = "https://swastik-api-staging-abc123-el.a.run.app";
-const ENV = { UPSTREAM };
+const ENV = { UPSTREAM, PROXY_KEY: "k" };
 const realFetch = globalThis.fetch;
 let calls;
 let reply;
