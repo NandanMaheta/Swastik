@@ -113,6 +113,30 @@ bash "$drill" >/dev/null 2>&1 && bad "no arguments must fail with usage"
 bash "$drill" --bogus >/dev/null 2>&1 && bad "unknown flag must fail"
 bash "$drill" --dump >/dev/null 2>&1 && bad "--dump without arguments must fail"
 
+# ---- review fix 5: counts come from the SAME snapshot as the dump -----------------------------------
+# Rows keep arriving in the source while --dump runs (psql \watch inserts every 50 ms). A dump whose
+# counts were taken before/after the dump window would report a false MISMATCH on restore.
+race="$work/race"
+mkdir -p "$race"
+printf "INSERT INTO orgs (name) VALUES ('racer') \\watch i=0.05 c=400\n" |
+  docker exec -i "$src_cid" psql -U postgres -q -t -A >/dev/null 2>&1 &
+racer=$!
+sleep 1
+out=$(bash "$drill" --dump "$src_url" "$race" 2>&1); rc=$?
+[ "$rc" -eq 0 ] || bad "--dump during concurrent inserts exit $rc: $out"
+docker exec "$src_cid" pkill psql >/dev/null 2>&1
+wait "$racer" 2>/dev/null
+rdump=$(find "$race" -maxdepth 1 -name 'swastik-*.dump' | head -1)
+if [ -n "$rdump" ]; then
+  out=$(bash "$drill" --restore-only "$rdump" "$dst_url" 2>&1); rc=$?
+  [ "$rc" -eq 0 ] || bad "false MISMATCH: counts and dump are from different snapshots: $out"
+  grep -q '^MISMATCH' <<<"$out" && bad "MISMATCH reported for a dump taken during concurrent inserts: $out"
+else
+  bad "no dump written during concurrent inserts"
+fi
+grep -q -- '--snapshot' "$drill" || bad "drill.sh must pass an exported snapshot to pg_dump (--snapshot)"
+grep -q 'pg_export_snapshot' "$drill" || bad "drill.sh must export the snapshot with pg_export_snapshot()"
+
 # ---- --local end to end, and it cleans up after itself
 before=$(docker ps -aq --filter name=swastik-drill | wc -l)
 out=$(bash "$drill" --local 2>&1); rc=$?

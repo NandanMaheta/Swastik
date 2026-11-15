@@ -160,6 +160,9 @@ func TestRoles_FR009_AppHasCRUDOnEveryTable(t *testing.T) {
 	ctx, pool, _ := rolesEnv(t)
 	for _, table := range publicTables(ctx, t, pool) {
 		for _, p := range []string{"SELECT", "INSERT", "UPDATE", "DELETE"} {
+			if (table == "audit_log" || table == "goose_db_version") && (p == "UPDATE" || p == "DELETE") {
+				continue // review fix 7: append-only / migration bookkeeping tables, see roles_review_test.go
+			}
 			if !hasPriv(ctx, t, pool, "swastik_app", table, p) {
 				t.Errorf("swastik_app lacks %s on %s", p, table)
 			}

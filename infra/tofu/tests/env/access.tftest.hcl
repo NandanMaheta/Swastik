@@ -106,3 +106,13 @@ run "empty_email_list_is_rejected" {
   }
   expect_failures = [var.access_emails]
 }
+
+# 027 review fix 3: Access needs an identity provider; one-time PIN is the only one allowed (emails only).
+run "access_app_allows_one_time_pin_idp" {
+  command = plan
+
+  assert {
+    condition     = length(cloudflare_zero_trust_access_application.admin.allowed_idps) >= 1
+    error_message = "the Access application must list a one-time-PIN identity provider in allowed_idps"
+  }
+}

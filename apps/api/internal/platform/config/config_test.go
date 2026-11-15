@@ -231,3 +231,36 @@ func TestLoad_CloudRunGuards(t *testing.T) {
 		t.Fatalf("Load() on Cloud Run with APP_ENV=production: %v", err)
 	}
 }
+
+// 027 review fix 3: SENTRY_ENVIRONMENT is read through config (not os.Getenv in main). Unset falls back
+// to APP_ENV so events are always tagged.
+func TestLoad_SentryEnvironment(t *testing.T) {
+	tests := []struct {
+		name, appEnv, sentryEnv, want string
+	}{
+		{"explicit value wins", "staging", "staging-eu", "staging-eu"},
+		{"falls back to APP_ENV", "production", "", "production"},
+		{"local default", "", "", "local"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, k := range []string{"DATABASE_URL", "PORT", "APP_ENV", "HTTP_ADDR", "K_SERVICE", "TICK_AUTH", "TICK_AUDIENCE", "TICK_SERVICE_ACCOUNT"} {
+				t.Setenv(k, "")
+			}
+			t.Setenv("DATABASE_URL", "postgres://x")
+			t.Setenv("APP_ENV", tt.appEnv)
+			t.Setenv("SENTRY_ENVIRONMENT", tt.sentryEnv)
+			if tt.appEnv == "staging" || tt.appEnv == "production" {
+				t.Setenv("TICK_AUDIENCE", "https://x")
+				t.Setenv("TICK_SERVICE_ACCOUNT", "tick@x.iam.gserviceaccount.com")
+			}
+			cfg, err := Load()
+			if err != nil {
+				t.Fatalf("Load: %v", err)
+			}
+			if cfg.SentryEnvironment != tt.want {
+				t.Errorf("SentryEnvironment = %q, want %q", cfg.SentryEnvironment, tt.want)
+			}
+		})
+	}
+}

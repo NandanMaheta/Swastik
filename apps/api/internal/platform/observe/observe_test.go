@@ -227,3 +227,46 @@ func TestObserve_FR015_EnabledFollowsWrappedHandler(t *testing.T) {
 		t.Error("ERROR must be enabled")
 	}
 }
+
+// 027 review fix 6: VALUES are scrubbed, not just keys. Free text (message, error text, breadcrumbs) that
+// contains an email, Indian mobile, PAN, JWT or bearer token must not reach Sentry.
+const (
+	leakEmail   = "kavita.sharma@example.com"
+	leakMobile  = "+919876543210"
+	leakMobile2 = "9876501234"
+	leakPAN     = "ABCDE1234F"
+	leakJWT     = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NSJ9.c2lnbmF0dXJlLXZhbHVl"
+	leakBearer  = "Bearer s3cr3t-opaque-token-9f8e7d"
+)
+
+func leakedValues() []string {
+	return []string{"kavita.sharma@example.com", "9876543210", "9876501234", "ABCDE1234F",
+		"eyJhbGciOiJIUzI1NiJ9", "c2lnbmF0dXJlLXZhbHVl", "s3cr3t-opaque-token-9f8e7d"}
+}
+
+func TestObserve_Review_MessageValuesAreScrubbed(t *testing.T) {
+	in := newIngest(t)
+	flush, err := observe.Init(in.dsn(), "staging", "v1")
+	if err != nil {
+		t.Fatalf("init: %v", err)
+	}
+	log := slog.New(observe.NewHandler(&recorder{}))
+	log.Error("msg-marker user "+leakEmail+" mobile "+leakMobile+" alt "+leakMobile2+" pan "+leakPAN+
+		" jwt "+leakJWT+" hdr "+leakBearer,
+		"detail", "failed for "+leakEmail+" with "+leakJWT,
+		"err", errString("lookup "+leakPAN+" "+leakBearer))
+	flush()
+	body := in.all()
+	if !strings.Contains(body, "msg-marker") {
+		t.Fatalf("event not delivered: %q", body)
+	}
+	for _, v := range leakedValues() {
+		if strings.Contains(body, v) {
+			t.Errorf("value %q reached Sentry", v)
+		}
+	}
+}
+
+type errString string
+
+func (e errString) Error() string { return string(e) }

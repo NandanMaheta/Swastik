@@ -21,5 +21,18 @@ fi
 if grep -rEn --include='*.tf' 'google_service_account_key' "$root" >/dev/null 2>&1; then
   echo "FAIL: service account keys are forbidden (WIF only)" >&2; fail=1
 fi
+
+# ---- 027 review fix 3 (static) ----------------------------------------------------------------
+repo=$(cd "$root/../.." && pwd)
+for e in staging production; do
+  for v in auth_keys_enabled jwt_active_kid pii_active_key_id; do
+    grep -Eq "variable +\"$v\"" "$root/envs/$e/variables.tf" || { echo "FAIL: envs/$e/variables.tf must declare $v" >&2; fail=1; }
+    grep -Eq "^[[:space:]]*$v[[:space:]]*=[[:space:]]*var\.$v" "$root/envs/$e/main.tf" || { echo "FAIL: envs/$e/main.tf must pass $v to module.env" >&2; fail=1; }
+  done
+done
+grep -rq --include='*.tf' 'onetimepin' "$root/modules/env" || { echo "FAIL: no one-time-PIN identity provider (type onetimepin) in modules/env" >&2; fail=1; }
+if grep -n 'os.Getenv("SENTRY_ENVIRONMENT")' "$repo/apps/api/cmd/swastik/main.go" >/dev/null 2>&1; then
+  echo "FAIL: main.go reads SENTRY_ENVIRONMENT directly; read it through internal/platform/config" >&2; fail=1
+fi
 [ "$fail" -eq 0 ] && echo "lifecycle checks passed"
 exit "$fail"

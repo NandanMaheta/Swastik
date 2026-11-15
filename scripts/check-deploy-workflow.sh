@@ -26,6 +26,23 @@ before() { # text, regexA, regexB, message : first A must come before first B
   [ "$a" -lt "$b" ] || bad "$4"
 }
 
+
+job_block() { # file-text, job-name : lines of that top-level job
+  awk -v j="$2" '/^  [A-Za-z0-9_-]+:[[:space:]]*$/ { cur = $1; sub(":", "", cur) } cur == j { print }' <<<"$1"
+}
+job_with() { # file-text, regex : name of the first job whose block matches
+  local names n
+  names=$(grep -E '^  [A-Za-z0-9_-]+:[[:space:]]*$' <<<"$1" | tr -d ' :')
+  for n in $names; do
+    if job_block "$1" "$n" | grep -Eq -- "$2"; then echo "$n"; return; fi
+  done
+}
+pinned() { # file-text, label : every non-actions/ remote action is pinned to a 40-hex commit SHA
+  local refs
+  refs=$(grep -E '^[[:space:]-]*uses:[[:space:]]*[^./[:space:]]' <<<"$1" | grep -v 'uses:[[:space:]]*actions/' | grep -vE '@[0-9a-f]{40}([[:space:]]|$)')
+  [ -z "$refs" ] || bad "$2: third-party actions must be pinned to a full commit SHA: $(tr -s ' \n' ' ' <<<"$refs")"
+}
+
 want_pages=0; want_infra=0; want_nightly=0
 for a in "$@"; do
   case "$a" in
@@ -79,6 +96,23 @@ if [ ! -f "$f" ]; then bad "deploy.yml missing"; else
   forbid "$d" 'swastik-api[^-_a-zA-Z]' "service name must not be hard-coded"
   need "$d" 'VERSION=' "VERSION build arg (<ref>-<sha7>) required"
   forbid "$d" 'vars\.(APP_ENV|TICK_AUDIENCE|TICK_SERVICE_ACCOUNT)' "these variables moved into tofu"
+
+  # ---- review fixes (4) ----
+  dcmd=$(awk '/gcloud run deploy/{p=1} p{print} p&&!/\\[[:space:]]*$/{exit}' <<<"$d")
+  grep -Eqi 'digest|@sha256' <<<"$dcmd" || bad "gcloud run deploy must deploy the image by digest (image@sha256:...), not a mutable tag"
+  if grep -Eq -- '--image[ =]"?\$\{?IMAGE\}?"?([[:space:]]|$)' <<<"$dcmd"; then bad "deploy --image must not use the mutable tag variable \$IMAGE"; fi
+  need "$d" '--remove-tags' "the c-<sha7> revision tag must be removed after traffic moves"
+  before "$d" 'update-traffic' '--remove-tags' "--remove-tags must run AFTER update-traffic"
+  pinned "$d" "deploy.yml"
+  need "$d" 'if:.*vars\.GCP_PROJECT_ID' "deploy jobs must skip cleanly (job-level if on vars.GCP_PROJECT_ID) when hosting is not configured"
+  pj=$(job_with "$d" 'pages deploy')
+  gj=$(job_with "$d" 'gcloud run deploy')
+  if [ -z "$pj" ] || [ -z "$gj" ] || [ "$pj" = "$gj" ]; then
+    bad "Pages build/deploy must be its own job, separate from the Cloud Run deploy job (pages=$pj run=$gj)"
+  else
+    job_block "$d" "$pj" | grep -Eq 'google-github-actions/auth|id-token:[[:space:]]*write' && bad "Pages job must not have GCP auth or id-token: write"
+    job_block "$d" "$pj" | grep -Eq 'if:.*vars\.GCP_PROJECT_ID' || bad "Pages job must also skip cleanly when vars.GCP_PROJECT_ID is unset"
+  fi
 fi
 
 # ---------------------------------------------------------------- pages (T016)
@@ -102,6 +136,15 @@ if [ "$want_pages" -eq 1 ]; then
       for hdr in 'Content-Security-Policy' 'Strict-Transport-Security' 'X-Frame-Options: DENY' 'Referrer-Policy' 'Permissions-Policy'; do
         grep -qF "$hdr" "$h" || bad "apps/$app/public/_headers lacks $hdr"
       done
+    fi
+    # review fix 8: immutable asset paths must DETACH the catch-all no-cache, else both values are merged
+    if [ -f "$h" ]; then
+      case "$app" in admin) ap='/assets/*' ;; *) ap='/_expo/static/*' ;; esac
+      blk=$(awk -v p="$ap" '/^[^[:space:]]/ { cur = $0 } cur == p { print }' "$h")
+      grep -qE 'Cache-Control:.*immutable' <<<"$blk" || bad "apps/$app/public/_headers: $ap must keep immutable caching"
+      grep -qE '^[[:space:]]+! Cache-Control[[:space:]]*$' <<<"$blk" || bad "apps/$app/public/_headers: $ap must detach the inherited no-cache with '! Cache-Control' before setting immutable"
+      a=$(grep -nE '^[[:space:]]+! Cache-Control' <<<"$blk" | head -1 | cut -d: -f1); b=$(grep -nE 'Cache-Control:.*immutable' <<<"$blk" | head -1 | cut -d: -f1)
+      [ -z "$a" ] || [ -z "$b" ] || [ "$a" -lt "$b" ] || bad "apps/$app/public/_headers: '! Cache-Control' must come before the immutable Cache-Control"
     fi
     r="$root/apps/$app/public/_redirects"
     if [ -f "$r" ]; then grep -Eq '^/\*[[:space:]]+/index\.html[[:space:]]+200' "$r" || bad "apps/$app/public/_redirects needs the SPA fallback '/* /index.html 200'"; fi
@@ -131,6 +174,14 @@ if [ "$want_infra" -eq 1 ]; then
     forbid "$t" 'pull_request_target' "never pull_request_target"
     need "$t" 'github\.event_name[[:space:]]*==[[:space:]]*.workflow_dispatch.' "apply guarded by workflow_dispatch"
     need "$t" 'cancel-in-progress:[[:space:]]*false' "state lock: do not cancel applies"
+    # review fix 4: separate plan job (plan in the step summary) and an apply job gated by the infra environment
+    ap=$(job_block "$t" apply); pl=$(job_block "$t" plan)
+    [ -n "$pl" ] || bad "infra.yml needs a separate 'plan' job"
+    grep -q 'GITHUB_STEP_SUMMARY' <<<"$pl" || bad "plan job must publish the plan in \$GITHUB_STEP_SUMMARY"
+    grep -Eq 'tofu .*apply' <<<"$pl" && bad "plan job must not apply"
+    grep -Eq 'needs:.*plan' <<<"$ap" || bad "apply job must need the plan job"
+    grep -Eq 'environment:[[:space:]]*infra' <<<"$ap" || bad "apply job must be gated by environment: infra"
+    pinned "$t" "infra.yml"
   fi
   p=$(strip "$wf/pr.yml")
   need "$p" 'infra/\*\*' "pr.yml path filter for infra/**"
@@ -152,6 +203,12 @@ if [ "$want_nightly" -eq 1 ]; then
   forbid "$n" 'postgres:18-alpine.*pg_dump|apt-get install.*postgresql-client' "dump must use the server-major image (D-12), not the runner's client"
   need "$n" 'postgres:[0-9]+' "pinned postgres major image"
   forbid "$n" 'Backups not configured|exit 0' "an unconfigured backup must fail loudly, not skip"
+  pinned "$n" "nightly.yml"
+  need "$n" 'if:.*vars\.' "nightly backup job must skip cleanly (job-level if on a vars.* gate) when hosting is not configured"
+  need "$n" 'vars\.BACKUP_AGE_RECIPIENT' "backup encrypts to the recipient in vars.BACKUP_AGE_RECIPIENT"
+  need "$n" 'age .*(-r|--recipient)' "backup must be encrypted with age -r <recipient> before upload"
+  before "$n" 'age .*(-r|--recipient)' 'aws s3 cp' "encrypt with age BEFORE uploading to R2"
+  need "$n" '\.age' "uploaded objects are the .age ciphertext"
 fi
 
 [ "$fail" -eq 0 ] && echo "workflow checks passed"

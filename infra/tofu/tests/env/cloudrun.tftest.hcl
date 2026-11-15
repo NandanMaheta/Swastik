@@ -174,3 +174,25 @@ run "service_is_publicly_invokable_ADR_0003" {
     error_message = "invoker grant must be on this service only"
   }
 }
+
+# 027 review fix 3: production cannot be deleted by a stray apply; staging stays disposable.
+run "deletion_protection_production_only" {
+  command = plan
+  variables {
+    env = "production"
+  }
+
+  assert {
+    condition     = google_cloud_run_v2_service.api.deletion_protection == true
+    error_message = "production Cloud Run service must set deletion_protection = true"
+  }
+}
+
+run "deletion_protection_off_in_staging" {
+  command = plan
+
+  assert {
+    condition     = google_cloud_run_v2_service.api.deletion_protection == false
+    error_message = "staging service stays disposable"
+  }
+}
