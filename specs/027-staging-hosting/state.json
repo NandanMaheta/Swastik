@@ -4,7 +4,347 @@
   "worktree": "/home/user/divya-027",
   "tier": "B",
   "phase": "tasks",
-  "tasks": {},
+  "tasks": {
+    "T001": {
+      "owner": "backend-dev",
+      "title": "Compile skeleton: empty tofu roots/modules, pinned providers, .opentofu-version, Worker stub, empty roles.sql, observe stubs (errNotImplemented), check-script stubs; record domain-mapping, Supabase PG major and provider resource-name findings",
+      "slice": "S1",
+      "done_command": "cd infra/tofu && tofu fmt -check -recursive && for e in staging production; do tofu -chdir=infra/tofu/envs/$e init -backend=false -input=false && tofu -chdir=infra/tofu/envs/$e validate; done && cd apps/api && go build ./... && go vet ./internal/platform/observe/...",
+      "status": "todo",
+      "depends_on": [],
+      "rules": [
+        "FR-001"
+      ],
+      "expect": "green",
+      "owner_step": false
+    },
+    "T002": {
+      "owner": "test-engineer",
+      "title": "Tests first: Worker node tests (forwarding, host rewrite, 404 on /internal/*, XFF overwrite, cookies) and bootstrap/secrets --dry-run test (expected gcloud commands, no value printed)",
+      "slice": "S2t",
+      "done_command": "node --test infra/cloudflare/api-proxy/ ; bash infra/bootstrap/test.sh",
+      "status": "todo",
+      "depends_on": [
+        "T001"
+      ],
+      "rules": [
+        "FR-002",
+        "FR-003",
+        "FR-008"
+      ],
+      "expect": "red",
+      "owner_step": false
+    },
+    "T003": {
+      "owner": "test-engineer",
+      "title": "Tests first (tofu A): shared root (AR keep 10, R2 30-day lifecycle, APIs), SAs/WIF condition/resource-level IAM, Cloud Run (min 0, max<=2, 512Mi, request billing, secret_key_ref only, image ignored), Scheduler (cron, Asia/Kolkata, OIDC audience, retry 0)",
+      "slice": "S3t",
+      "done_command": "tofu -chdir=infra/tofu/shared init -backend=false -input=false && tofu -chdir=infra/tofu/shared test -test-directory=../tests/shared && tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env",
+      "status": "todo",
+      "depends_on": [
+        "T001"
+      ],
+      "rules": [
+        "FR-001",
+        "FR-002",
+        "FR-003",
+        "FR-004",
+        "FR-007",
+        "FR-014"
+      ],
+      "expect": "red",
+      "owner_step": false
+    },
+    "T004": {
+      "owner": "test-engineer",
+      "title": "Tests first (tofu B): DNS records, Worker route per env, four Pages projects + domains, Access app covering custom + pages.dev hosts, staging names absent from production root",
+      "slice": "S8t",
+      "done_command": "tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=dns.tftest.hcl -filter=pages.tftest.hcl -filter=access.tftest.hcl",
+      "status": "todo",
+      "depends_on": [
+        "T001"
+      ],
+      "rules": [
+        "FR-001",
+        "FR-008",
+        "FR-011",
+        "FR-012"
+      ],
+      "expect": "red",
+      "owner_step": false
+    },
+    "T005": {
+      "owner": "test-engineer",
+      "title": "Tests first: roles_test.go (swastik_app CRUD, no CREATE/TRUNCATE, audit_log mutation blocked, anon none, idempotent, every table covered), observe tests (empty DSN no-op, ERROR forwarded, INFO not, no secret fields), check-deploy-workflow.sh assertions, drill.sh --local test",
+      "slice": "S10t",
+      "done_command": "cd apps/api && go test -race ./internal/platform/db/... ./internal/platform/observe/... ; bash scripts/check-deploy-workflow.sh",
+      "status": "todo",
+      "depends_on": [
+        "T001"
+      ],
+      "rules": [
+        "FR-005",
+        "FR-006",
+        "FR-009",
+        "FR-010",
+        "FR-013",
+        "FR-015"
+      ],
+      "expect": "red",
+      "owner_step": false
+    },
+    "T006": {
+      "owner": "backend-dev",
+      "title": "Bootstrap and secrets scripts (--dry-run mode): state bucket, WIF pool/provider, tofu SA; secrets created from hidden prompt / openssl rand",
+      "slice": "S2",
+      "done_command": "shellcheck infra/bootstrap/*.sh && bash infra/bootstrap/test.sh",
+      "status": "todo",
+      "depends_on": [
+        "T002"
+      ],
+      "rules": [
+        "FR-002",
+        "FR-003"
+      ],
+      "expect": "green",
+      "owner_step": true
+    },
+    "T007": {
+      "owner": "backend-dev",
+      "title": "Shared root: APIs, Artifact Registry (keep 10), R2 bucket + 30-day lifecycle",
+      "slice": "S3",
+      "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/shared init -backend=false -input=false && tofu -chdir=infra/tofu/shared test -test-directory=../tests/shared",
+      "status": "todo",
+      "depends_on": [
+        "T003"
+      ],
+      "rules": [
+        "FR-001",
+        "FR-014"
+      ],
+      "expect": "green",
+      "owner_step": true
+    },
+    "T008": {
+      "owner": "backend-dev",
+      "title": "Env module: deployer/runtime/tick SAs, WIF bindings pinned to repo + environment, secret-level IAM",
+      "slice": "S4",
+      "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=iam.tftest.hcl",
+      "status": "todo",
+      "depends_on": [
+        "T003",
+        "T007"
+      ],
+      "rules": [
+        "FR-002",
+        "FR-003"
+      ],
+      "expect": "green",
+      "owner_step": false
+    },
+    "T009": {
+      "owner": "backend-dev",
+      "title": "Env module: Cloud Run service (config owned by tofu, image/traffic ignored), env vars and secret refs, auth_keys_enabled switch",
+      "slice": "S5",
+      "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=cloudrun.tftest.hcl && for e in staging production; do tofu -chdir=infra/tofu/envs/$e init -backend=false -input=false && tofu -chdir=infra/tofu/envs/$e validate; done",
+      "status": "todo",
+      "depends_on": [
+        "T008"
+      ],
+      "rules": [
+        "FR-003",
+        "FR-004",
+        "FR-014"
+      ],
+      "expect": "green",
+      "owner_step": false
+    },
+    "T010": {
+      "owner": "backend-dev",
+      "title": "Env module: Cloud Scheduler tick job, OIDC audience matching TICK_AUDIENCE",
+      "slice": "S6",
+      "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=scheduler.tftest.hcl",
+      "status": "todo",
+      "depends_on": [
+        "T009"
+      ],
+      "rules": [
+        "FR-007"
+      ],
+      "expect": "green",
+      "owner_step": false
+    },
+    "T011": {
+      "owner": "backend-dev",
+      "title": "Cloudflare Worker proxy code",
+      "slice": "S7",
+      "done_command": "node --test infra/cloudflare/api-proxy/",
+      "status": "todo",
+      "depends_on": [
+        "T002"
+      ],
+      "rules": [
+        "FR-008"
+      ],
+      "expect": "green",
+      "owner_step": false
+    },
+    "T012": {
+      "owner": "backend-dev",
+      "title": "Env module: DNS records, Worker script + route, Pages projects and domains",
+      "slice": "S8",
+      "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=dns.tftest.hcl -filter=pages.tftest.hcl",
+      "status": "todo",
+      "depends_on": [
+        "T004",
+        "T009",
+        "T011"
+      ],
+      "rules": [
+        "FR-008",
+        "FR-011"
+      ],
+      "expect": "green",
+      "owner_step": false
+    },
+    "T013": {
+      "owner": "backend-dev",
+      "title": "Env module: Cloudflare Access app, allow policy, one-time PIN",
+      "slice": "S9",
+      "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=access.tftest.hcl && for e in staging production; do tofu -chdir=infra/tofu/envs/$e init -backend=false -input=false && tofu -chdir=infra/tofu/envs/$e validate; done",
+      "status": "todo",
+      "depends_on": [
+        "T012"
+      ],
+      "rules": [
+        "FR-012"
+      ],
+      "expect": "green",
+      "owner_step": true
+    },
+    "T014": {
+      "owner": "backend-dev",
+      "title": "roles.sql: swastik_app, swastik_backup, anon/authenticated revoke, default privileges (idempotent, no passwords)",
+      "slice": "S10",
+      "done_command": "cd apps/api && go test -race ./internal/platform/db/... -run Roles",
+      "status": "todo",
+      "depends_on": [
+        "T005"
+      ],
+      "rules": [
+        "FR-009",
+        "FR-010"
+      ],
+      "expect": "green",
+      "owner_step": true
+    },
+    "T015": {
+      "owner": "backend-dev",
+      "title": "deploy.yml rewrite: build, migrate, --no-traffic tagged revision, tagged /readyz, traffic switch, public /healthz, concurrency per env, no worker deploy, no --set-env-vars",
+      "slice": "S11",
+      "done_command": "/root/go/bin/actionlint .github/workflows/*.yml && bash scripts/check-deploy-workflow.sh",
+      "status": "todo",
+      "depends_on": [
+        "T005"
+      ],
+      "rules": [
+        "FR-004",
+        "FR-005",
+        "FR-006"
+      ],
+      "expect": "green",
+      "owner_step": false
+    },
+    "T016": {
+      "owner": "backend-dev",
+      "title": "Pages _headers/_redirects for admin and client; web build with API base URL and Pages upload steps",
+      "slice": "S12",
+      "done_command": "/root/go/bin/actionlint .github/workflows/*.yml && bash scripts/check-deploy-workflow.sh && grep -q 'X-Frame-Options' apps/admin/public/_headers apps/client/public/_headers",
+      "status": "todo",
+      "depends_on": [
+        "T015"
+      ],
+      "rules": [
+        "FR-011"
+      ],
+      "expect": "green",
+      "owner_step": false
+    },
+    "T017": {
+      "owner": "backend-dev",
+      "title": "Sentry observe package (observe.Init, slog handler; empty DSN off); sentry-go only in platform/observe, depguard allowance, wired in cmd",
+      "slice": "S13",
+      "done_command": "cd apps/api && go test -race ./internal/platform/observe/... ./internal/health/... && go mod tidy -diff",
+      "status": "todo",
+      "depends_on": [
+        "T005"
+      ],
+      "rules": [
+        "FR-015"
+      ],
+      "expect": "green",
+      "owner_step": false
+    },
+    "T018": {
+      "owner": "backend-dev",
+      "title": "infra.yml (PR checks, dispatch plan/apply in infra environment) and pr.yml infra/shell/yaml/gitleaks jobs",
+      "slice": "S14",
+      "done_command": "/root/go/bin/actionlint .github/workflows/*.yml && bash scripts/check-deploy-workflow.sh",
+      "status": "todo",
+      "depends_on": [
+        "T015"
+      ],
+      "rules": [
+        "FR-001",
+        "SC-005"
+      ],
+      "expect": "green",
+      "owner_step": true
+    },
+    "T019": {
+      "owner": "backend-dev",
+      "title": "nightly.yml backup + restore drill (backups environment) and infra/backup/drill.sh",
+      "slice": "S15",
+      "done_command": "shellcheck infra/backup/drill.sh && bash infra/backup/drill_test.sh && /root/go/bin/actionlint .github/workflows/nightly.yml",
+      "status": "todo",
+      "depends_on": [
+        "T005"
+      ],
+      "rules": [
+        "FR-013"
+      ],
+      "expect": "green",
+      "owner_step": true
+    },
+    "T020": {
+      "owner": "backend-dev",
+      "title": "Gate and docs: quickstart to runbook, ADR 0009 final, handover, modules.md status, go mod tidy clean, full suite + lint, GS-01..04, BR traceability",
+      "slice": "S16",
+      "done_command": "cd apps/api && go mod tidy -diff && go test -race ./... && cd /home/user/divya-027 && make lint-go && bash scripts/check-br-traceability.sh && tofu fmt -check -recursive infra/tofu && /root/go/bin/actionlint && bash scripts/check-deploy-workflow.sh",
+      "status": "todo",
+      "depends_on": [
+        "T006",
+        "T007",
+        "T008",
+        "T009",
+        "T010",
+        "T011",
+        "T012",
+        "T013",
+        "T014",
+        "T015",
+        "T016",
+        "T017",
+        "T018",
+        "T019"
+      ],
+      "rules": [
+        "all FR; GS-01..04"
+      ],
+      "expect": "green",
+      "owner_step": false
+    }
+  },
   "metrics": [],
   "owner_approval": {
     "date": "2026-11-15",
