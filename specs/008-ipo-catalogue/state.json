@@ -413,7 +413,8 @@
         "apps/api/internal/ipos/handler_admin_test.go",
         "apps/api/internal/ipos/handler_actions_test.go",
         "apps/api/internal/ipos/handler_client_test.go"
-      ]
+      ],
+      "tests_written": true
     },
     "S16": {
       "owner": "test-engineer",
@@ -444,7 +445,8 @@
         "apps/api/internal/ipos/perf_test.go",
         "apps/api/cmd/swastik/ipos_contract_test.go",
         "packages/domain/src/ipo.test.ts"
-      ]
+      ],
+      "tests_written": true
     },
     "S17": {
       "owner": "backend-dev",
