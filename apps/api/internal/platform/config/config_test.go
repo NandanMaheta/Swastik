@@ -257,17 +257,12 @@ func TestLoad_SentryEnvironment(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			for _, k := range []string{"DATABASE_URL", "PORT", "APP_ENV", "HTTP_ADDR", "K_SERVICE", "TICK_AUTH", "TICK_AUDIENCE", "TICK_SERVICE_ACCOUNT"} {
-				t.Setenv(k, "")
-			}
-			t.Setenv("DATABASE_URL", "postgres://x")
-			t.Setenv("APP_ENV", tt.appEnv)
-			t.Setenv("SENTRY_ENVIRONMENT", tt.sentryEnv)
+			env := map[string]string{"APP_ENV": tt.appEnv, "SENTRY_ENVIRONMENT": tt.sentryEnv}
 			if tt.appEnv == "staging" || tt.appEnv == "production" {
-				t.Setenv("TICK_AUDIENCE", "https://x")
-				t.Setenv("TICK_SERVICE_ACCOUNT", "tick@x.iam.gserviceaccount.com")
+				env["TICK_AUDIENCE"] = "https://x"
+				env["TICK_SERVICE_ACCOUNT"] = "tick@x.iam.gserviceaccount.com"
 			}
-			cfg, err := Load()
+			cfg, err := loadWith(t, env)
 			if err != nil {
 				t.Fatalf("Load: %v", err)
 			}
