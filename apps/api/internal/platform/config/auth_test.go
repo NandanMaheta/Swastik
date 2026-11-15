@@ -37,7 +37,7 @@ import (
 var authEnvVars = []string{
 	"DATABASE_URL", "APP_ENV", "PORT", "HTTP_ADDR",
 	"JWT_SIGNING_KEYS", "JWT_ACTIVE_KID", "PII_ENCRYPTION_KEYS", "PII_ACTIVE_KEY_ID", "BLIND_INDEX_KEY",
-	"WEB_ORIGINS", "TRUSTED_PROXY_HOPS", "ARGON2_MAX_CONCURRENCY",
+	"WEB_ORIGINS", "TRUSTED_PROXY_HOPS", "ARGON2_MAX_CONCURRENCY", "PROXY_SHARED_SECRETS",
 }
 
 func fill(b byte) []byte  { return bytes.Repeat([]byte{b}, 32) }
@@ -49,16 +49,23 @@ var (
 	blind        = fill(0x33)
 )
 
+// Proxy shared secrets (review fix; owner decision 2026-11-15_proxy_key): at least 32 characters.
+const (
+	proxySecretA = "proxy-secret-A-0123456789abcdefABCDEF"
+	proxySecretB = "proxy-secret-B-0123456789abcdefABCDEF"
+)
+
 // good returns a complete, valid staging/production environment.
 func good() map[string]string {
 	return map[string]string{
-		"DATABASE_URL":        "postgres://u:p@h/db",
-		"JWT_SIGNING_KEYS":    "k1:" + b64(seedA) + ",k2:" + b64(seedB),
-		"JWT_ACTIVE_KID":      "k2",
-		"PII_ENCRYPTION_KEYS": "1:" + b64(pii1) + ",2:" + b64(pii2),
-		"PII_ACTIVE_KEY_ID":   "2",
-		"BLIND_INDEX_KEY":     b64(blind),
-		"WEB_ORIGINS":         "https://admin.example.in",
+		"DATABASE_URL":         "postgres://u:p@h/db",
+		"JWT_SIGNING_KEYS":     "k1:" + b64(seedA) + ",k2:" + b64(seedB),
+		"JWT_ACTIVE_KID":       "k2",
+		"PII_ENCRYPTION_KEYS":  "1:" + b64(pii1) + ",2:" + b64(pii2),
+		"PII_ACTIVE_KEY_ID":    "2",
+		"BLIND_INDEX_KEY":      b64(blind),
+		"WEB_ORIGINS":          "https://admin.example.in",
+		"PROXY_SHARED_SECRETS": proxySecretA,
 	}
 }
 
@@ -102,7 +109,7 @@ func captureLogs(t *testing.T) *bytes.Buffer {
 
 func TestAuthConfig_ExplicitKeysAreDecoded(t *testing.T) {
 	setEnv(t, with(good(), "APP_ENV", "production", "TRUSTED_PROXY_HOPS", "2", "ARGON2_MAX_CONCURRENCY", "6",
-		"WEB_ORIGINS", " https://admin.example.in , http://localhost:5173 "))
+		"WEB_ORIGINS", " https://admin.example.in , https://client.example.in "))
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -114,7 +121,7 @@ func TestAuthConfig_ExplicitKeysAreDecoded(t *testing.T) {
 	if a.JWTActiveKID != "k2" {
 		t.Errorf("JWTActiveKID = %q, want k2", a.JWTActiveKID)
 	}
-	if got, want := a.WebOrigins, []string{"https://admin.example.in", "http://localhost:5173"}; !equalStrings(got, want) {
+	if got, want := a.WebOrigins, []string{"https://admin.example.in", "https://client.example.in"}; !equalStrings(got, want) {
 		t.Errorf("WebOrigins = %q, want %q (trimmed, in order)", got, want)
 	}
 	if a.TrustedProxyHops != 2 || a.Argon2MaxConcurrency != 6 {
@@ -236,7 +243,7 @@ func TestAuthConfig_ProvidedKeysSuppressTheEphemeralWarning(t *testing.T) {
 }
 
 func TestAuthConfig_StagingAndProductionFailClosed(t *testing.T) {
-	required := []string{"JWT_SIGNING_KEYS", "JWT_ACTIVE_KID", "PII_ENCRYPTION_KEYS", "PII_ACTIVE_KEY_ID", "BLIND_INDEX_KEY", "WEB_ORIGINS"}
+	required := []string{"JWT_SIGNING_KEYS", "JWT_ACTIVE_KID", "PII_ENCRYPTION_KEYS", "PII_ACTIVE_KEY_ID", "BLIND_INDEX_KEY", "WEB_ORIGINS", "PROXY_SHARED_SECRETS"}
 	for _, appEnv := range []string{"staging", "production"} {
 		t.Run(appEnv+" complete", func(t *testing.T) {
 			setEnv(t, with(good(), "APP_ENV", appEnv))

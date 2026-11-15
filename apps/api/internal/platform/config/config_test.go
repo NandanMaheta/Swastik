@@ -64,6 +64,7 @@ func loadWith(t *testing.T, env map[string]string) (Config, error) {
 		"JWT_SIGNING_KEYS": "k1:" + key(0x5A), "JWT_ACTIVE_KID": "k1",
 		"PII_ENCRYPTION_KEYS": "1:" + key(0x5B), "PII_ACTIVE_KEY_ID": "1",
 		"BLIND_INDEX_KEY": key(0x5C), "WEB_ORIGINS": "https://admin.example.in",
+		"PROXY_SHARED_SECRETS": "proxy-secret-0123456789abcdefABCDEF-xyz",
 	} {
 		t.Setenv(k, v)
 	}

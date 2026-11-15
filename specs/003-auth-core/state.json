@@ -400,5 +400,19 @@
   "owner_decisions": {
     "2026-11-15_jwt_leeway": "5s leeway on iat/nbf only; exp strict",
     "2026-11-15_proxy_key": "Cloudflare Worker sends a shared proxy key; API trusts X-Swastik-Client-IP only with a matching key (PROXY_SHARED_SECRETS); TRUSTED_PROXY_HOPS=1; extra Secret Manager cost approved"
+  },
+  "review_fix": {
+    "protected_tests": [
+      "apps/api/internal/platform/httpx/clientip_proxykey_test.go",
+      "apps/api/internal/platform/config/auth_review_test.go",
+      "apps/api/internal/platform/config/deploy_test.go",
+      "apps/api/internal/platform/config/auth_test.go",
+      "apps/api/internal/platform/config/config_test.go",
+      "apps/api/cmd/swastik/openapi_exposure_test.go",
+      "apps/api/internal/auth/tokens_leeway_test.go",
+      "apps/api/internal/auth/review_fix_test.go",
+      "apps/api/internal/auth/handler_proxykey_test.go",
+      "apps/api/internal/auth/verification_audit_test.go"
+    ]
   }
 }

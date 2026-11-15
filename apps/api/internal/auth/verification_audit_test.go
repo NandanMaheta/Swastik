@@ -364,12 +364,16 @@ func TestAuditTrail_US11_EveryEventWritesItsSpecifiedEntries(t *testing.T) {
 		}
 	})
 	e.Clock.Advance(time.Minute)
-	start, err := s.StartAuthenticatorReplace(ctx, adminP, auth.Reauth{Password: authtest.Password, Code: mfCode(t, e, adm.Secret, 0)})
-	if err != nil {
-		t.Fatalf("StartAuthenticatorReplace: %v", err)
-	}
+	var start auth.TOTPEnrolment
+	r.step("authenticator replacement started", []wantAudit{byAdmin(auth.ActionMFAPendingSecretSet, adm.ID)}, func() {
+		var err error
+		start, err = s.StartAuthenticatorReplace(ctx, adminP, auth.Reauth{Password: authtest.Password, Code: mfCode(t, e, adm.Secret, 0)})
+		if err != nil {
+			t.Fatalf("StartAuthenticatorReplace: %v", err)
+		}
+	})
 	e.Secrets.AddTOTPSecret(start.Secret)
-	e.Clock.Advance(90 * time.Second)
+	e.Clock.Advance(30 * time.Second) // the step above already advanced a minute: 90 s in total
 	r.step("authenticator replaced", []wantAudit{byAdmin(auth.ActionMFAReplaced, adm.ID)}, func() {
 		if err := s.ConfirmAuthenticatorReplace(ctx, adminP, authtest.TOTPCode(t, start.Secret, e.Clock.Now())); err != nil {
 			t.Fatalf("ConfirmAuthenticatorReplace: %v", err)
@@ -379,10 +383,14 @@ func TestAuditTrail_US11_EveryEventWritesItsSpecifiedEntries(t *testing.T) {
 	// ---- TOTP enrolled (first sign-in of a new admin) ----
 	fresh := e.NewAdmin(t)
 	enrolTok := mfChallenge(t, e, s, fresh)
-	enrolment, err := s.StartEnrolment(ctx, enrolTok)
-	if err != nil {
-		t.Fatalf("StartEnrolment: %v", err)
-	}
+	var enrolment auth.TOTPEnrolment
+	r.step("TOTP enrolment started", []wantAudit{vaBy(auth.ActionMFAPendingSecretSet, fresh, fresh.ID)}, func() {
+		var err error
+		enrolment, err = s.StartEnrolment(ctx, enrolTok)
+		if err != nil {
+			t.Fatalf("StartEnrolment: %v", err)
+		}
+	})
 	e.Secrets.AddTOTPSecret(enrolment.Secret)
 	r.step("TOTP enrolled", []wantAudit{vaBy(auth.ActionMFAEnrolled, fresh, fresh.ID).withSession(), vaBy(auth.ActionSignInSucceeded, fresh, fresh.ID).withSession()}, func() {
 		res, err := s.ConfirmEnrolment(ctx, auth.EnrolmentConfirmInput{ChallengeToken: enrolTok, Code: authtest.TOTPCode(t, enrolment.Secret, e.Clock.Now()), IP: testIP})
