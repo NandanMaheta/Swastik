@@ -2,7 +2,7 @@
   "feature": "003-auth-core",
   "branch": "feat/003-auth-core",
   "worktree": "/home/user/divya-003",
-  "phase": "build",
+  "phase": "review",
   "tier": "A",
   "tasks": {
     "S01": {
@@ -377,7 +377,7 @@
       "owner": "test-engineer",
       "title": "Verification tests (no-secrets scan, audit events per US-11, timing SC-003 and Argon2id benchmark) then final gate: tidy, full API -race, golangci-lint, sqlc vet, generated code current, BR traceability, JS typecheck/test/build, GS-01..04.",
       "done_command": "cd apps/api && go mod tidy && git diff --exit-code go.mod go.sum && go test -race ./... && golangci-lint run ./... && sqlc generate && sqlc vet && git diff --exit-code internal/platform/db/dbgen && cd ../.. && bash scripts/check-br-traceability.sh && pnpm turbo run typecheck test build",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "S19"
       ],
@@ -387,7 +387,13 @@
       "expect": "green",
       "parallel": false,
       "replaces": "T094-T096,T102",
-      "note": "Final gate. Security review before PR."
+      "note": "Final gate. Security review before PR.",
+      "protected_tests": [
+        "apps/api/internal/auth/verification_audit_test.go",
+        "apps/api/internal/auth/verification_secrets_test.go",
+        "apps/api/internal/auth/verification_timing_test.go",
+        "apps/api/cmd/swastik/openapi_secrets_test.go"
+      ]
     }
   },
   "metrics": []
