@@ -126,7 +126,7 @@
       "title": "Bootstrap and secrets scripts (--dry-run mode): state bucket, WIF pool/provider, tofu SA; secrets created from hidden prompt / openssl rand",
       "slice": "S2",
       "done_command": "shellcheck infra/bootstrap/*.sh && bash infra/bootstrap/test.sh",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "T002"
       ],
@@ -142,7 +142,7 @@
       "title": "Shared root: APIs, Artifact Registry (keep 10), R2 bucket + 30-day lifecycle",
       "slice": "S3",
       "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/shared init -backend=false -input=false && tofu -chdir=infra/tofu/shared test -test-directory=../tests/shared",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "T003"
       ],
@@ -158,7 +158,7 @@
       "title": "Env module: deployer/runtime/tick SAs, WIF bindings pinned to repo + environment, secret-level IAM",
       "slice": "S4",
       "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=../../tests/env/iam.tftest.hcl",
-      "status": "todo",
+      "status": "blocked",
       "depends_on": [
         "T003",
         "T007"
@@ -168,7 +168,8 @@
         "FR-003"
       ],
       "expect": "green",
-      "owner_step": false
+      "owner_step": false,
+      "note": "iam.tftest.hcl mock_provider \"google\" {} gives service_account.name a random string that fails the provider regexp on google_service_account_iam_member.service_account_id; test needs mock_resource default for name. Code is in place."
     },
     "T009": {
       "owner": "backend-dev",
@@ -207,7 +208,7 @@
       "title": "Cloudflare Worker proxy code",
       "slice": "S7",
       "done_command": "node --test infra/cloudflare/api-proxy/worker.test.js",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "T002"
       ],
