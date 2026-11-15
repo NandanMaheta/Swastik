@@ -284,14 +284,25 @@
       "owner": "test-engineer",
       "title": "Tests: admin MFA flow and management, TOTP/admin-removal concurrency, bootstrap service, CLI `swastik admin create`, housekeeping.",
       "done_command": "cd apps/api && go test -race -run 'TestMFA|TestBootstrap|TestAdminCreate|TestHousekeep' ./internal/auth/ ./cmd/swastik/",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "S14"
       ],
       "rules": [],
       "expect": "red",
       "parallel": false,
-      "replaces": "T070-T072,T075,T077,T079"
+      "replaces": "T070-T072,T075,T077,T079",
+      "protected_tests": [
+        "apps/api/internal/auth/mfa_helpers_test.go",
+        "apps/api/internal/auth/mfa_test.go",
+        "apps/api/internal/auth/mfa_manage_test.go",
+        "apps/api/internal/auth/mfa_concurrency_test.go",
+        "apps/api/internal/auth/bootstrap_test.go",
+        "apps/api/internal/auth/housekeeping_test.go",
+        "apps/api/cmd/swastik/admin_test.go"
+      ],
+      "tests_written": true,
+      "note": "Red (compile stubs return errNotImplemented): internal/auth/{mfa,mfa_manage,bootstrap}.go and cmd/swastik/admin.go (runAdmin returns 1); authtest/mfa.go adds TOTPCode, EnrolAdmin, NewRecoveryCodes, AccessToken. Exported shapes S16 must keep: VerifyMFA(MFAVerifyInput), StartEnrolment(token), ConfirmEnrolment(EnrolmentConfirmInput), RegenerateRecoveryCodes(p,password,code), StartAuthenticatorReplace(p,Reauth), ConfirmAuthenticatorReplace(p,code), ErrInvalidChallenge, Bootstrapper/NewBootstrapper/CreateAdmin, ErrAdminExists, ErrOrgAmbiguous, runAdmin(ctx,args,adminEnv). Green already by design: HousekeepingNext/kind, last-two-admins disable race, NewBootstrapper deps check."
     },
     "S16": {
       "owner": "backend-dev",
