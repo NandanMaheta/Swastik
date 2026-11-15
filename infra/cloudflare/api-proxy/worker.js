@@ -33,6 +33,11 @@ export default {
       return new Response("not found", { status: 404 });
     }
 
+    // Fail closed: without the shared key the API would reject every request anyway; never forward unsigned.
+    if (!env.PROXY_KEY) {
+      return new Response("proxy not configured", { status: 500 });
+    }
+
     const upstream = new URL(env.UPSTREAM);
     upstream.pathname = url.pathname;
     upstream.search = url.search;
@@ -45,7 +50,7 @@ export default {
     headers.delete("x-swastik-client-ip");
     headers.delete("x-swastik-proxy-key");
     if (clientIp) headers.set("x-swastik-client-ip", clientIp);
-    if (env.PROXY_KEY) headers.set("x-swastik-proxy-key", env.PROXY_KEY);
+    headers.set("x-swastik-proxy-key", env.PROXY_KEY);
     headers.delete("host");
 
     const hasBody = request.method !== "GET" && request.method !== "HEAD";

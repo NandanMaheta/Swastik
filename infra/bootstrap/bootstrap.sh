@@ -62,14 +62,20 @@ run gcloud iam service-accounts add-iam-policy-binding "$TOFU_SA" --project="$PR
   --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github/attribute.environment/infra"
 
 # Rights the tofu SA needs to manage the stack (no owner, no project IAM admin, no pool admin).
-# Project-level roles are limited to the services tofu creates. Secret Manager rights are granted
-# per secret by secrets.sh (resource-level), not here. Acting as the runtime/tick SAs is a custom
+# Project-level roles are limited to the services tofu creates. Secret Manager rights are the custom
+# role tofuSecretMeta, granted per secret by secrets.sh. Acting as the runtime/tick SAs is a custom
 # role with the single permission iam.serviceAccounts.actAs, conditioned to SAs named api-* / tick-*.
 for role in roles/run.admin roles/artifactregistry.admin roles/cloudscheduler.admin \
   roles/iam.serviceAccountAdmin roles/serviceusage.serviceUsageAdmin; do
   run gcloud projects add-iam-policy-binding "$PROJECT" \
     --member="serviceAccount:${TOFU_SA}" --role="$role" --condition=None
 done
+
+# Secret Manager: tofu manages secret resources and their IAM but can never read a value. The role is
+# bound per secret by secrets.sh (no project-wide secretmanager role).
+run gcloud iam roles create tofuSecretMeta --project="$PROJECT" \
+  --title="Tofu secret metadata and IAM (no values)" \
+  --permissions=secretmanager.secrets.get,secretmanager.secrets.getIamPolicy,secretmanager.secrets.setIamPolicy
 
 run gcloud iam roles create tofuActAs --project="$PROJECT" \
   --title="Tofu act-as runtime SAs" --permissions=iam.serviceAccounts.actAs
