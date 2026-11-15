@@ -58,7 +58,7 @@ func run(log *slog.Logger, args []string) error {
 		return err
 	}
 	// Error reporting is off unless SENTRY_DSN is set (staging and production set it via OpenTofu).
-	flush, err := observe.Init(os.Getenv("SENTRY_DSN"), cfg.Env, httpx.Version)
+	flush, err := observe.Init(os.Getenv("SENTRY_DSN"), cfg.SentryEnvironment, httpx.Version)
 	if err != nil {
 		log.Warn("error reporting disabled", slog.Any("err", err))
 	}

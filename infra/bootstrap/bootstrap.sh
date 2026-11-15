@@ -61,12 +61,20 @@ run gcloud iam service-accounts add-iam-policy-binding "$TOFU_SA" --project="$PR
   --role=roles/iam.workloadIdentityUser \
   --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github/attribute.environment/infra"
 
-# Project-level rights the tofu SA needs to manage the stack (no owner).
+# Rights the tofu SA needs to manage the stack (no owner, no project IAM admin, no pool admin).
+# Project-level roles are limited to the services tofu creates. Secret Manager rights are granted
+# per secret by secrets.sh (resource-level), not here. Acting as the runtime/tick SAs is a custom
+# role with the single permission iam.serviceAccounts.actAs, conditioned to SAs named api-* / tick-*.
 for role in roles/run.admin roles/artifactregistry.admin roles/cloudscheduler.admin \
-  roles/secretmanager.admin roles/iam.serviceAccountAdmin roles/iam.workloadIdentityPoolAdmin \
-  roles/resourcemanager.projectIamAdmin roles/serviceusage.serviceUsageAdmin roles/iam.serviceAccountUser; do
+  roles/iam.serviceAccountAdmin roles/serviceusage.serviceUsageAdmin; do
   run gcloud projects add-iam-policy-binding "$PROJECT" \
     --member="serviceAccount:${TOFU_SA}" --role="$role" --condition=None
 done
+
+run gcloud iam roles create tofuActAs --project="$PROJECT" \
+  --title="Tofu act-as runtime SAs" --permissions=iam.serviceAccounts.actAs
+run gcloud projects add-iam-policy-binding "$PROJECT" \
+  --member="serviceAccount:${TOFU_SA}" --role="projects/${PROJECT}/roles/tofuActAs" \
+  --condition="title=actAs-api-and-tick-only,expression=resource.name.startsWith('projects/${PROJECT}/serviceAccounts/api-') || resource.name.startsWith('projects/${PROJECT}/serviceAccounts/tick-')"
 
 echo "# done. Set GitHub infra variable GCP_WIF_PROVIDER=projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github/providers/swastik-repo, GCP_TOFU_SA=${TOFU_SA}"

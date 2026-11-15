@@ -32,12 +32,7 @@ func Init(dsn, environment, version string) (func(), error) {
 		Environment:      environment,
 		Release:          version,
 		AttachStacktrace: true,
-		BeforeSend: func(ev *sentry.Event, _ *sentry.EventHint) *sentry.Event {
-			ev.ServerName = ""
-			ev.User = sentry.User{}
-			ev.Request = nil
-			return ev
-		},
+		BeforeSend:       beforeSend,
 	})
 	if err != nil {
 		return noop, fmt.Errorf("observe: init sentry: %w", err)
@@ -143,9 +138,46 @@ func sensitiveKey(k string) bool {
 	return false
 }
 
-var urlUserinfo = regexp.MustCompile(`([a-zA-Z][a-zA-Z0-9+.-]*://)[^/\s@]*@`)
+var (
+	urlUserinfo = regexp.MustCompile(`([a-zA-Z][a-zA-Z0-9+.-]*://)[^/\s@]*@`)
+	jwtValue    = regexp.MustCompile(`eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*`)
+	bearerValue = regexp.MustCompile(`(?i)\bbearer\s+[A-Za-z0-9._~+/=-]+`)
+	emailValue  = regexp.MustCompile(`[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}`)
+	panValue    = regexp.MustCompile(`\b[A-Z]{5}[0-9]{4}[A-Z]\b`)
+	mobileValue = regexp.MustCompile(`\+91[ -]?[6-9][0-9]{9}\b|\b[6-9][0-9]{9}\b`)
+)
 
-// scrubValue removes credentials embedded in URLs from a value that is otherwise kept.
+// scrubValue removes credentials embedded in URLs and personal values (email, Indian mobile, PAN, JWT,
+// bearer token) from free text that is otherwise kept.
 func scrubValue(s string) string {
-	return urlUserinfo.ReplaceAllString(s, "${1}[redacted]@")
+	s = urlUserinfo.ReplaceAllString(s, "${1}[redacted]@")
+	s = jwtValue.ReplaceAllString(s, "[jwt]")
+	s = bearerValue.ReplaceAllString(s, "Bearer [token]")
+	s = emailValue.ReplaceAllString(s, "[email]")
+	s = panValue.ReplaceAllString(s, "[pan]")
+	return mobileValue.ReplaceAllString(s, "[mobile]")
+}
+
+// beforeSend is the SDK hook: it drops identifying fields and scrubs values in the message, exception
+// values, and breadcrumbs.
+func beforeSend(ev *sentry.Event, _ *sentry.EventHint) *sentry.Event {
+	ev.ServerName = ""
+	ev.User = sentry.User{}
+	ev.Request = nil
+	ev.Message = scrubValue(ev.Message)
+	for i := range ev.Exception {
+		ev.Exception[i].Value = scrubValue(ev.Exception[i].Value)
+	}
+	for _, b := range ev.Breadcrumbs {
+		if b == nil {
+			continue
+		}
+		b.Message = scrubValue(b.Message)
+		for k, v := range b.Data {
+			if str, ok := v.(string); ok {
+				b.Data[k] = scrubValue(str)
+			}
+		}
+	}
+	return ev
 }

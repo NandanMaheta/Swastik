@@ -8,11 +8,20 @@ resource "cloudflare_zero_trust_access_policy" "admin_allow" {
   include = [for e in var.access_emails : { email = { email = e } }]
 }
 
+# Emails only: Cloudflare sends a one-time PIN. Needs Zero Trust enabled on the account (owner step).
+resource "cloudflare_zero_trust_access_identity_provider" "otp" {
+  account_id = var.cloudflare_account_id
+  name       = "swastik-${var.env}-one-time-pin"
+  type       = "onetimepin"
+  config     = {}
+}
+
 resource "cloudflare_zero_trust_access_application" "admin" {
   account_id       = var.cloudflare_account_id
   name             = "swastik-admin-${var.env}"
   type             = "self_hosted"
   session_duration = "24h"
+  allowed_idps     = [cloudflare_zero_trust_access_identity_provider.otp.id]
 
   self_hosted_domains = [
     local.admin_host,

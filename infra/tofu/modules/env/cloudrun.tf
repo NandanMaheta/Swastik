@@ -27,7 +27,7 @@ resource "google_cloud_run_v2_service" "api" {
   name     = "swastik-api-${var.env}"
   location = var.region
 
-  deletion_protection = false
+  deletion_protection = var.env == "production"
 
   template {
     service_account = google_service_account.runtime.email

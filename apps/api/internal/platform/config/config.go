@@ -11,11 +11,13 @@ import (
 // Config holds every setting the API needs. Values come only from the environment
 // so the same binary runs locally, in CI and on Cloud Run.
 type Config struct {
-	Env             string
-	HTTPAddr        string
-	DatabaseURL     string
-	ShutdownTimeout time.Duration
-	Tick            Tick
+	Env string
+	// SentryEnvironment tags error events; SENTRY_ENVIRONMENT, defaulting to APP_ENV.
+	SentryEnvironment string
+	HTTPAddr          string
+	DatabaseURL       string
+	ShutdownTimeout   time.Duration
+	Tick              Tick
 }
 
 // Tick configures authentication of the scheduler tick endpoint (feature 002, FR-003).
@@ -44,6 +46,7 @@ func Load() (Config, error) {
 		DatabaseURL:     os.Getenv("DATABASE_URL"),
 		ShutdownTimeout: 10 * time.Second,
 	}
+	cfg.SentryEnvironment = getenv("SENTRY_ENVIRONMENT", cfg.Env)
 	cfg.Tick = Tick{
 		Auth:           getenv("TICK_AUTH", defaultTickAuth(cfg.Env)),
 		Audience:       os.Getenv("TICK_AUDIENCE"),
