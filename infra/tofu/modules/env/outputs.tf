@@ -4,6 +4,6 @@ output "admin_host" { value = local.admin_host }
 output "app_host" { value = local.app_host }
 output "admin_pages_project" { value = cloudflare_pages_project.admin.name }
 output "app_pages_project" { value = cloudflare_pages_project.app.name }
-output "deployer_sa_email" { value = "deploy-${var.env}@${var.project_id}.iam.gserviceaccount.com" }
+output "deployer_sa_email" { value = google_service_account.deployer.email }
 output "tick_job_name" { value = google_cloud_scheduler_job.tick.name }
 output "worker_name" { value = cloudflare_workers_script.proxy.script_name }
