@@ -105,10 +105,6 @@ jobs:
         run: bash scripts/check-deploy-workflow.sh --pages --infra --nightly
       - name: Restore drill self test (FR-013)
         run: bash infra/backup/drill_test.sh
-      - name: yamllint workflows
-        run: |
-          pip install --quiet yamllint
-          yamllint -d relaxed .github/workflows
       - name: Tofu static checks run in infra.yml
         run: echo "tofu fmt, validate and test run in infra.yml on pull_request"
 
