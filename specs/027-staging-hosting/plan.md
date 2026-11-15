@@ -1,7 +1,7 @@
 # Implementation Plan: Staging hosting (027, first cut)
 
 **Branch**: `feat/027-staging-hosting` | **Date**: 2026-11-15 | **Spec**: [spec.md](./spec.md) | **Tier**: B
-**Artifacts**: [contracts/deployment.md](./contracts/deployment.md) (every resource, variable and secret name) · [quickstart.md](./quickstart.md) (owner setup, rollback, restore) · ADR [0008](../../docs/adr/0008-hosting-topology.md) (proposed)
+**Artifacts**: [contracts/deployment.md](./contracts/deployment.md) (every resource, variable and secret name) · [quickstart.md](./quickstart.md) (owner setup, rollback, restore) · ADR [0008](../../docs/adr/0009-hosting-topology.md) (proposed)
 
 ## Summary
 
@@ -67,7 +67,7 @@ infra/backup/drill.sh
 apps/admin/public/{_headers,_redirects}, apps/client/public/{_headers,_redirects}
 apps/api/internal/platform/observe/               only if Sentry is approved
 .github/workflows/{deploy.yml,infra.yml,nightly.yml,pr.yml}, scripts/check-deploy-workflow.sh
-docs/adr/0008-hosting-topology.md, docs/engineering/runbook.md (from quickstart once live)
+docs/adr/0009-hosting-topology.md, docs/engineering/runbook.md (from quickstart once live)
 ```
 
 No business module is touched; depguard rules unchanged except allowing `sentry-go` only in `platform/observe`.
@@ -106,7 +106,7 @@ No business module is touched; depguard rules unchanged except allowing `sentry-
 
 ## Slices (skeleton first; planner refines into tasks)
 
-S1 skeleton + checks (empty roots/modules, pinned providers, `.opentofu-version`, Worker stub, empty roles.sql, check script stubs; verify domain mapping, Supabase major, provider resource names) · S2 bootstrap + secrets scripts · S3 shared root (APIs, AR, R2) · S4 env module: SAs, WIF bindings, secret IAM · S5 env module: Cloud Run service · S6 env module: Scheduler tick · S7 Worker code · S8 env module: DNS, Worker route, Pages projects/domains · S9 env module: Access app · S10 roles.sql + roles test · S11 deploy.yml rewrite + check script · S12 Pages `_headers`/`_redirects` + web build/upload steps · S13 Sentry `observe` (if approved) · S14 infra.yml + pr.yml jobs · S15 nightly backup/drill · S16 docs: quickstart → runbook, handover, modules status, ADR 0008 final.
+S1 skeleton + checks (empty roots/modules, pinned providers, `.opentofu-version`, Worker stub, empty roles.sql, check script stubs; verify domain mapping, Supabase major, provider resource names) · S2 bootstrap + secrets scripts · S3 shared root (APIs, AR, R2) · S4 env module: SAs, WIF bindings, secret IAM · S5 env module: Cloud Run service · S6 env module: Scheduler tick · S7 Worker code · S8 env module: DNS, Worker route, Pages projects/domains · S9 env module: Access app · S10 roles.sql + roles test · S11 deploy.yml rewrite + check script · S12 Pages `_headers`/`_redirects` + web build/upload steps · S13 Sentry `observe` (if approved) · S14 infra.yml + pr.yml jobs · S15 nightly backup/drill · S16 docs: quickstart → runbook, handover, modules status, ADR 0009 final.
 
 ## Coordination and risks
 

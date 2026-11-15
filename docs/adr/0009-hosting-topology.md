@@ -1,4 +1,4 @@
-# ADR 0008: Hosting topology and infrastructure ownership
+# ADR 0009: Hosting topology and infrastructure ownership
 
 - Status: Proposed (2026-11-15, feature 027; takes effect when the owner approves `specs/027-staging-hosting/plan.md`)
 

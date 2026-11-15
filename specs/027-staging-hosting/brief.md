@@ -20,7 +20,7 @@
 - DB: no migration; `infra/supabase/roles.sql` (owner-run once).
 - Infra: names in `contracts/deployment.md`.
 
-**Files to touch:** `infra/{bootstrap,tofu,cloudflare/api-proxy,supabase,backup}/`, `.github/workflows/{deploy,infra,nightly,pr}.yml`, `scripts/check-deploy-workflow.sh`, `apps/{admin,client}/public/{_headers,_redirects}`, `apps/api/internal/platform/db/roles_test.go`, `apps/api/internal/platform/observe/` (Q1), `docs/adr/0008-hosting-topology.md`.
+**Files to touch:** `infra/{bootstrap,tofu,cloudflare/api-proxy,supabase,backup}/`, `.github/workflows/{deploy,infra,nightly,pr}.yml`, `scripts/check-deploy-workflow.sh`, `apps/{admin,client}/public/{_headers,_redirects}`, `apps/api/internal/platform/db/roles_test.go`, `apps/api/internal/platform/observe/` (Q1), `docs/adr/0009-hosting-topology.md`.
 
 **Depends on:** 001 (done); 002 merged before first deploy; 003 later flips `auth_keys_enabled`. See `docs/engineering/codemap.md` (health, config, tickauth).
 
