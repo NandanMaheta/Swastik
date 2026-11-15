@@ -2,6 +2,168 @@
 
 ## Go packages (apps/api)
 
+### `internal/auth`
+
+```go
+const ActionSignInSucceeded = "auth.sign_in.succeeded" ...
+const EntityUser = "user" ...
+const ReasonWrongPassword = "wrong_password" ...
+const RefreshCookieName = "__Secure-swastik_rt" ...
+const CodeInvalidCredentials = "auth.invalid_credentials" ...
+const PolicyTooShort = "auth.password_too_short" ...
+const ClientTypeMobile = "mobile" ...
+const PlatformAndroid = "android" ...
+const NextStepSignedIn = "signed_in" ...
+const CodeInternal = "internal"
+const HousekeepingKind = "auth.housekeeping"
+const ReasonWrongCurrentPassword = "wrong_current_password"
+const RecoveryCodeCount = 10
+var ErrAdminExists = errors.New("auth: an admin already exists in the organisation") ...
+var ErrEmailTaken = errors.New("auth: email already in use") ...
+var ErrInvalidCredentials = errors.New("auth: invalid credentials") ...
+var ErrNoOrg = errors.New("auth: no organisation configured") ...
+var DefaultHasherParams = HasherParams{ ... }
+var ErrBusy = errors.New("auth: password hashing is busy")
+var ErrInvalidChallenge = errInvalidChallenge
+var ErrInvalidToken = errors.New("auth: invalid access token")
+func CheckPolicy(raw string, identifiers ...string) error
+func EncodePHC(p HasherParams, salt, key []byte) string
+func GenerateRecoveryCodes() ([]string, error)
+func GenerateTOTP(accountName string) (secret, uri string, err error)
+func HousekeepingNext(now time.Time) time.Time
+func NormalizeEmail(raw string) (string, error)
+func NormalizeMobile(raw string) (string, error)
+func NormalizePassword(raw string) string
+func NormalizeRecoveryCode(input string) string
+func ProblemFor(err error) error
+func RecoveryCodeDigest(input string) []byte
+func Register(api huma.API, svc *Service, cfg HandlerConfig)
+func TOTPStepAt(t time.Time) int64
+func VerifyTOTP(secret, code string, now time.Time, lastUsedStep int64) (int64, bool)
+type AccessClaims struct{ ... }
+type AccessSubject struct{ ... }
+type Accounts interface{ ... }
+type AdminBootstrappedAfter struct{ ... }
+type BootstrapDeps struct{ ... }
+type BootstrapInput struct{ ... }
+type BootstrapResult struct{ ... }
+type Bootstrapper struct{ ... }
+    func NewBootstrapper(d BootstrapDeps) (*Bootstrapper, error)
+type Challenge struct{ ... }
+type ChallengeIssuedAfter struct{ ... }
+type ChallengeResponse struct{ ... }
+type ChallengeRow struct{ ... }
+type ChangePasswordRequest struct{ ... }
+type ContactValue struct{ ... }
+type Deps struct{ ... }
+type Device struct{ ... }
+type DeviceInfo struct{ ... }
+type DeviceInfoRequest struct{ ... }
+type DeviceItem struct{ ... }
+type DeviceList struct{ ... }
+type EndedSessionsAfter struct{ ... }
+type EnrolmentConfirmInput struct{ ... }
+type EnrolmentResponse struct{ ... }
+type EnrolmentResult struct{ ... }
+type HandlerConfig struct{ ... }
+type Hasher struct{ ... }
+    func NewHasher(o HasherOptions) *Hasher
+type HasherOptions struct{ ... }
+type HasherParams struct{ ... }
+    func DecodePHC(phc string) (HasherParams, []byte, []byte, error)
+type HousekeepingPurgedAfter struct{ ... }
+type IdentifierKind string
+    const KindEmail IdentifierKind = "email" ...
+    func KindOf(raw string) IdentifierKind
+    func NormalizeIdentifier(raw string) (IdentifierKind, string, error)
+type LockoutStartedAfter struct{ ... }
+type MFARow struct{ ... }
+type MFAVerifyInput struct{ ... }
+type MfaVerifyRequest struct{ ... }
+type NewChallenge struct{ ... }
+type NewClient struct{ ... }
+type NewSession struct{ ... }
+type NewUser struct{ ... }
+type PasswordResetAfter struct{ ... }
+type PendingSecretSetAfter struct{ ... }
+type PolicyError struct{ ... }
+type PurgeCounts struct{ ... }
+type Reauth struct{ ... }
+type ReauthWithCode struct{ ... }
+type ReauthWithCodeOrRecovery struct{ ... }
+type RecoveryCodeUsedAfter struct{ ... }
+type RecoveryCodes struct{ ... }
+type RecoveryCodesRegeneratedAfter struct{ ... }
+type RefreshInput struct{ ... }
+type RefreshRequest struct{ ... }
+type RefreshRow struct{ ... }
+type Service struct{ ... }
+    func New(d Deps) (*Service, error)
+type SessionEventAfter struct{ ... }
+type SessionPrincipal struct{ ... }
+type SessionResponse struct{ ... }
+type SessionRevokedAfter struct{ ... }
+type SessionRow struct{ ... }
+type SessionTokens struct{ ... }
+type SessionUser struct{ ... }
+type SessionsEndedAfter struct{ ... }
+type SignInFailedAfter struct{ ... }
+type SignInInput struct{ ... }
+type SignInRequest struct{ ... }
+type SignInResponse struct{ ... }
+type SignInResult struct{ ... }
+type SignInSucceededAfter struct{ ... }
+type SigningKeys struct{ ... }
+    func NewSigningKeys(activeKID string, seeds map[string][]byte) (*SigningKeys, error)
+type Status string
+    const StatusPendingVerification Status = "pending_verification" ...
+type StatusAfter struct{ ... }
+type StatusBefore struct{ ... }
+type Store interface{ ... }
+    func NewPGStore(txr db.TxRunner) Store
+type TOTPEnrolment struct{ ... }
+type Throttle interface{ ... }
+type ThrottlePolicy struct{ ... }
+type ThrottleState struct{ ... }
+    func ApplyThrottle(s ThrottleState, now time.Time, p ThrottlePolicy) (ThrottleState, bool)
+type Tokens struct{ ... }
+    func NewTokens(keys *SigningKeys, now func() time.Time) *Tokens
+type TotpCodeRequest struct{ ... }
+type TotpSecret struct{ ... }
+type UserCreatedAfter struct{ ... }
+type UserRow struct{ ... }
+type UserSummary struct{ ... }
+type UserView struct{ ... }
+```
+
+### `internal/auth/authtest`
+
+```go
+const Password = "river-lantern-42-monsoon"
+var CheapHasherParams = auth.HasherParams{ ... }
+var T0 = time.Date(2026, time.July, 1, 10, 0, 0, 0, time.UTC)
+func Admin(id uuid.UUID) audit.Actor
+func BlindIndexer(t testing.TB) crypto.BlindIndexer
+func Keyring(t testing.TB) *crypto.Keyring
+func SigningKeys(t testing.TB) *auth.SigningKeys
+func System() audit.Actor
+func TOTPCode(t testing.TB, secret string, at time.Time) string
+type AuditRow struct{ ... }
+type Env struct{ ... }
+    func New(t *testing.T) *Env
+type Secrets struct{ ... }
+    func NewSecrets() *Secrets
+type SessionSpec struct{ ... }
+type User struct{ ... }
+type UserSpec struct{ ... }
+```
+
+### `internal/auth/commonpasswords`
+
+```go
+func Set() map[string]struct{}
+```
+
 ### `internal/health`
 
 ```go
@@ -42,6 +204,23 @@ type Actor struct{ ... }
 type Entry struct{ ... }
 ```
 
+### `internal/platform/authz`
+
+```go
+func AssertDeclared(api huma.API)
+func ChallengeOnly() []map[string][]string
+func Install(api huma.API, verifiers map[string]Verifier)
+func Public() []map[string][]string
+func Require(roles ...Role) []map[string][]string
+func SelfAuthenticated() []map[string][]string
+type Principal struct{ ... }
+    func MustPrincipal(ctx context.Context) Principal
+    func PrincipalFrom(ctx context.Context) (Principal, bool)
+type Role string
+    const RoleAdmin Role = "admin" ...
+type Verifier interface{ ... }
+```
+
 ### `internal/platform/clock`
 
 ```go
@@ -54,9 +233,24 @@ type Func = func() time.Time
 ### `internal/platform/config`
 
 ```go
+type AuthConfig struct{ ... }
 type Config struct{ ... }
     func Load() (Config, error)
+type DBConfig struct{ ... }
+    func LoadDB() (DBConfig, error)
 type Tick struct{ ... }
+```
+
+### `internal/platform/crypto`
+
+```go
+var ErrInvalidEnvelope = errors.New("crypto: invalid envelope")
+func Digest(s string) []byte
+func NewToken(prefix string) (plain string, digest []byte, err error)
+type BlindIndexer struct{ ... }
+    func NewBlindIndexer(key []byte) (BlindIndexer, error)
+type Keyring struct{ ... }
+    func NewKeyring(active uint16, keys map[uint16][]byte) (*Keyring, error)
 ```
 
 ### `internal/platform/db`
@@ -84,15 +278,22 @@ type TxRunner struct{ ... }
 ```go
 const Image = "postgres:18-alpine"
 func New(t *testing.T) *pgxpool.Pool
+func NewSized(t *testing.T, maxConns int32) *pgxpool.Pool
 ```
 
 ### `internal/platform/httpx`
 
 ```go
 var Version = "dev"
+func CORS(allowed []string) func(http.Handler) http.Handler
+func ClientIP(r *http.Request, hops int, proxySecrets ...string) string
 func ExtendWriteDeadline(ctx huma.Context, d time.Duration) error
+func InstallErrors()
 func NewAPI() (*http.ServeMux, huma.API)
+func NewAPIFor(env string) (*http.ServeMux, huma.API)
 func NewServer(addr string, h http.Handler, log *slog.Logger) *http.Server
+func Problem(status int, code, detail string) error
+type ErrorModel struct{ ... }
 ```
 
 ### `internal/platform/istdate`
@@ -108,6 +309,13 @@ type Date struct{ ... }
     func ParseDate(s string) (Date, error)
 type QuietHours struct{ ... }
 type WallClock struct{ ... }
+```
+
+### `internal/platform/ratelimit`
+
+```go
+type Limiter struct{ ... }
+    func New(limit int, window time.Duration, maxKeys int, now func() time.Time) *Limiter
 ```
 
 ### `internal/platform/retry`
@@ -181,6 +389,12 @@ export interface operations
 ### `packages/domain`
 
 ```ts
+export const authErrorMessages =
+export type AuthErrorCode = keyof typeof authErrorMessages;
+export const authErrorCodes = Object.keys(authErrorMessages) as readonly AuthErrorCode[];
+export function isAuthErrorCode(code: unknown): code is AuthErrorCode
+export function authErrorMessage(code: string | null | undefined): string
+export * from "./auth-error-codes";
 export * from "./money";
 export * from "./status";
 export type Paise = number & { readonly __brand: "Paise" };

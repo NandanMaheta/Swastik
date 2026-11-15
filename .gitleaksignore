@@ -5,3 +5,7 @@
 3d16288837615de47ca1e6657f0292077a06be50:specs/002-scheduler-tick/quickstart.md:curl-auth-header:62
 # Task description text, no credential.
 3cf35dc6147f265f2ef3a732a1170e800e0c4e37:specs/002-scheduler-tick/tasks.md:generic-api-key:240
+# Fake PHC salt/key ("saltsaltsalt…", "0123456789abcdef…") in an Argon2id parser bounds test.
+495e9d327d4b765b9c55d0cf85acf520ff0a0250:apps/api/internal/auth/hasher_test.go:generic-api-key:147
+# RFC 6238 published test secret: base32("12345678901234567890").
+e7901b28cb575ed7af2530b3978b76ba6ab1d0f6:apps/api/internal/auth/totp_test.go:generic-api-key:34

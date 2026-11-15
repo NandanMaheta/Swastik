@@ -15,8 +15,10 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/NandanMaheta/swastik/apps/api/internal/auth"
 	"github.com/NandanMaheta/swastik/apps/api/internal/health"
 	"github.com/NandanMaheta/swastik/apps/api/internal/outbox"
+	"github.com/NandanMaheta/swastik/apps/api/internal/platform/authz"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/clock"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/config"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/db"
@@ -28,6 +30,13 @@ import (
 
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	if len(os.Args) > 1 && os.Args[1] == "admin" {
+		// The bootstrap command has its own exit statuses and reads only DATABASE_URL.
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		code := runAdmin(ctx, os.Args[2:], adminEnv{In: os.Stdin, Out: os.Stdout, Err: os.Stderr, Now: clock.Real, Log: log})
+		stop()
+		os.Exit(code)
+	}
 	if err := run(log, os.Args[1:]); err != nil {
 		log.Error("fatal", slog.Any("err", err))
 		os.Exit(1)
@@ -36,7 +45,7 @@ func main() {
 
 func run(log *slog.Logger, args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: swastik serve | swastik migrate up|down|status | swastik openapi")
+		return errors.New("usage: swastik serve | swastik migrate up|down|status | swastik openapi | swastik admin create")
 	}
 	if args[0] == "openapi" {
 		// Prints the OpenAPI 3.1 spec without needing a database; used to generate the TS client.
@@ -79,19 +88,49 @@ func run(log *slog.Logger, args []string) error {
 // deps are the collaborators the API's operations need. The zero value registers only the
 // operations that need none.
 type deps struct {
+	Env      string // APP_ENV; the OpenAPI/docs routes are served only in local and ci
 	Pool     health.Pinger
 	Tick     scheduler.Ticker
 	TickAuth tickauth.Authenticator
+	// Auth is the auth module's service; nil registers the operations without one (the openapi
+	// command and the static contract walk). WebOrigins and TrustedProxyHops feed the handlers.
+	Auth             *auth.Service
+	WebOrigins       []string
+	TrustedProxyHops int
+	ProxySecrets     []string
 }
 
-// buildAPI registers every module's operations. New modules are wired here.
+// buildAPI registers every module's operations. New modules are wired here, in this order:
+// error problems, the authz middleware (before any registration: Huma captures middlewares at
+// registration time), the modules, then the startup guard that fails fast on an operation with no
+// declared Security.
 func buildAPI(d deps) huma.API {
-	_, api := httpx.NewAPI()
+	httpx.InstallErrors()
+	_, api := httpx.NewAPIFor(d.Env)
+	authz.Install(api, verifiersOf(d.Auth))
 	health.Register(api, health.NewService(d.Pool, httpx.Version, time.Now))
 	if d.Tick != nil {
 		scheduler.RegisterTick(api, d.Tick, d.TickAuth)
 	}
+	auth.Register(api, d.Auth, auth.HandlerConfig{WebOrigins: d.WebOrigins, TrustedProxyHops: d.TrustedProxyHops, ProxySecrets: d.ProxySecrets})
+	authz.AssertDeclared(api)
 	return api
+}
+
+// verifiersOf returns the verifier of each security scheme. Without a Service (the openapi command
+// and the static walk) every credential is refused.
+func verifiersOf(svc *auth.Service) map[string]authz.Verifier {
+	if svc == nil {
+		return map[string]authz.Verifier{"bearer": refuseAll{}, "mfaChallenge": refuseAll{}}
+	}
+	return map[string]authz.Verifier{"bearer": svc.BearerVerifier(), "mfaChallenge": svc.ChallengeVerifier()}
+}
+
+// refuseAll is the verifier of an API built without a Service: no token is ever valid.
+type refuseAll struct{}
+
+func (refuseAll) Verify(context.Context, string) (authz.Principal, error) {
+	return authz.Principal{}, errors.New("no authentication service is configured")
 }
 
 // selectTickAuth picks the tick authenticator from the configuration. Production verifies a
@@ -113,6 +152,19 @@ func selectTickAuth(ctx context.Context, log *slog.Logger, cfg config.Config) ti
 		tickauth.WithHTTPClient(&http.Client{Timeout: 10 * time.Second}))
 }
 
+// newAuthService builds the auth Service from the validated configuration.
+func newAuthService(cfg config.Config, txr db.TxRunner, log *slog.Logger) (*auth.Service, error) {
+	keys, err := auth.NewSigningKeys(cfg.Auth.JWTActiveKID, cfg.Auth.JWTSeeds)
+	if err != nil {
+		return nil, fmt.Errorf("auth: signing keys: %w", err)
+	}
+	return auth.New(auth.Deps{
+		Store: auth.NewPGStore(txr), Tx: txr, Now: clock.Real, Keys: keys,
+		Hasher: auth.NewHasher(auth.HasherOptions{MaxConcurrency: cfg.Auth.Argon2MaxConcurrency}),
+		Blind:  cfg.Auth.BlindIndex, Keyring: cfg.Auth.PII, Log: log,
+	})
+}
+
 func serve(ctx context.Context, log *slog.Logger, cfg config.Config, pool *pgxpool.Pool) error {
 	txr := db.NewTxRunner(pool)
 	ob := outbox.New(txr, clock.Real, log, outbox.DefaultOptions())
@@ -123,8 +175,19 @@ func serve(ctx context.Context, log *slog.Logger, cfg config.Config, pool *pgxpo
 	sched := scheduler.New(txr, ob, clock.Real, log, host, scheduler.DefaultOptions())
 	sched.Register(scheduler.RetentionKind, sched.RetentionHandler(), scheduler.RetentionOptions())
 
-	api := buildAPI(deps{Pool: pool, Tick: sched, TickAuth: selectTickAuth(ctx, log, cfg)}) //nolint:contextcheck // the tick middleware takes its context from each request
-	srv := httpx.NewServer(cfg.HTTPAddr, api.Adapter(), log)
+	authSvc, err := newAuthService(cfg, txr, log)
+	if err != nil {
+		return err
+	}
+	registerAuthJobs(sched, authSvc)
+
+	api := buildAPI(deps{ //nolint:contextcheck // the tick middleware takes its context from each request
+		Env: cfg.Env, Pool: pool, Tick: sched, TickAuth: selectTickAuth(ctx, log, cfg),
+		Auth: authSvc, WebOrigins: cfg.Auth.WebOrigins, TrustedProxyHops: cfg.Auth.TrustedProxyHops,
+		ProxySecrets: cfg.Auth.ProxySharedSecrets,
+	})
+	// CORS wraps the whole API: an exact-origin allowlist with credentials, never a wildcard.
+	srv := httpx.NewServer(cfg.HTTPAddr, httpx.CORS(cfg.Auth.WebOrigins)(api.Adapter()), log)
 	errCh := make(chan error, 1)
 	go func() {
 		log.Info("listening", slog.String("addr", cfg.HTTPAddr), slog.String("env", cfg.Env))
