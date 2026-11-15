@@ -189,7 +189,7 @@
       "owner": "backend-dev",
       "title": "store.go interface and sentinel errors, store_pg.go (users/org, sessions/refresh, mfa/recovery/challenges/throttles; only file with pgx types), Service skeleton (service.go Deps, errors.go problem mapping, audit.go catalogue).",
       "done_command": "cd apps/api && go test -race -run 'TestStore|TestAuthtest' ./internal/auth/...",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "S09"
       ],

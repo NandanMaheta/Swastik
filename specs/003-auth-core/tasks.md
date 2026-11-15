@@ -39,7 +39,7 @@ Legend: `[P]` parallel-safe (flat `internal/auth` package: develop as separate w
   - Depends on: S08, 002-merged | Rules: none (mechanism) | Expected: green | Replaces: T036,T038,T039-T041
   - Done command: `cd apps/api && sqlc generate && sqlc vet && go test -race -run 'TestAuditExt' ./internal/platform/... && golangci-lint run ./internal/platform/... && bash ../../scripts/check-lint-boundaries.sh`
   - Note: Generated dbgen not counted toward size.
-- [ ] S10 **backend-dev**: store.go interface and sentinel errors, store_pg.go (users/org, sessions/refresh, mfa/recovery/challenges/throttles; only file with pgx types), Service skeleton (service.go Deps, errors.go problem mapping, audit.go catalogue).
+- [x] S10 **backend-dev**: store.go interface and sentinel errors, store_pg.go (users/org, sessions/refresh, mfa/recovery/challenges/throttles; only file with pgx types), Service skeleton (service.go Deps, errors.go problem mapping, audit.go catalogue).
   - Depends on: S09, 002-merged | Rules: none (mechanism) | Expected: green | Replaces: T046-T049
   - Done command: `cd apps/api && go test -race -run 'TestStore|TestAuthtest' ./internal/auth/...`
 - [x] S11 **test-engineer**: Service tests A (fake clock, real Store): accounts status machine (BR_CLI_04), CreateClient/ResetPassword/Replace*/EndAllSessions, throttle service, client sign-in, sign-in gate generic failures, lockout through service.
