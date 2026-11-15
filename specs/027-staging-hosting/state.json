@@ -158,7 +158,7 @@
       "title": "Env module: deployer/runtime/tick SAs, WIF bindings pinned to repo + environment, secret-level IAM",
       "slice": "S4",
       "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=../../tests/env/iam.tftest.hcl",
-      "status": "blocked",
+      "status": "done",
       "depends_on": [
         "T003",
         "T007"
@@ -168,15 +168,14 @@
         "FR-003"
       ],
       "expect": "green",
-      "owner_step": false,
-      "note": "iam.tftest.hcl mock_provider \"google\" {} gives service_account.name a random string that fails the provider regexp on google_service_account_iam_member.service_account_id; test needs mock_resource default for name. Code is in place."
+      "owner_step": false
     },
     "T009": {
       "owner": "backend-dev",
       "title": "Env module: Cloud Run service (config owned by tofu, image/traffic ignored), env vars and secret refs, auth_keys_enabled switch",
       "slice": "S5",
       "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=../../tests/env/cloudrun.tftest.hcl && bash infra/tofu/tests/lifecycle_test.sh && for e in staging production; do tofu -chdir=infra/tofu/envs/$e init -backend=false -input=false && tofu -chdir=infra/tofu/envs/$e validate; done",
-      "status": "todo",
+      "status": "blocked",
       "depends_on": [
         "T008"
       ],
@@ -186,14 +185,15 @@
         "FR-014"
       ],
       "expect": "green",
-      "owner_step": false
+      "owner_step": false,
+      "note": "cloudrun.tftest.hcl run secrets_only_via_secret_key_ref_FR_003 first assertion uses != where == is needed (fails for every env var, plain and secret). Code complete otherwise."
     },
     "T010": {
       "owner": "backend-dev",
       "title": "Env module: Cloud Scheduler tick job, OIDC audience matching TICK_AUDIENCE",
       "slice": "S6",
       "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=../../tests/env/scheduler.tftest.hcl",
-      "status": "todo",
+      "status": "blocked",
       "depends_on": [
         "T009"
       ],
@@ -201,7 +201,8 @@
         "FR-007"
       ],
       "expect": "green",
-      "owner_step": false
+      "owner_step": false,
+      "note": "scheduler.tftest.hcl: tick_target asserts oidc email == google_service_account.tick.email (mock constant x@...) while tick_job_production asserts literal tick-production@...; contradictory under the constant mock email."
     },
     "T011": {
       "owner": "backend-dev",
@@ -223,7 +224,7 @@
       "title": "Env module: DNS records, Worker script + route, Pages projects and domains",
       "slice": "S8",
       "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=../../tests/env/dns.tftest.hcl -filter=../../tests/env/pages.tftest.hcl",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "T004",
         "T009",
@@ -241,7 +242,7 @@
       "title": "Env module: Cloudflare Access app, allow policy, one-time PIN",
       "slice": "S9",
       "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=../../tests/env/access.tftest.hcl && for e in staging production; do tofu -chdir=infra/tofu/envs/$e init -backend=false -input=false && tofu -chdir=infra/tofu/envs/$e validate; done && tofu -chdir=infra/tofu/envs/staging init -backend=false -input=false >/dev/null && tofu -chdir=infra/tofu/envs/staging test -test-directory=../../tests/roots -filter=../../tests/roots/staging.tftest.hcl && tofu -chdir=infra/tofu/envs/production init -backend=false -input=false >/dev/null && tofu -chdir=infra/tofu/envs/production test -test-directory=../../tests/roots -filter=../../tests/roots/production.tftest.hcl",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "T012"
       ],
