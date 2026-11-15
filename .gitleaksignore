@@ -9,3 +9,8 @@
 495e9d327d4b765b9c55d0cf85acf520ff0a0250:apps/api/internal/auth/hasher_test.go:generic-api-key:147
 # RFC 6238 published test secret: base32("12345678901234567890").
 e7901b28cb575ed7af2530b3978b76ba6ab1d0f6:apps/api/internal/auth/totp_test.go:generic-api-key:34
+# Test idempotency keys ("key-12345678", "publish-key-1"), not credentials.
+5d538b0f7aa8a402176a6fd10977e81555e08eb6:apps/api/internal/ipos/schema/schema_test.go:generic-api-key:332
+5d538b0f7aa8a402176a6fd10977e81555e08eb6:apps/api/internal/ipos/schema/schema_test.go:generic-api-key:333
+5d538b0f7aa8a402176a6fd10977e81555e08eb6:apps/api/internal/ipos/schema/schema_test.go:generic-api-key:341
+815182ec7146327a84b8ff88ace3ae9f9b96f284:apps/api/internal/ipos/store_test.go:generic-api-key:605
