@@ -112,7 +112,14 @@
         "FR-015"
       ],
       "expect": "red",
-      "owner_step": false
+      "owner_step": false,
+      "protected_tests": [
+        "apps/api/internal/platform/db/roles_test.go",
+        "apps/api/internal/platform/observe/observe_test.go",
+        "scripts/check-deploy-workflow.sh",
+        "infra/backup/drill_test.sh"
+      ],
+      "tests_written": true
     },
     "T006": {
       "owner": "backend-dev",
