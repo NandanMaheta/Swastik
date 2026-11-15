@@ -322,14 +322,28 @@
       "owner": "test-engineer",
       "title": "Tests: CSRF, handlers (sessions, MFA, password, admin), static and runtime contract walk, openapi/wiring tests, packages/domain auth-error-codes test.",
       "done_command": "cd apps/api && go test -race -run 'TestCSRF|TestHandler|TestContractWalk|TestOpenAPI|TestWiring' ./internal/auth/ ./cmd/swastik/ && pnpm --filter @swastik/domain test",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "S16"
       ],
       "rules": [],
       "expect": "red",
       "parallel": false,
-      "replaces": "T081-T084,T089-T091,T098"
+      "replaces": "T081-T084,T089-T091,T098",
+      "protected_tests": [
+        "apps/api/internal/auth/handler_helpers_test.go",
+        "apps/api/internal/auth/handler_test.go",
+        "apps/api/internal/auth/handler_mfa_test.go",
+        "apps/api/internal/auth/handler_admin_test.go",
+        "apps/api/internal/auth/csrf_test.go",
+        "apps/api/cmd/swastik/contract_test.go",
+        "apps/api/cmd/swastik/openapi_auth_test.go",
+        "apps/api/cmd/swastik/wiring_test.go",
+        "apps/api/cmd/swastik/testdata/admin-operations.txt",
+        "packages/domain/src/auth-error-codes.test.ts"
+      ],
+      "tests_written": true,
+      "note": "Red. Compile stubs: internal/auth/handler.go (Register(api, svc, HandlerConfig{WebOrigins, TrustedProxyHops, Limiter}) is a no-op), cmd/swastik/jobs.go (registerAuthJobs no-op), deps fields Auth/WebOrigins/TrustedProxyHops in main.go, packages/domain/src/auth-error-codes.ts (exports authErrorCodes, AuthErrorCode, authErrorMessages, isAuthErrorCode, authErrorMessage; bodies throw) re-exported from index.ts. S18 must keep Register's signature and a nil svc must register all 16 operations; buildAPI(deps{}) must not panic. Open readings the tests accept either way: non-JSON content type on web sign-in/cookie refresh is 403 csrf_rejected or 415; malformed JSON is 400 or 422. Existing main_test.go TestOpenAPI_NoInternalOperations/the_committed_client_contract_is_unchanged will need the regenerated packages/api-client/openapi.yaml (S19)."
     },
     "S18": {
       "owner": "backend-dev",

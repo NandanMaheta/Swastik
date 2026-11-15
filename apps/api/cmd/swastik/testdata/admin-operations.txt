@@ -1,0 +1,9 @@
+# Operation ids that only an admin may call: Security is [{bearer: [admin]}] (plan P-09, FR-032).
+# The contract walk compares this list with the API both ways: add an id here when an operation
+# declares authz.Require(authz.RoleAdmin), and remove it when the operation goes. One id per line.
+auth-recovery-codes-regenerate
+auth-authenticator-replace-start
+auth-authenticator-replace-confirm
+auth-admin-user-devices-list
+auth-admin-user-device-revoke
+auth-admin-user-sessions-end-all

@@ -15,6 +15,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/NandanMaheta/swastik/apps/api/internal/auth"
 	"github.com/NandanMaheta/swastik/apps/api/internal/health"
 	"github.com/NandanMaheta/swastik/apps/api/internal/outbox"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/clock"
@@ -82,6 +83,11 @@ type deps struct {
 	Pool     health.Pinger
 	Tick     scheduler.Ticker
 	TickAuth tickauth.Authenticator
+	// Auth is the auth module's service; nil registers the operations without one (the openapi
+	// command and the static contract walk). WebOrigins and TrustedProxyHops feed the handlers.
+	Auth             *auth.Service
+	WebOrigins       []string
+	TrustedProxyHops int
 }
 
 // buildAPI registers every module's operations. New modules are wired here.
