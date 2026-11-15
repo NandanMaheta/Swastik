@@ -119,6 +119,7 @@ chmod +x "$fake/gcloud"
 cat >"$fake/wrangler" <<'FAKE'
 #!/usr/bin/env bash
 echo "$*" >>"$FAKE_OUT/wrangler.log"
+if [ "$1 $2" = "secret list" ]; then cat "$FAKE_OUT/wrangler.list" 2>/dev/null || echo '[]'; exit 0; fi
 cat >"$FAKE_OUT/wrangler.stdin"
 FAKE
 chmod +x "$fake/wrangler"
@@ -140,6 +141,34 @@ grep -q 'secrets create database-url-staging' "$FAKE_OUT/calls.log" || { echo "F
 grep -qE 'jwt-signing-keys|pii-encryption-keys|blind-index-key' "$FAKE_OUT/calls.log" && { echo "FAIL: auth secrets touched without --with-auth" >&2; fail=1; }
 [ "$(cat "$FAKE_OUT/database-url-staging.val" 2>/dev/null)" = 'postgresql://swastik_app.ref:S3CRET-pw@host:5432/postgres' ] || { echo "FAIL: database URL not piped to the secret version" >&2; fail=1; }
 absent "secrets values" "$sout" "S3CRET"
+
+# Default run (no --with-auth) must create the proxy secret and push PROXY_KEY (Worker fails closed without it).
+run_secrets "" staging
+grep -q 'secrets create proxy-shared-secrets-staging' "$FAKE_OUT/calls.log" || { echo "FAIL: default run must create proxy-shared-secrets-staging" >&2; fail=1; }
+dproxy=$(cat "$FAKE_OUT/proxy-shared-secrets-staging.val" 2>/dev/null)
+b64_32 "$dproxy" || { echo "FAIL: default run proxy secret must be base64 32 bytes" >&2; fail=1; }
+grep -qE '^secret put PROXY_KEY( |$)' "$FAKE_OUT/wrangler.log" 2>/dev/null || { echo "FAIL: default run must push PROXY_KEY to the Worker" >&2; fail=1; }
+[ "$(cat "$FAKE_OUT/wrangler.stdin" 2>/dev/null)" = "$dproxy" ] || { echo "FAIL: default run Worker PROXY_KEY must equal stored secret" >&2; fail=1; }
+# --with-auth on top creates only the auth key secrets (proxy not duplicated when it already exists).
+run_secrets "$(printf 'database-url-staging\nproxy-shared-secrets-staging\n')" staging --with-auth
+grep -q 'secrets create proxy-shared-secrets-staging' "$FAKE_OUT/calls.log" && { echo "FAIL: --with-auth must not recreate existing proxy secret" >&2; fail=1; }
+grep -q 'versions add proxy-shared-secrets-staging' "$FAKE_OUT/calls.log" && { echo "FAIL: --with-auth must not add a proxy version" >&2; fail=1; }
+for s_ in jwt-signing-keys pii-encryption-keys blind-index-key; do
+  grep -q "secrets create $s_-staging" "$FAKE_OUT/calls.log" || { echo "FAIL: --with-auth must create $s_-staging" >&2; fail=1; }
+done
+# Re-run: secret exists but Worker lacks it -> re-push the current value, no new version.
+for flag in "" "--push-proxy"; do
+  CUR_PROXY="CURRENTPROXYVALUE" run_secrets "$(printf 'database-url-staging\nproxy-shared-secrets-staging\n')" staging $flag
+  printf '%s' 'CURRENTPROXYVALUE' >"$FAKE_OUT/cur.proxy-shared-secrets-staging"
+  printf '[]' >"$FAKE_OUT/wrangler.list"
+  export FAKE_EXISTING="$FAKE_OUT/existing"
+  sout=$(printf 'postgresql://x@h/p\n' | PATH="$fake" bash ./secrets.sh staging $flag 2>&1); srcode=$?
+  [ "$srcode" -eq 0 ] || { echo "FAIL: re-push run ($flag) exit $srcode: $sout" >&2; fail=1; }
+  grep -qE '^secret put PROXY_KEY( |$)' "$FAKE_OUT/wrangler.log" || { echo "FAIL: re-run ($flag) must re-push PROXY_KEY when Worker secret missing" >&2; fail=1; }
+  [ "$(cat "$FAKE_OUT/wrangler.stdin" 2>/dev/null)" = "CURRENTPROXYVALUE" ] || { echo "FAIL: re-push ($flag) must send the current stored value" >&2; fail=1; }
+  grep -q 'versions add proxy-shared-secrets-staging' "$FAKE_OUT/calls.log" && { echo "FAIL: re-push ($flag) must not add a version" >&2; fail=1; }
+  absent "re-push output" "$sout" "CURRENTPROXYVALUE"
+done
 
 run_secrets "" staging --with-auth
 [ "$srcode" -eq 0 ] || { echo "FAIL: secrets.sh --with-auth exit $srcode: $sout" >&2; fail=1; }

@@ -77,6 +77,9 @@ if [ ! -f "$f" ]; then bad "deploy.yml missing"; else
   forbid "$d" '--set-env-vars|--update-env-vars|--set-secrets|--update-secrets|--remove-env-vars|--clear-env-vars' "deploy.yml must not touch env vars or secrets (FR-004, D-2)"
   # D-14 no worker deploy
   forbid "$d" 'swastik-worker|apps/worker|/worker:' "deploy.yml must not build or deploy apps/worker (D-14)"
+  # c-<sha> tag is removed in an always() step, so a failed health check cannot leave it behind
+  tagstep=$(awk '/^[[:space:]]*- name:/ { if (blk ~ /remove-tags/) { print blk; exit } blk = "" } { blk = blk "\n" $0 } END { if (blk ~ /remove-tags/) print blk }' <<<"$d")
+  grep -Eq 'if:[[:space:]]*always\(\)' <<<"$tagstep" || bad "the step removing the c-<sha> tag (--remove-tags) must have if: always()"
   # FR-006 environment selection, concurrency
   need "$d" "environment:.*refs/tags/v.*production.*staging" "environment is production for v* tags, staging otherwise (FR-006)"
   need "$d" '^concurrency:' "deploy needs a concurrency group"
@@ -208,6 +211,7 @@ if [ "$want_nightly" -eq 1 ]; then
   need "$n" 'vars\.BACKUP_AGE_RECIPIENT' "backup encrypts to the recipient in vars.BACKUP_AGE_RECIPIENT"
   need "$n" 'age .*(-r|--recipient)' "backup must be encrypted with age -r <recipient> before upload"
   before "$n" 'age .*(-r|--recipient)' 'aws s3 cp' "encrypt with age BEFORE uploading to R2"
+  before "$n" 'apt-get update' 'apt-get install.*age' "nightly must apt-get update before installing age (or use a pinned binary)"
   need "$n" '\.age' "uploaded objects are the .age ciphertext"
 fi
 
