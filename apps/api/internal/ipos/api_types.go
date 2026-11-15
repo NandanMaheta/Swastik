@@ -16,9 +16,6 @@ import (
 const (
 	wireNSE = "NSE_MAINBOARD"
 	wireBSE = "BSE_MAINBOARD"
-
-	statusEnum = "UPCOMING,OPEN,CLOSED,ALLOTMENT_OUT,LISTED,SETTLED"
-	flagEnum   = "APPLY,DO_NOT_APPLY"
 )
 
 // IPODates are the six IST dates; null means not set. On PUT every key is required.

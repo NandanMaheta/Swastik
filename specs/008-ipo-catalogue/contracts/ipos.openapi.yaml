@@ -246,9 +246,8 @@ components:
           type: array
           minItems: 1
           maxItems: 4
-          uniqueItems: true
-          items: { type: string, maxLength: 32 }
-          description: "NSE_MAINBOARD and/or BSE_MAINBOARD. NSE_EMERGE / BSE_SME → ipo.sme_not_allowed; other values → ipo.invalid_segment (research R-05)."
+          items: { type: string }
+          description: "Repeats give ipo.invalid_segment (not a schema uniqueItems rule). NSE_MAINBOARD and/or BSE_MAINBOARD. NSE_EMERGE / BSE_SME → ipo.sme_not_allowed; other values → ipo.invalid_segment (research R-05)."
         nse_symbol: { type: [string, "null"], pattern: "^[A-Z0-9&-]{1,20}$" }
         issue_size_paise: { type: [integer, "null"], format: int64, minimum: 1, maximum: 1000000000000000 }
         price_band_floor_paise: { type: [integer, "null"], format: int64, minimum: 1, maximum: 1000000000 }
@@ -257,7 +256,7 @@ components:
         lot_size: { type: [integer, "null"], format: int32, minimum: 1, maximum: 1000000 }
         dates: { $ref: "#/components/schemas/IPODates" }
         registrar: { type: [string, "null"], minLength: 1, maxLength: 200 }
-        lead_managers: { type: array, maxItems: 20, items: { type: string, minLength: 1, maxLength: 200 } }
+        lead_managers: { type: array, maxItems: 20, items: { type: string }, description: "Empty or over-long entries give ipo.invalid_value (service validation; error-codes.md is the source of truth)." }
         offer_document_url: { type: [string, "null"], format: uri, maxLength: 2000, pattern: "^https://" }
     IPOFacts:
       description: Fields shared by the admin and client views.

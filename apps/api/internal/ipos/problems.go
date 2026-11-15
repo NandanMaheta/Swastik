@@ -21,13 +21,11 @@ func problemFor(err error) error {
 	)
 	switch {
 	case errors.As(err, &ve):
-		p := httpx.Problem(http.StatusUnprocessableEntity, ve.Code, validationDetail(ve.Code))
-		if em, ok := p.(*httpx.ErrorModel); ok {
-			for _, is := range ve.Issues {
-				em.Errors = append(em.Errors, locatedError("body."+is.Field, is.Message))
-			}
+		errs := make([]*huma.ErrorDetail, 0, len(ve.Issues))
+		for _, is := range ve.Issues {
+			errs = append(errs, locatedError("body."+is.Field, is.Message))
 		}
-		return p
+		return withErrors(httpx.Problem(http.StatusUnprocessableEntity, ve.Code, validationDetail(ve.Code)), errs...)
 	case errors.As(err, &re):
 		return httpx.Problem(http.StatusConflict, re.Code, re.Detail)
 	case errors.Is(err, ErrStaleVersion):
@@ -39,11 +37,8 @@ func problemFor(err error) error {
 	case errors.Is(err, ErrNotFound):
 		return httpx.Problem(http.StatusNotFound, "not_found", "The IPO was not found.")
 	case errors.Is(err, ErrBadCursor):
-		p := httpx.Problem(http.StatusUnprocessableEntity, "validation_failed", "The request is not valid.")
-		if em, ok := p.(*httpx.ErrorModel); ok {
-			em.Errors = append(em.Errors, locatedError("query.cursor", "not a valid cursor"))
-		}
-		return p
+		return withErrors(httpx.Problem(http.StatusUnprocessableEntity, "validation_failed", "The request is not valid."),
+			locatedError("query.cursor", "not a valid cursor"))
 	}
 	return httpx.Problem(http.StatusInternalServerError, "internal", "An unexpected error occurred.")
 }
@@ -65,4 +60,13 @@ func validationDetail(code string) string {
 
 func locatedError(location, message string) *huma.ErrorDetail {
 	return &huma.ErrorDetail{Location: location, Message: message}
+}
+
+// withErrors adds located error items to a problem built by httpx.Problem.
+func withErrors(p error, errs ...*huma.ErrorDetail) error {
+	var em *httpx.ErrorModel
+	if errors.As(p, &em) {
+		em.Errors = append(em.Errors, errs...)
+	}
+	return p
 }

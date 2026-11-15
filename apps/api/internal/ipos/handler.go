@@ -2,6 +2,7 @@ package ipos
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -49,7 +50,8 @@ func ready(s *Service) error {
 // fail maps a service error to its problem and logs an unexpected one (without echoing it).
 func fail(ctx context.Context, s *Service, err error) error {
 	p := problemFor(err)
-	if se, ok := p.(huma.StatusError); ok && se.GetStatus() >= http.StatusInternalServerError {
+	var se huma.StatusError
+	if errors.As(p, &se) && se.GetStatus() >= http.StatusInternalServerError {
 		s.d.Log.ErrorContext(ctx, "ipos: unexpected error", slog.Any("err", err))
 	}
 	return p

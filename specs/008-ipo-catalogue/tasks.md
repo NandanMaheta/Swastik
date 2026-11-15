@@ -86,27 +86,27 @@
   - Rules: BR-IPO-02, BR-IPO-03 | Refs: FR-031..037; K-03, K-10..12; C-8
   - Files (~480 lines): `apps/api/internal/ipos/lifecycle.go`, `apps/api/internal/ipos/status_apply.go`, `apps/api/internal/ipos/service_status.go`, `apps/api/cmd/swastik/main.go`
   - Done command (green): `cd apps/api && go test -race ./internal/ipos/... && go build ./... && go test -race -short ./cmd/...`
-- [ ] S15 [P] **test-engineer**: HTTP tests A (humatest + authz.Install): admin create/get/list/update/flag status and error codes, idempotent replay, route precedence; actions (publish, unpublish, override, delete, suggest side-effect-free, RejectedError 409, client 403); client list/get (published only, byte-identical 404, no admin fields, cursor/limit, 401).
+- [x] S15 [P] **test-engineer**: HTTP tests A (humatest + authz.Install): admin create/get/list/update/flag status and error codes, idempotent replay, route precedence; actions (publish, unpublish, override, delete, suggest side-effect-free, RejectedError 409, client 403); client list/get (published only, byte-identical 404, no admin fields, cursor/limit, 401).
   - Depends on: S01, 002-merged, 003-merged
   - Rules: BR-IPO-01, BR-IPO-02, BR-IPO-03 | Refs: FR-007, FR-010, FR-035, FR-043, FR-050, FR-051, FR-061; US6.4-6.5, US7, US8.4
   - Files (~570 lines): `apps/api/internal/ipos/handler_admin_test.go`, `apps/api/internal/ipos/handler_actions_test.go`, `apps/api/internal/ipos/handler_client_test.go`
   - Done command (red): `cd apps/api && go test -race -run 'TestAdmin_|TestActions_|TestSuggest_|TestAdminOps_FR050|TestClient_' ./internal/ipos/`
-- [ ] S16 [P] **test-engineer**: HTTP tests B: problems mapping parsed from error-codes.md, OpenAPI contract test (12 operation ids, security, Idempotency-Key, ClientIPO fields, committed spec current), list performance (SC-008, EXPLAIN uses indexes), packages/domain ipo.test.ts.
+- [x] S16 [P] **test-engineer**: HTTP tests B: problems mapping parsed from error-codes.md, OpenAPI contract test (12 operation ids, security, Idempotency-Key, ClientIPO fields, committed spec current), list performance (SC-008, EXPLAIN uses indexes), packages/domain ipo.test.ts.
   - Depends on: S01, 002-merged, 003-merged
   - Rules: BR-IPO-01, BR-IPO-02, BR-IPO-03 | Refs: FR-050, FR-051, FR-061; SC-007, SC-008
   - Files (~470 lines): `apps/api/internal/ipos/problems_test.go`, `apps/api/internal/ipos/perf_test.go`, `apps/api/cmd/swastik/ipos_contract_test.go`, `packages/domain/src/ipo.test.ts`
   - Done command (red): `cd apps/api && go test -race -run 'TestProblems_|TestList_SC008|TestIPOContract_' ./internal/ipos/ ./cmd/swastik/... && cd ../.. && pnpm --filter @swastik/domain test`
-- [ ] S17 **backend-dev**: HTTP A: api_types.go (Huma DTOs, separate ClientIPO), problems.go (ipo.* codes, locations, inr warning detail), registerAdmin (create, admin list/get, update, set-flag, suggest-dates; authz.Require admin, Idempotency-Key, route order).
+- [x] S17 **backend-dev**: HTTP A: api_types.go (Huma DTOs, separate ClientIPO), problems.go (ipo.* codes, locations, inr warning detail), registerAdmin (create, admin list/get, update, set-flag, suggest-dates; authz.Require admin, Idempotency-Key, route order).
   - Depends on: S14, S15, S16, 002-merged, 003-merged
   - Rules: BR-IPO-01, BR-IPO-02, BR-IPO-03 | Refs: contracts/ipos.openapi.yaml; error-codes.md; C-6
   - Files (~530 lines): `apps/api/internal/ipos/api_types.go`, `apps/api/internal/ipos/problems.go`, `apps/api/internal/ipos/handler.go`
   - Done command (green): `cd apps/api && go test -race -run 'TestAdmin_|TestSuggest_|TestProblems_' ./internal/ipos/`
-- [ ] S18 **backend-dev**: HTTP B: registerActions (publish, unpublish, override, delete 204), registerClient (list, get, cursor); ipos.Register in main.go after authz.Install; 10 ids appended to cmd/swastik/testdata/admin-operations.txt.
+- [x] S18 **backend-dev**: HTTP B: registerActions (publish, unpublish, override, delete 204), registerClient (list, get, cursor); ipos.Register in main.go after authz.Install; 10 ids appended to cmd/swastik/testdata/admin-operations.txt.
   - Depends on: S17, 002-merged, 003-merged
   - Rules: BR-IPO-02, BR-IPO-03 | Refs: FR-050, FR-051; C-5, C-8
   - Files (~325 lines): `apps/api/internal/ipos/handler_actions.go`, `apps/api/internal/ipos/handler_client.go`, `apps/api/cmd/swastik/main.go`, `apps/api/cmd/swastik/testdata/admin-operations.txt`
   - Done command (green): `cd apps/api && go test -race ./internal/ipos/... ./cmd/...`
-- [ ] S19 **backend-dev**: Contract artefacts: regenerate packages/api-client/openapi.yaml and schema.ts (additive IPO paths only); add packages/domain/src/ipo.ts (statuses, flags, segments, ipo error codes) and export it.
+- [x] S19 **backend-dev**: Contract artefacts: regenerate packages/api-client/openapi.yaml and schema.ts (additive IPO paths only); add packages/domain/src/ipo.ts (statuses, flags, segments, ipo error codes) and export it.
   - Depends on: S18, S16, 002-merged, 003-merged
   - Rules: BR-IPO-01, BR-IPO-02, BR-IPO-03 | Refs: quickstart 4 (generated code not counted)
   - Files (~90 lines): `packages/api-client/openapi.yaml`, `packages/api-client/src/schema.ts`, `packages/domain/src/ipo.ts`, `packages/domain/src/index.ts`

@@ -390,7 +390,7 @@
       "owner": "test-engineer",
       "title": "HTTP tests A (humatest + authz.Install): admin create/get/list/update/flag status and error codes, idempotent replay, route precedence; actions (publish, unpublish, override, delete, suggest side-effect-free, RejectedError 409, client 403); client list/get (published only, byte-identical 404, no admin fields, cursor/limit, 401).",
       "done_command": "cd apps/api && go test -race -run 'TestAdmin_|TestActions_|TestSuggest_|TestAdminOps_FR050|TestClient_' ./internal/ipos/",
-      "status": "blocked",
+      "status": "done",
       "depends_on": [
         "S01",
         "002-merged",
@@ -420,7 +420,7 @@
       "owner": "test-engineer",
       "title": "HTTP tests B: problems mapping parsed from error-codes.md, OpenAPI contract test (12 operation ids, security, Idempotency-Key, ClientIPO fields, committed spec current), list performance (SC-008, EXPLAIN uses indexes), packages/domain ipo.test.ts.",
       "done_command": "cd apps/api && go test -race -run 'TestProblems_|TestList_SC008|TestIPOContract_' ./internal/ipos/ ./cmd/swastik/... && cd ../.. && pnpm --filter @swastik/domain test",
-      "status": "blocked",
+      "status": "done",
       "depends_on": [
         "S01",
         "002-merged",
@@ -452,7 +452,7 @@
       "owner": "backend-dev",
       "title": "HTTP A: api_types.go (Huma DTOs, separate ClientIPO), problems.go (ipo.* codes, locations, inr warning detail), registerAdmin (create, admin list/get, update, set-flag, suggest-dates; authz.Require admin, Idempotency-Key, route order).",
       "done_command": "cd apps/api && go test -race -run 'TestAdmin_|TestSuggest_|TestProblems_' ./internal/ipos/",
-      "status": "blocked",
+      "status": "done",
       "depends_on": [
         "S14",
         "S15",
@@ -479,7 +479,7 @@
       "owner": "backend-dev",
       "title": "HTTP B: registerActions (publish, unpublish, override, delete 204), registerClient (list, get, cursor); ipos.Register in main.go after authz.Install; 10 ids appended to cmd/swastik/testdata/admin-operations.txt.",
       "done_command": "cd apps/api && go test -race ./internal/ipos/... ./cmd/...",
-      "status": "blocked",
+      "status": "done",
       "depends_on": [
         "S17",
         "002-merged",
@@ -504,7 +504,7 @@
       "owner": "backend-dev",
       "title": "Contract artefacts: regenerate packages/api-client/openapi.yaml and schema.ts (additive IPO paths only); add packages/domain/src/ipo.ts (statuses, flags, segments, ipo error codes) and export it.",
       "done_command": "cd apps/api && go test -race -run 'TestIPOContract_' ./cmd/swastik/... && cd ../.. && pnpm --filter @swastik/api-client generate && git diff --exit-code packages/api-client && pnpm --filter @swastik/domain test && pnpm turbo run typecheck",
-      "status": "blocked",
+      "status": "done",
       "depends_on": [
         "S18",
         "S16",

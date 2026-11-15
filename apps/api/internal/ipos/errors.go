@@ -2,9 +2,6 @@ package ipos
 
 import "errors"
 
-// errNotImplemented is returned by every compile-skeleton body until its slice lands.
-var errNotImplemented = errors.New("ipos: not implemented")
-
 // Sentinel errors; HTTP mapping in contracts/error-codes.md.
 var (
 	ErrNotFound              = errors.New("ipos: not found")
