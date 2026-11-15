@@ -65,7 +65,7 @@ Legend: `[P]` parallel-safe (flat `internal/auth` package: develop as separate w
 - [x] S17 **test-engineer**: Tests: CSRF, handlers (sessions, MFA, password, admin), static and runtime contract walk, openapi/wiring tests, packages/domain auth-error-codes test.
   - Depends on: S16 | Rules: none (mechanism) | Expected: red | Replaces: T081-T084,T089-T091,T098
   - Done command: `cd apps/api && go test -race -run 'TestCSRF|TestHandler|TestContractWalk|TestOpenAPI|TestWiring' ./internal/auth/ ./cmd/swastik/ && pnpm --filter @swastik/domain test`
-- [ ] S18 **backend-dev**: cookies.go, handler.go, handler_mfa.go, handler_admin.go (Security declared per operation, errors and rate limits).
+- [x] S18 **backend-dev**: cookies.go, handler.go, handler_mfa.go, handler_admin.go (Security declared per operation, errors and rate limits).
   - Depends on: S17 | Rules: none (mechanism) | Expected: green | Replaces: T085-T088
   - Done command: `cd apps/api && go test -race -run 'TestCSRF|TestHandler' ./internal/auth/`
   - Note: Security review: handlers.

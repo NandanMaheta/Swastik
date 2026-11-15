@@ -349,7 +349,7 @@
       "owner": "backend-dev",
       "title": "cookies.go, handler.go, handler_mfa.go, handler_admin.go (Security declared per operation, errors and rate limits).",
       "done_command": "cd apps/api && go test -race -run 'TestCSRF|TestHandler' ./internal/auth/",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "S17"
       ],
