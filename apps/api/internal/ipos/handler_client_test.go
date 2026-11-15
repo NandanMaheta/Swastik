@@ -92,7 +92,7 @@ func TestClient_FR009_CursorAndLimit(t *testing.T) {
 }
 
 func TestClient_FR051_NoAdminFields(t *testing.T) {
-	e := newHTTPEnv(t)
+	e := newHTTPEnvProd(t)
 	pub, _ := e.fiveIPOs()
 	keysOf := func(m map[string]any) []string {
 		var ks []string

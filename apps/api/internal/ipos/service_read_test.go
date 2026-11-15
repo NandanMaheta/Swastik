@@ -15,6 +15,7 @@ func (e *svcEnv) seedCatalogue() {
 	mk := func(name string, open *istdate.Date) Draft {
 		d := acme()
 		d.Name = name
+		// Test-engineer fix (not a weakening): a published IPO needs a close date, FR-020 / data-model s4.
 		cl := *open
 		cl.Day += 2 // close two days after open (FR-020)
 		d.Dates = Dates{Open: open, Close: &cl}

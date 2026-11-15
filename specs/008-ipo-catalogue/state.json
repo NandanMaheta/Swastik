@@ -556,5 +556,14 @@
   "metrics": [],
   "owner_decisions": {
     "2026-11-15_adr_0008": "ADR 0008 (in-transaction module signals) accepted by the owner"
+  },
+  "review_fix": {
+    "protected_tests": [
+      "apps/api/internal/ipos/idempotency_review_test.go",
+      "apps/api/internal/ipos/schema_limits_test.go",
+      "apps/api/internal/ipos/perf_test.go",
+      "apps/api/internal/ipos/handler_client_test.go",
+      "apps/api/internal/ipos/handler_admin_test.go"
+    ]
   }
 }

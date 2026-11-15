@@ -113,6 +113,7 @@ func TestLifecycle_BR_IPO_03_MissingAllotmentWaitsInClosed(t *testing.T) {
 	wantStatus(t, e, i.ID, StatusClosed)
 	d2 := draftOf(i)
 	d2.Dates.Allotment = dt(25)
+	// Test-engineer fix (not a weakening): step handlers bump the version, so update from the current row (data-model s4).
 	e.update(e.currentID(i.ID), d2)
 	e.tickAt(25, 10, 0)
 	wantStatus(t, e, i.ID, StatusAllotmentOut)

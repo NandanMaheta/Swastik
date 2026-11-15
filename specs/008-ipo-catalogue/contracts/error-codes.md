@@ -14,6 +14,7 @@ Domain errors are built with 003's `httpx.Problem(status, code, detail)`. The fi
 | `ipo.invalid_value` | 422 | Cross-field and trimmed-value rules: only one end of the price band; floor > cap; blank name (after trimming); lead manager entry empty or longer than 200 characters; flag note without a flag; blank override reason (after trimming) | FR-003, FR-022, FR-035, US1.5, US6.4 |
 | `ipo.date_order` | 422 | A related pair of set dates is out of order (research R-07). One `errors[]` item per field of each violated pair | FR-040, US5.9 |
 | `ipo.publish_incomplete` | 422 | Publish with items missing, or an edit or flag clear on a published IPO that would break FR-020. One `errors[]` item per missing item: `body.apply_flag` ("flag required"), `body.open_date`, `body.close_date`, `body.price` (band or final price), `body.lot_size` | FR-020, FR-021, US3.1/3.2/3.7 |
+| `ipo.idempotency_key_reused` | 422 | The `Idempotency-Key` was already used in this org for this action with a different request body (any field, including `version`, path id or query). The same body replays. Keys are scoped per org | FR-007 |
 | `ipo.stale_version` | 409 | `version` differs from the stored version | FR-006, US1.9 |
 | `ipo.no_change` | 409 | Override to the current status; publish when already published; unpublish a draft | FR-035, US6.5 |
 | `ipo.published_not_deletable` | 409 | Delete of an IPO that is or was ever published | FR-008, D-08, US9.3 |

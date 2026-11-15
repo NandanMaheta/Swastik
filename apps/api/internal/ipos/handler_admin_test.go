@@ -43,9 +43,23 @@ type httpEnv struct {
 
 func newHTTPEnv(t *testing.T) *httpEnv {
 	t.Helper()
+	return newHTTPEnvCfg(t, huma.DefaultConfig("test", "1.0.0"))
+}
+
+// newHTTPEnvProd builds the API like production does (httpx.NewAPIFor("production")): no $schema
+// field is added to response bodies, so exact-key DTO checks need no allowance for it.
+func newHTTPEnvProd(t *testing.T) *httpEnv {
+	t.Helper()
+	cfg := huma.DefaultConfig("test", "1.0.0")
+	cfg.CreateHooks = nil // what httpx.NewAPIFor("production") does
+	return newHTTPEnvCfg(t, cfg)
+}
+
+func newHTTPEnvCfg(t *testing.T, cfg huma.Config) *httpEnv {
+	t.Helper()
 	e := newSvcEnv(t)
 	httpx.InstallErrors()
-	_, api := humatest.New(t, huma.DefaultConfig("test", "1.0.0"))
+	_, api := humatest.New(t, cfg)
 	authz.Install(api, map[string]authz.Verifier{
 		"bearer": tokenVerifier{
 			"admin-token":  {UserID: e.admin.ID, OrgID: e.org, SessionID: uuid.New(), Role: authz.RoleAdmin},
