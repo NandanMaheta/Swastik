@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
+
+	"github.com/NandanMaheta/swastik/apps/api/internal/platform/authz"
 )
 
 type liveOutput struct {
@@ -25,6 +27,7 @@ func Register(api huma.API, svc *Service) {
 		Path:        "/healthz",
 		Summary:     "Liveness probe",
 		Tags:        []string{"Health"},
+		Security:    authz.Public(),
 	}, func(_ context.Context, _ *struct{}) (*liveOutput, error) {
 		out := &liveOutput{}
 		out.Body.Status = "ok"
@@ -37,6 +40,7 @@ func Register(api huma.API, svc *Service) {
 		Path:        "/readyz",
 		Summary:     "Readiness probe (checks the database)",
 		Tags:        []string{"Health"},
+		Security:    authz.Public(),
 	}, func(ctx context.Context, _ *struct{}) (*readyOutput, error) {
 		st := svc.Ready(ctx)
 		if st.Status != "ok" {
