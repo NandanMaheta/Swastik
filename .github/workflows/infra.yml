@@ -1,7 +1,8 @@
 name: Infra
 on:
   pull_request:
-    paths: ["infra/tofu/**", "infra/cloudflare/**", ".opentofu-version", ".github/workflows/infra.yml"]
+    paths:
+      ["infra/tofu/**", "infra/cloudflare/**", ".opentofu-version", ".github/workflows/infra.yml"]
   workflow_dispatch:
     inputs:
       target:

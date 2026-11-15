@@ -6,8 +6,9 @@
 //   - /internal and /internal/* (also encoded, dot-segment and double-slash spellings) answer 404 and
 //     never reach upstream.
 //   - X-Forwarded-For is replaced by CF-Connecting-IP; client supplied value never survives.
-import { test, beforeEach, afterEach } from "node:test";
+
 import assert from "node:assert/strict";
+import { afterEach, beforeEach, test } from "node:test";
 import worker from "./worker.js";
 
 const UPSTREAM = "https://swastik-api-staging-abc123-el.a.run.app";

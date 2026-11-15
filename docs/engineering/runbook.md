@@ -13,7 +13,7 @@ Names: [contracts/deployment.md](../../specs/027-staging-hosting/contracts/deplo
    - Cloud Shell: `psql "<postgres session-pooler URL>" -f infra/supabase/roles.sql`, then `\password swastik_app` (and `\password swastik_backup` on production).
 4. **Cloudflare**: turn on Zero Trust (free plan) and enable the One-time PIN login method, otherwise the admin Access application cannot apply; note the zone id and set it as the `CLOUDFLARE_ZONE_ID` variable of the `infra` environment; add a payment method (needed to turn on R2; stays on the free tier); create the two tokens and the R2 key from the contract.
 5. **Backups**: run `age-keygen -o backup.key` on your own machine, keep `backup.key` safe offline, and set the printed public key (`age1...`) as the `BACKUP_AGE_RECIPIENT` variable of the `backups` environment. Restoring needs `age -d -i backup.key`.
-5b. **GitHub** → Settings → Environments: create `infra` and `backups`, set protections, add the variables and secrets from the contract.
+   5b. **GitHub** → Settings → Environments: create `infra` and `backups`, set protections, add the variables and secrets from the contract.
 6. Actions → **Infra** → run for `shared`, then `staging`; approve. Then merge any PR into `stage` and open `https://api-staging.swastikapp.co.in/healthz`, `https://admin-staging.swastikapp.co.in` (asks for your email PIN) and `https://app-staging.swastikapp.co.in`.
 7. UptimeRobot (free): one HTTPS monitor per environment on `/healthz`, every 5 minutes, alerts to your email.
 
