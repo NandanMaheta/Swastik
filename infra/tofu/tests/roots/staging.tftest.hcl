@@ -1,7 +1,14 @@
 # 027 T004 - staging root builds the staging environment and no production names (FR-001, D-1).
 # Run in infra/tofu/envs/staging. Same output/variable contract as roots/production.tftest.hcl.
 
-mock_provider "google" {}
+mock_provider "google" {
+  mock_resource "google_service_account" {
+    defaults = {
+      name  = "projects/swastik-4fcc9/serviceAccounts/x@swastik-4fcc9.iam.gserviceaccount.com"
+      email = "x@swastik-4fcc9.iam.gserviceaccount.com"
+    }
+  }
+}
 mock_provider "cloudflare" {}
 
 variables {

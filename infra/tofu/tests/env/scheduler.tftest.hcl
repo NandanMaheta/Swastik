@@ -1,6 +1,13 @@
 # 027 T003 - Cloud Scheduler tick job (FR-007). Resource: google_cloud_scheduler_job.tick
 
-mock_provider "google" {}
+mock_provider "google" {
+  mock_resource "google_service_account" {
+    defaults = {
+      name  = "projects/swastik-4fcc9/serviceAccounts/x@swastik-4fcc9.iam.gserviceaccount.com"
+      email = "x@swastik-4fcc9.iam.gserviceaccount.com"
+    }
+  }
+}
 mock_provider "cloudflare" {}
 
 variables {

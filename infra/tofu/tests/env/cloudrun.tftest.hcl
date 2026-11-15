@@ -1,7 +1,14 @@
 # 027 T003 - Cloud Run service plan tests (FR-003, FR-004, FR-014). Resource: google_cloud_run_v2_service.api
 # Module input extra: none beyond iam.tftest.hcl. Lifecycle ignore_changes is verified by tests/lifecycle_test.sh.
 
-mock_provider "google" {}
+mock_provider "google" {
+  mock_resource "google_service_account" {
+    defaults = {
+      name  = "projects/swastik-4fcc9/serviceAccounts/x@swastik-4fcc9.iam.gserviceaccount.com"
+      email = "x@swastik-4fcc9.iam.gserviceaccount.com"
+    }
+  }
+}
 mock_provider "cloudflare" {}
 
 variables {

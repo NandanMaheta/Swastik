@@ -3,7 +3,14 @@
 # cloudflare_zero_trust_access_application.admin (type self_hosted, policies = [admin_allow], session 24h).
 # Only the admin is behind Access; there must be no Access app for the API or client app hosts.
 
-mock_provider "google" {}
+mock_provider "google" {
+  mock_resource "google_service_account" {
+    defaults = {
+      name  = "projects/swastik-4fcc9/serviceAccounts/x@swastik-4fcc9.iam.gserviceaccount.com"
+      email = "x@swastik-4fcc9.iam.gserviceaccount.com"
+    }
+  }
+}
 mock_provider "cloudflare" {}
 
 variables {

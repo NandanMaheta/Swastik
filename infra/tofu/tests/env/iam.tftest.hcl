@@ -10,7 +10,14 @@
 # (same keys). Logical keys: database_url always; jwt_signing_keys, pii_encryption_keys, blind_index_key only
 # when auth_keys_enabled. No project-level IAM resource may exist (checked by tests/lifecycle_test.sh).
 
-mock_provider "google" {}
+mock_provider "google" {
+  mock_resource "google_service_account" {
+    defaults = {
+      name  = "projects/swastik-4fcc9/serviceAccounts/x@swastik-4fcc9.iam.gserviceaccount.com"
+      email = "x@swastik-4fcc9.iam.gserviceaccount.com"
+    }
+  }
+}
 mock_provider "cloudflare" {}
 
 variables {

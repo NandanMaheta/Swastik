@@ -4,7 +4,14 @@
 # re-exports nothing but passes the variables project_number, cloudflare_account_id, cloudflare_zone_id,
 # access_emails through (declared in the root).
 
-mock_provider "google" {}
+mock_provider "google" {
+  mock_resource "google_service_account" {
+    defaults = {
+      name  = "projects/swastik-4fcc9/serviceAccounts/x@swastik-4fcc9.iam.gserviceaccount.com"
+      email = "x@swastik-4fcc9.iam.gserviceaccount.com"
+    }
+  }
+}
 mock_provider "cloudflare" {}
 
 variables {
