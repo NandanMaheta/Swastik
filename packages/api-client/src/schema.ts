@@ -38,10 +38,346 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/users/{userId}/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a user's live device sessions */
+        get: operations["auth-admin-user-devices-list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/users/{userId}/devices/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** End one device session of a user */
+        delete: operations["auth-admin-user-device-revoke"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/users/{userId}/sessions/end-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** End every session of a user */
+        post: operations["auth-admin-user-sessions-end-all"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the caller's live device sessions */
+        get: operations["auth-devices-list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/devices/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** End one of the caller's own device sessions */
+        delete: operations["auth-device-revoke"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/mfa/authenticator": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start replacing the authenticator */
+        post: operations["auth-authenticator-replace-start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/mfa/authenticator/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm the new authenticator */
+        post: operations["auth-authenticator-replace-confirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/mfa/enrolment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start enrolling an authenticator */
+        post: operations["auth-mfa-enrolment-start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/mfa/enrolment/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm the authenticator and open the admin session */
+        post: operations["auth-mfa-enrolment-confirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/mfa/recovery-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replace the recovery codes */
+        post: operations["auth-recovery-codes-regenerate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/mfa/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete an admin sign-in with a TOTP or recovery code */
+        post: operations["auth-mfa-verify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/password/change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change the caller's password */
+        post: operations["auth-password-change"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rotate the refresh token and get a new access token */
+        post: operations["auth-refresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/sign-in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign in with email or mobile and password */
+        post: operations["auth-sign-in"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/sign-out": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** End this session */
+        post: operations["auth-sign-out"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/sign-out-everywhere": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** End every session of the caller, this one included */
+        post: operations["auth-sign-out-everywhere"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ChallengeResponse: {
+            /** @description dmc_...; send as Authorization: Bearer to the second-factor operations only. */
+            challenge_token: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        ChangePasswordRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/ChangePasswordRequest.json
+             */
+            readonly $schema?: string;
+            /** Format: password */
+            current_password: string;
+            /**
+             * Format: password
+             * @description The password policy is enforced with specific codes.
+             */
+            new_password: string;
+        };
+        DeviceInfoRequest: {
+            /**
+             * Format: uuid
+             * @description Installation identity generated by the app.
+             */
+            id: string;
+            name: string;
+            /** @enum {string} */
+            platform: "android" | "iphone" | "web";
+        };
+        DeviceItem: {
+            device_name: string;
+            /** @description Always false in admin listings of another user. */
+            is_current: boolean;
+            /** Format: date-time */
+            last_active_at: string;
+            /** @enum {string} */
+            platform: "android" | "iphone" | "web";
+            /** Format: uuid */
+            session_id: string;
+            /** Format: date-time */
+            signed_in_at: string;
+        };
+        DeviceList: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/DeviceList.json
+             */
+            readonly $schema?: string;
+            items: components["schemas"]["DeviceItem"][] | null;
+        };
+        EnrolmentResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/EnrolmentResponse.json
+             */
+            readonly $schema?: string;
+            /** @description Shown once. */
+            recovery_codes: string[] | null;
+            session: components["schemas"]["SessionResponse"];
+        };
         ErrorDetail: {
             /** @description Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
             location?: string;
@@ -57,6 +393,11 @@ export interface components {
              * @example https://example.com/schemas/ErrorModel.json
              */
             readonly $schema?: string;
+            /**
+             * @description Stable, language-neutral problem code; UIs translate it.
+             * @example validation_failed
+             */
+            code: string;
             /**
              * @description A human-readable explanation specific to this occurrence of the problem.
              * @example Property foo is required but is missing.
@@ -99,6 +440,125 @@ export interface components {
             /** @example ok */
             status: string;
         };
+        MfaVerifyRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/MfaVerifyRequest.json
+             */
+            readonly $schema?: string;
+            code?: string;
+            recovery_code?: string;
+        };
+        ReauthWithCode: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/ReauthWithCode.json
+             */
+            readonly $schema?: string;
+            code: string;
+            /** Format: password */
+            password: string;
+        };
+        ReauthWithCodeOrRecovery: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/ReauthWithCodeOrRecovery.json
+             */
+            readonly $schema?: string;
+            code?: string;
+            /** Format: password */
+            password: string;
+            recovery_code?: string;
+        };
+        RecoveryCodes: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/RecoveryCodes.json
+             */
+            readonly $schema?: string;
+            recovery_codes: string[] | null;
+        };
+        RefreshRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/RefreshRequest.json
+             */
+            readonly $schema?: string;
+            /** Format: uuid */
+            device_id: string;
+            /** @description Mobile only. Omit for web (the cookie is used). */
+            refresh_token?: string;
+        };
+        SessionResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SessionResponse.json
+             */
+            readonly $schema?: string;
+            access_token: string;
+            /** Format: date-time */
+            access_token_expires_at: string;
+            /** Format: date-time */
+            idle_expires_at: string;
+            /** @description Only for client_type mobile (drt_...). Web sessions get an HttpOnly cookie instead. */
+            refresh_token?: string;
+            /**
+             * Format: date-time
+             * @description Absolute expiry.
+             */
+            session_expires_at: string;
+            /** Format: uuid */
+            session_id: string;
+            /** @enum {string} */
+            token_type: "Bearer";
+            user: components["schemas"]["SessionUser"];
+        };
+        SessionUser: {
+            email: string;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @enum {string} */
+            role: "admin" | "client";
+        };
+        SignInRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SignInRequest.json
+             */
+            readonly $schema?: string;
+            /**
+             * @description mobile: the refresh token is in the body. web: only in an HttpOnly cookie.
+             * @enum {string}
+             */
+            client_type: "mobile" | "web";
+            device: components["schemas"]["DeviceInfoRequest"];
+            /** @description Email, or an Indian mobile number in any accepted form. */
+            identifier: string;
+            /** Format: password */
+            password: string;
+        };
+        SignInResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SignInResponse.json
+             */
+            readonly $schema?: string;
+            /** @description Present when next_step is mfa_required or mfa_enrolment_required. */
+            challenge?: components["schemas"]["ChallengeResponse"];
+            /** @enum {string} */
+            next_step: "signed_in" | "mfa_required" | "mfa_enrolment_required";
+            /** @description Present when next_step is signed_in. */
+            session?: components["schemas"]["SessionResponse"];
+        };
         Status: {
             /**
              * Format: uri
@@ -123,6 +583,27 @@ export interface components {
             time: string;
             /** @description Build version */
             version: string;
+        };
+        TotpCodeRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/TotpCodeRequest.json
+             */
+            readonly $schema?: string;
+            code: string;
+        };
+        TotpSecret: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/TotpSecret.json
+             */
+            readonly $schema?: string;
+            /** @description otpauth://totp/Swastik:<email>?secret=...&issuer=Swastik&algorithm=SHA1&digits=6&period=30 */
+            otpauth_uri: string;
+            /** @description Base32, shown once. */
+            secret: string;
         };
     };
     responses: never;
@@ -179,6 +660,527 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Status"];
                 };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "auth-admin-user-devices-list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceList"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "auth-admin-user-device-revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "auth-admin-user-sessions-end-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "auth-devices-list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceList"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "auth-device-revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "auth-authenticator-replace-start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReauthWithCodeOrRecovery"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TotpSecret"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "auth-authenticator-replace-confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TotpCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "auth-mfa-enrolment-start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TotpSecret"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "auth-mfa-enrolment-confirm": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for web requests: must equal an allowed admin panel origin. */
+                Origin?: string;
+                /** @description Required for web requests: must be 1. */
+                "X-Swastik-CSRF"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TotpCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrolmentResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "auth-recovery-codes-regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReauthWithCode"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryCodes"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "auth-mfa-verify": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for web requests: must equal an allowed admin panel origin. */
+                Origin?: string;
+                /** @description Required for web requests: must be 1. */
+                "X-Swastik-CSRF"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "auth-password-change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "auth-refresh": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for web requests: must equal an allowed admin panel origin. */
+                Origin?: string;
+                /** @description Required for web requests: must be 1. */
+                "X-Swastik-CSRF"?: string;
+            };
+            path?: never;
+            cookie?: {
+                /** @description The refresh token of a web session. */
+                "__Secure-swastik_rt"?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefreshRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "auth-sign-in": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for web requests: must equal an allowed admin panel origin. */
+                Origin?: string;
+                /** @description Required for web requests: must be 1. */
+                "X-Swastik-CSRF"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignInRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignInResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "auth-sign-out": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "auth-sign-out-everywhere": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Error */
             default: {

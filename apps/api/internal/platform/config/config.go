@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"time"
 )
@@ -18,6 +19,21 @@ type Config struct {
 	DatabaseURL       string
 	ShutdownTimeout   time.Duration
 	Tick              Tick
+	Auth              AuthConfig
+}
+
+// LogValue implements slog.LogValuer so logging a Config never reveals the database password,
+// the tick dev token or any key material.
+func (c Config) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("env", c.Env),
+		slog.String("sentry_environment", c.SentryEnvironment),
+		slog.String("http_addr", c.HTTPAddr),
+		slog.String("database_url", "[redacted]"),
+		slog.Duration("shutdown_timeout", c.ShutdownTimeout),
+		slog.Any("tick", c.Tick),
+		slog.Any("auth", c.Auth),
+	)
 }
 
 // Tick configures authentication of the scheduler tick endpoint (feature 002, FR-003).
@@ -31,6 +47,16 @@ type Tick struct {
 	ServiceAccount string
 	// DevToken is the bearer token accepted when Auth is "dev"; empty rejects every tick.
 	DevToken string
+}
+
+// LogValue keeps the dev token out of logs.
+func (t Tick) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("auth", t.Auth),
+		slog.String("audience", t.Audience),
+		slog.String("service_account", t.ServiceAccount),
+		slog.Bool("dev_token_set", t.DevToken != ""),
+	)
 }
 
 // Load reads configuration from the environment and validates it.
@@ -57,22 +83,30 @@ func Load() (Config, error) {
 	if port := os.Getenv("PORT"); port != "" && os.Getenv("HTTP_ADDR") == "" {
 		cfg.HTTPAddr = ":" + port
 	}
-	if err := cfg.validate(); err != nil {
+	if err := validateDB(cfg.DatabaseURL, cfg.Env); err != nil {
 		return Config{}, fmt.Errorf("config: %w", err)
 	}
+	if err := cfg.validateTick(); err != nil {
+		return Config{}, fmt.Errorf("config: %w", err)
+	}
+	auth, err := loadAuth(cfg.Env)
+	if err != nil {
+		return Config{}, fmt.Errorf("config: %w", err)
+	}
+	cfg.Auth = auth
 	return cfg, nil
 }
 
-func (c Config) validate() error {
-	if c.DatabaseURL == "" {
+func validateDB(databaseURL, env string) error {
+	if databaseURL == "" {
 		return errors.New("DATABASE_URL is required")
 	}
-	switch c.Env {
+	switch env {
 	case "local", "ci", "staging", "production":
+		return nil
 	default:
-		return fmt.Errorf("APP_ENV %q is not one of local, ci, staging, production", c.Env)
+		return fmt.Errorf("APP_ENV %q is not one of local, ci, staging, production", env)
 	}
-	return c.validateTick()
 }
 
 // validateTick refuses the test-only dev authenticator outside local and ci. The error names the
