@@ -46,7 +46,7 @@ Existing records (Resend on `mail.`) are not managed by tofu.
 |---|---|---|---|
 | `staging` | branch `stage` only | `GCP_PROJECT_ID`, `GCP_WIF_PROVIDER`, `GCP_DEPLOY_SA`, `CLOUD_RUN_SERVICE`, `API_BASE_URL`, `ADMIN_PAGES_PROJECT`, `CLIENT_PAGES_PROJECT`, `CLOUDFLARE_ACCOUNT_ID` | `MIGRATE_DATABASE_URL` (Supabase `postgres` login, session pooler), `CLOUDFLARE_PAGES_TOKEN` |
 | `production` | owner reviewer; `main` + tags `v*` | same names, production values | same names, production values |
-| `infra` | owner reviewer; `stage`, `main` | `GCP_PROJECT_ID`, `GCP_WIF_PROVIDER`, `GCP_TOFU_SA`, `CLOUDFLARE_ACCOUNT_ID`, `ACCESS_ALLOWED_EMAILS`, `SENTRY_DSN` | `CLOUDFLARE_TOFU_TOKEN` |
+| `infra` | owner reviewer; `stage`, `main` | `GCP_PROJECT_ID`, `GCP_WIF_PROVIDER`, `GCP_TOFU_SA`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_ZONE_ID`, `ACCESS_ALLOWED_EMAILS` (comma separated), `SENTRY_DSN` | `CLOUDFLARE_TOFU_TOKEN` |
 | `backups` | branch `stage` only (scheduled runs) | — | `BACKUP_DATABASE_URL` (login `swastik_backup`, production), `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT` |
 
 Removed from GitHub variables (now in tofu): `APP_ENV`, `TICK_AUDIENCE`, `TICK_SERVICE_ACCOUNT`.

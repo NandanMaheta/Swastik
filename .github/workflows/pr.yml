@@ -16,6 +16,7 @@ jobs:
       api: ${{ steps.f.outputs.api }}
       worker: ${{ steps.f.outputs.worker }}
       js: ${{ steps.f.outputs.js }}
+      infra: ${{ steps.f.outputs.infra }}
     steps:
       - uses: actions/checkout@v5
       - id: f
@@ -24,6 +25,7 @@ jobs:
           filters: |
             api: ['apps/api/**']
             worker: ['apps/worker/**']
+            infra: ['infra/**', 'scripts/**', '.github/workflows/**', '.opentofu-version']
             js: ['apps/admin/**', 'apps/client/**', 'packages/**', 'package.json', 'pnpm-lock.yaml']
 
   api:
@@ -82,6 +84,33 @@ jobs:
       - run: pnpm turbo run typecheck test build
       - name: Client web (PWA) export
         run: pnpm --filter @swastik/client build:web
+
+  infra:
+    needs: changes
+    if: needs.changes.outputs.infra == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: shellcheck
+        run: shellcheck infra/bootstrap/*.sh infra/backup/*.sh scripts/*.sh
+      - name: actionlint
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.7.7
+          ./actionlint -color
+      - name: Worker proxy tests
+        run: node --test infra/cloudflare/api-proxy/worker.test.js
+      - name: Bootstrap dry-run tests
+        run: bash infra/bootstrap/test.sh
+      - name: Workflow contract
+        run: bash scripts/check-deploy-workflow.sh --pages --infra --nightly
+      - name: Restore drill self test (FR-013)
+        run: bash infra/backup/drill_test.sh
+      - name: yamllint workflows
+        run: |
+          pip install --quiet yamllint
+          yamllint -d relaxed .github/workflows
+      - name: Tofu static checks run in infra.yml
+        run: echo "tofu fmt, validate and test run in infra.yml on pull_request"
 
   traceability:
     runs-on: ubuntu-latest
