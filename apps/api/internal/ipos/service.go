@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
 
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/clock"
@@ -51,6 +50,3 @@ func NewService(d Deps) *Service {
 func (s *Service) inTx(ctx context.Context, fn func(ctx context.Context) error) error {
 	return s.d.Tx.InTx(ctx, fn)
 }
-
-// Register adds the HTTP operations (admin + client).
-func Register(api huma.API, s *Service) { panic(errNotImplemented) }
