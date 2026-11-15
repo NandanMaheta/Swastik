@@ -54,6 +54,8 @@ Existing records (Resend on `mail.`) are not managed by tofu.
 | `infra` | owner reviewer; `stage`, `main` | `GCP_PROJECT_ID`, `GCP_WIF_PROVIDER`, `GCP_TOFU_SA`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_ZONE_ID`, `ACCESS_ALLOWED_EMAILS` (comma separated), `SENTRY_DSN` | `CLOUDFLARE_TOFU_TOKEN` |
 | `backups` | branch `stage` only (scheduled runs) | `BACKUP_AGE_RECIPIENT` (public age key; the dump is encrypted to it before upload, the private key stays with the owner) | `BACKUP_DATABASE_URL` (login `swastik_backup`, production), `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT` |
 
+`GCP_PROJECT_ID` must ALSO exist as a repository-level variable: job-level `if: vars.GCP_PROJECT_ID != ''` in deploy.yml and nightly.yml cannot see environment-scoped variables, so the jobs skip until it is set. The infra plan and apply jobs both run in the `infra` environment (the WIF trust is bound to it), so each needs the owner's approval.
+
 Removed from GitHub variables (now in tofu): `APP_ENV`, `TICK_AUDIENCE`, `TICK_SERVICE_ACCOUNT`.
 
 ## Cloudflare tokens (owner creates, least privilege)
