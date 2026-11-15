@@ -9,7 +9,7 @@
       "owner": "backend-dev",
       "title": "Compile skeleton: empty tofu roots/modules, pinned providers, .opentofu-version, Worker stub, empty roles.sql, observe stubs (errNotImplemented), check-script stubs; record domain-mapping, Supabase PG major and provider resource-name findings",
       "slice": "S1",
-      "done_command": "cd infra/tofu && tofu fmt -check -recursive && for e in staging production; do tofu -chdir=infra/tofu/envs/$e init -backend=false -input=false && tofu -chdir=infra/tofu/envs/$e validate; done && cd apps/api && go build ./... && go vet ./internal/platform/observe/...",
+      "done_command": "tofu fmt -check -recursive infra/tofu && for e in staging production; do tofu -chdir=infra/tofu/envs/$e init -backend=false -input=false && tofu -chdir=infra/tofu/envs/$e validate; done && (cd apps/api && go build ./... && go vet ./internal/platform/observe/...)",
       "status": "done",
       "depends_on": [],
       "rules": [
@@ -22,7 +22,7 @@
       "owner": "test-engineer",
       "title": "Tests first: Worker node tests (forwarding, host rewrite, 404 on /internal/*, XFF overwrite, cookies) and bootstrap/secrets --dry-run test (expected gcloud commands, no value printed)",
       "slice": "S2t",
-      "done_command": "node --test infra/cloudflare/api-proxy/ ; bash infra/bootstrap/test.sh",
+      "done_command": "node --test infra/cloudflare/api-proxy/worker.test.js && bash infra/bootstrap/test.sh",
       "status": "todo",
       "depends_on": [
         "T001"
@@ -33,13 +33,18 @@
         "FR-008"
       ],
       "expect": "red",
-      "owner_step": false
+      "owner_step": false,
+      "protected_tests": [
+        "infra/cloudflare/api-proxy/worker.test.js",
+        "infra/bootstrap/test.sh"
+      ],
+      "tests_written": true
     },
     "T003": {
       "owner": "test-engineer",
       "title": "Tests first (tofu A): shared root (AR keep 10, R2 30-day lifecycle, APIs), SAs/WIF condition/resource-level IAM, Cloud Run (min 0, max<=2, 512Mi, request billing, secret_key_ref only, image ignored), Scheduler (cron, Asia/Kolkata, OIDC audience, retry 0)",
       "slice": "S3t",
-      "done_command": "tofu -chdir=infra/tofu/shared init -backend=false -input=false && tofu -chdir=infra/tofu/shared test -test-directory=../tests/shared && tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env",
+      "done_command": "tofu -chdir=infra/tofu/shared init -backend=false -input=false && tofu -chdir=infra/tofu/shared test -test-directory=../tests/shared && tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=../../tests/env/iam.tftest.hcl -filter=../../tests/env/cloudrun.tftest.hcl -filter=../../tests/env/scheduler.tftest.hcl && bash infra/tofu/tests/lifecycle_test.sh",
       "status": "todo",
       "depends_on": [
         "T001"
@@ -59,7 +64,7 @@
       "owner": "test-engineer",
       "title": "Tests first (tofu B): DNS records, Worker route per env, four Pages projects + domains, Access app covering custom + pages.dev hosts, staging names absent from production root",
       "slice": "S8t",
-      "done_command": "tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=dns.tftest.hcl -filter=pages.tftest.hcl -filter=access.tftest.hcl",
+      "done_command": "tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=../../tests/env/dns.tftest.hcl -filter=../../tests/env/pages.tftest.hcl -filter=../../tests/env/access.tftest.hcl && tofu -chdir=infra/tofu/envs/staging init -backend=false -input=false >/dev/null && tofu -chdir=infra/tofu/envs/staging test -test-directory=../../tests/roots -filter=../../tests/roots/staging.tftest.hcl && tofu -chdir=infra/tofu/envs/production init -backend=false -input=false >/dev/null && tofu -chdir=infra/tofu/envs/production test -test-directory=../../tests/roots -filter=../../tests/roots/production.tftest.hcl",
       "status": "todo",
       "depends_on": [
         "T001"
@@ -77,7 +82,7 @@
       "owner": "test-engineer",
       "title": "Tests first: roles_test.go (swastik_app CRUD, no CREATE/TRUNCATE, audit_log mutation blocked, anon none, idempotent, every table covered), observe tests (empty DSN no-op, ERROR forwarded, INFO not, no secret fields), check-deploy-workflow.sh assertions, drill.sh --local test",
       "slice": "S10t",
-      "done_command": "cd apps/api && go test -race ./internal/platform/db/... ./internal/platform/observe/... ; bash scripts/check-deploy-workflow.sh",
+      "done_command": "(cd apps/api && go test -race ./internal/platform/db/... ./internal/platform/observe/...) && bash scripts/check-deploy-workflow.sh && bash infra/backup/drill_test.sh",
       "status": "todo",
       "depends_on": [
         "T001"
@@ -129,7 +134,7 @@
       "owner": "backend-dev",
       "title": "Env module: deployer/runtime/tick SAs, WIF bindings pinned to repo + environment, secret-level IAM",
       "slice": "S4",
-      "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=iam.tftest.hcl",
+      "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=../../tests/env/iam.tftest.hcl",
       "status": "todo",
       "depends_on": [
         "T003",
@@ -146,7 +151,7 @@
       "owner": "backend-dev",
       "title": "Env module: Cloud Run service (config owned by tofu, image/traffic ignored), env vars and secret refs, auth_keys_enabled switch",
       "slice": "S5",
-      "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=cloudrun.tftest.hcl && for e in staging production; do tofu -chdir=infra/tofu/envs/$e init -backend=false -input=false && tofu -chdir=infra/tofu/envs/$e validate; done",
+      "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=../../tests/env/cloudrun.tftest.hcl && bash infra/tofu/tests/lifecycle_test.sh && for e in staging production; do tofu -chdir=infra/tofu/envs/$e init -backend=false -input=false && tofu -chdir=infra/tofu/envs/$e validate; done",
       "status": "todo",
       "depends_on": [
         "T008"
@@ -163,7 +168,7 @@
       "owner": "backend-dev",
       "title": "Env module: Cloud Scheduler tick job, OIDC audience matching TICK_AUDIENCE",
       "slice": "S6",
-      "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=scheduler.tftest.hcl",
+      "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=../../tests/env/scheduler.tftest.hcl",
       "status": "todo",
       "depends_on": [
         "T009"
@@ -178,7 +183,7 @@
       "owner": "backend-dev",
       "title": "Cloudflare Worker proxy code",
       "slice": "S7",
-      "done_command": "node --test infra/cloudflare/api-proxy/",
+      "done_command": "node --test infra/cloudflare/api-proxy/worker.test.js",
       "status": "todo",
       "depends_on": [
         "T002"
@@ -193,7 +198,7 @@
       "owner": "backend-dev",
       "title": "Env module: DNS records, Worker script + route, Pages projects and domains",
       "slice": "S8",
-      "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=dns.tftest.hcl -filter=pages.tftest.hcl",
+      "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=../../tests/env/dns.tftest.hcl -filter=../../tests/env/pages.tftest.hcl",
       "status": "todo",
       "depends_on": [
         "T004",
@@ -211,7 +216,7 @@
       "owner": "backend-dev",
       "title": "Env module: Cloudflare Access app, allow policy, one-time PIN",
       "slice": "S9",
-      "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=access.tftest.hcl && for e in staging production; do tofu -chdir=infra/tofu/envs/$e init -backend=false -input=false && tofu -chdir=infra/tofu/envs/$e validate; done",
+      "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=../../tests/env/access.tftest.hcl && for e in staging production; do tofu -chdir=infra/tofu/envs/$e init -backend=false -input=false && tofu -chdir=infra/tofu/envs/$e validate; done && tofu -chdir=infra/tofu/envs/staging init -backend=false -input=false >/dev/null && tofu -chdir=infra/tofu/envs/staging test -test-directory=../../tests/roots -filter=../../tests/roots/staging.tftest.hcl && tofu -chdir=infra/tofu/envs/production init -backend=false -input=false >/dev/null && tofu -chdir=infra/tofu/envs/production test -test-directory=../../tests/roots -filter=../../tests/roots/production.tftest.hcl",
       "status": "todo",
       "depends_on": [
         "T012"
@@ -226,7 +231,7 @@
       "owner": "backend-dev",
       "title": "roles.sql: swastik_app, swastik_backup, anon/authenticated revoke, default privileges (idempotent, no passwords)",
       "slice": "S10",
-      "done_command": "cd apps/api && go test -race ./internal/platform/db/... -run Roles",
+      "done_command": "(cd apps/api && go test -race ./internal/platform/db/... -run Roles)",
       "status": "todo",
       "depends_on": [
         "T005"
@@ -259,7 +264,7 @@
       "owner": "backend-dev",
       "title": "Pages _headers/_redirects for admin and client; web build with API base URL and Pages upload steps",
       "slice": "S12",
-      "done_command": "/root/go/bin/actionlint .github/workflows/*.yml && bash scripts/check-deploy-workflow.sh && grep -q 'X-Frame-Options' apps/admin/public/_headers apps/client/public/_headers",
+      "done_command": "/root/go/bin/actionlint .github/workflows/*.yml && bash scripts/check-deploy-workflow.sh --pages",
       "status": "todo",
       "depends_on": [
         "T015"
@@ -274,7 +279,7 @@
       "owner": "backend-dev",
       "title": "Sentry observe package (observe.Init, slog handler; empty DSN off); sentry-go only in platform/observe, depguard allowance, wired in cmd",
       "slice": "S13",
-      "done_command": "cd apps/api && go test -race ./internal/platform/observe/... ./internal/health/... && go mod tidy -diff",
+      "done_command": "(cd apps/api && go test -race ./internal/platform/observe/... ./internal/health/... && go mod tidy -diff)",
       "status": "todo",
       "depends_on": [
         "T005"
@@ -289,7 +294,7 @@
       "owner": "backend-dev",
       "title": "infra.yml (PR checks, dispatch plan/apply in infra environment) and pr.yml infra/shell/yaml/gitleaks jobs",
       "slice": "S14",
-      "done_command": "/root/go/bin/actionlint .github/workflows/*.yml && bash scripts/check-deploy-workflow.sh",
+      "done_command": "/root/go/bin/actionlint .github/workflows/*.yml && bash scripts/check-deploy-workflow.sh --infra",
       "status": "todo",
       "depends_on": [
         "T015"
@@ -305,7 +310,7 @@
       "owner": "backend-dev",
       "title": "nightly.yml backup + restore drill (backups environment) and infra/backup/drill.sh",
       "slice": "S15",
-      "done_command": "shellcheck infra/backup/drill.sh && bash infra/backup/drill_test.sh && /root/go/bin/actionlint .github/workflows/nightly.yml",
+      "done_command": "shellcheck infra/backup/drill.sh && bash infra/backup/drill_test.sh && /root/go/bin/actionlint .github/workflows/nightly.yml && bash scripts/check-deploy-workflow.sh --nightly",
       "status": "todo",
       "depends_on": [
         "T005"
@@ -320,7 +325,7 @@
       "owner": "backend-dev",
       "title": "Gate and docs: quickstart to runbook, ADR 0009 final, handover, modules.md status, go mod tidy clean, full suite + lint, GS-01..04, BR traceability",
       "slice": "S16",
-      "done_command": "cd apps/api && go mod tidy -diff && go test -race ./... && cd /home/user/divya-027 && make lint-go && bash scripts/check-br-traceability.sh && tofu fmt -check -recursive infra/tofu && /root/go/bin/actionlint && bash scripts/check-deploy-workflow.sh",
+      "done_command": "(cd apps/api && go mod tidy -diff && go test -race ./...) && make lint-go && bash scripts/check-br-traceability.sh && tofu fmt -check -recursive infra/tofu && /root/go/bin/actionlint && bash scripts/check-deploy-workflow.sh --pages --infra --nightly",
       "status": "todo",
       "depends_on": [
         "T006",
