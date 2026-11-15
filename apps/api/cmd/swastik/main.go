@@ -21,6 +21,7 @@ import (
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/config"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/db"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/httpx"
+	"github.com/NandanMaheta/swastik/apps/api/internal/platform/observe"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/tickauth"
 	"github.com/NandanMaheta/swastik/apps/api/internal/scheduler"
 	"github.com/NandanMaheta/swastik/apps/api/migrations"
@@ -56,6 +57,13 @@ func run(log *slog.Logger, args []string) error {
 	if err != nil {
 		return err
 	}
+	// Error reporting is off unless SENTRY_DSN is set (staging and production set it via OpenTofu).
+	flush, err := observe.Init(os.Getenv("SENTRY_DSN"), cfg.Env, httpx.Version)
+	if err != nil {
+		log.Warn("error reporting disabled", slog.Any("err", err))
+	}
+	defer flush()
+	log = slog.New(observe.NewHandler(log.Handler()))
 	pool, err := db.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err

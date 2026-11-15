@@ -49,6 +49,11 @@ linters:
           deny:
             - pkg: "github.com/coreos/go-oidc/v3"
               desc: OIDC verification lives in platform/tickauth
+        sentry-only-in-observe:
+          files: ["$all", "!**/internal/platform/observe/**"]
+          deny:
+            - pkg: "github.com/getsentry/sentry-go"
+              desc: the Sentry SDK is confined to platform/observe
         no-legacy-libs:
           deny:
             - pkg: "github.com/pkg/errors"
