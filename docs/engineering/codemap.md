@@ -110,6 +110,13 @@ type QuietHours struct{ ... }
 type WallClock struct{ ... }
 ```
 
+### `internal/platform/observe`
+
+```go
+func Init(dsn, environment, version string) (func(), error)
+func NewHandler(next slog.Handler) slog.Handler
+```
+
 ### `internal/platform/retry`
 
 ```go

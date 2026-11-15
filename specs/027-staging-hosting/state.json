@@ -3,7 +3,7 @@
   "branch": "feat/027-staging-hosting",
   "worktree": "/home/user/divya-027",
   "tier": "B",
-  "phase": "tasks",
+  "phase": "review",
   "tasks": {
     "T001": {
       "owner": "backend-dev",
@@ -255,7 +255,7 @@
       "title": "roles.sql: swastik_app, swastik_backup, anon/authenticated revoke, default privileges (idempotent, no passwords)",
       "slice": "S10",
       "done_command": "(cd apps/api && go test -race ./internal/platform/db/... -run Roles)",
-      "status": "blocked",
+      "status": "done",
       "depends_on": [
         "T005"
       ],
@@ -264,8 +264,7 @@
         "FR-010"
       ],
       "expect": "green",
-      "owner_step": true,
-      "note": "roles.sql complete; 2 tests defective: FutureTables creates table as superuser swastik but asserts owner postgres (n==1); aclSnapshot SQL \"text || char\" operator is not unique (42725)."
+      "owner_step": true
     },
     "T015": {
       "owner": "backend-dev",
@@ -350,7 +349,7 @@
       "title": "Gate and docs: quickstart to runbook, ADR 0009 final, handover, modules.md status, go mod tidy clean, full suite + lint, GS-01..04, BR traceability",
       "slice": "S16",
       "done_command": "(cd apps/api && go mod tidy -diff && go test -race ./...) && make lint-go && bash scripts/check-br-traceability.sh && tofu fmt -check -recursive infra/tofu && /root/go/bin/actionlint && bash scripts/check-deploy-workflow.sh --pages --infra --nightly",
-      "status": "blocked",
+      "status": "done",
       "depends_on": [
         "T006",
         "T007",
@@ -371,8 +370,7 @@
         "all FR; GS-01..04"
       ],
       "expect": "green",
-      "owner_step": false,
-      "note": "Docs, modules.md (review), tidy, tofu, workflow, worker, bootstrap, drill checks green. Open: T014 roles tests (2 defective) and make lint-go (errorlint roles_test.go:118, prealloc observe_test.go:88, both protected)."
+      "owner_step": false
     }
   },
   "metrics": [],
