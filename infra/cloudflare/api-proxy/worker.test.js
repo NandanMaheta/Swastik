@@ -132,3 +132,41 @@ test("FR-008 forwards the Authorization header untouched", async () => {
   });
   assert.equal(calls[0].req.headers.get("authorization"), "Bearer t0k");
 });
+
+const callEnv = (env, url, init) => worker.fetch(new Request(url, init), env);
+
+test("FR-008 sets X-Swastik-Client-IP from CF-Connecting-IP and X-Swastik-Proxy-Key from env", async () => {
+  await callEnv({ ...ENV, PROXY_KEY: "k3y" }, "https://api-staging.swastikapp.co.in/v1/me", {
+    headers: { "cf-connecting-ip": "203.0.113.9" },
+  });
+  assert.equal(calls[0].req.headers.get("x-swastik-client-ip"), "203.0.113.9");
+  assert.equal(calls[0].req.headers.get("x-swastik-proxy-key"), "k3y");
+});
+
+test("FR-008 strips incoming X-Swastik-* copies in any case", async () => {
+  const h = new Headers();
+  h.set("X-SWASTIK-CLIENT-IP", "6.6.6.6");
+  h.set("x-Swastik-Proxy-Key", "evil");
+  await callEnv({ ...ENV, PROXY_KEY: "k3y" }, "https://api-staging.swastikapp.co.in/v1/me", {
+    headers: { ...Object.fromEntries(h), "cf-connecting-ip": "203.0.113.9" },
+  });
+  assert.equal(calls[0].req.headers.get("x-swastik-client-ip"), "203.0.113.9");
+  assert.equal(calls[0].req.headers.get("x-swastik-proxy-key"), "k3y");
+});
+
+test("FR-008 a spoofed client-ip header does not survive without CF-Connecting-IP", async () => {
+  await callEnv({ ...ENV, PROXY_KEY: "k3y" }, "https://api-staging.swastikapp.co.in/v1/me", {
+    headers: { "X-Swastik-Client-IP": "6.6.6.6" },
+  });
+  assert.notEqual(calls[0]?.req.headers.get("x-swastik-client-ip"), "6.6.6.6");
+});
+
+for (const env of [{ UPSTREAM }, { UPSTREAM, PROXY_KEY: "" }]) {
+  test(`FR-008 fails closed with 500 and no forward when PROXY_KEY is ${JSON.stringify(env.PROXY_KEY)}`, async () => {
+    const res = await callEnv(env, "https://api-staging.swastikapp.co.in/v1/me", {
+      headers: { "x-swastik-proxy-key": "evil", "cf-connecting-ip": "203.0.113.9" },
+    });
+    assert.equal(res.status, 500);
+    assert.equal(calls.length, 0);
+  });
+}

@@ -34,5 +34,12 @@ grep -rq --include='*.tf' 'onetimepin' "$root/modules/env" || { echo "FAIL: no o
 if grep -n 'os.Getenv("SENTRY_ENVIRONMENT")' "$repo/apps/api/cmd/swastik/main.go" >/dev/null 2>&1; then
   echo "FAIL: main.go reads SENTRY_ENVIRONMENT directly; read it through internal/platform/config" >&2; fail=1
 fi
+# Secret VALUES never enter tofu state; the Worker's PROXY_KEY is pushed outside tofu by secrets.sh.
+if grep -rEn --include='*.tf' --include='*.tftest.hcl' 'google_secret_manager_secret_version' "$root" >/dev/null 2>&1; then
+  echo "FAIL: google_secret_manager_secret_version(_access) reads secret values into state; forbidden" >&2; fail=1
+fi
+if grep -rEn --include='*.tf' 'PROXY_KEY' "$root" >/dev/null 2>&1; then
+  echo "FAIL: PROXY_KEY must not be managed by tofu (set via secrets.sh / wrangler secret put)" >&2; fail=1
+fi
 [ "$fail" -eq 0 ] && echo "lifecycle checks passed"
 exit "$fail"

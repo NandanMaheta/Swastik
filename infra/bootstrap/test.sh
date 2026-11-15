@@ -53,6 +53,12 @@ absent bootstrap "$out" "allUsers"
 absent bootstrap "$out" "roles/resourcemanager.projectIamAdmin"
 absent bootstrap "$out" "workloadIdentityPoolAdmin"
 absent bootstrap "$out" "roles/secretmanager.admin"
+# review fix 4: custom metadata-only role for tofu on secrets (no versions.access, no admin)
+rolecmd=$(grep -E 'iam roles create' <<<"$out" | grep -F 'secretmanager.secrets.get')
+[ -n "$rolecmd" ] || { echo "FAIL: bootstrap must create a custom role with secretmanager.secrets.get" >&2; fail=1; }
+for perm in secretmanager.secrets.getIamPolicy secretmanager.secrets.setIamPolicy; do check "bootstrap secret role" "$rolecmd" "$perm"; done
+absent bootstrap "$out" "secretmanager.versions.access"
+absent bootstrap "$out" "secretmanager.secretAccessor"
 if grep -E 'projects add-iam-policy-binding' <<<"$out" | grep -q 'roles/iam.serviceAccountUser'; then
   echo "FAIL: bootstrap: roles/iam.serviceAccountUser must not be granted project-wide" >&2; fail=1
 fi
@@ -82,6 +88,9 @@ for env in staging production; do
   check "secrets $env" "$out" "--replication-policy=user-managed"
   check "secrets $env" "$out" "--locations=asia-south1"
   check "secrets $env" "$out" "openssl rand"
+  absent "secrets $env" "$out" "roles/secretmanager.admin"
+  absent "secrets $env" "$out" "secretmanager.versions.access"
+  check "secrets $env" "$out" "projects/swastik-4fcc9/roles/"
   absent "secrets $env" "$out" "S3CRET"
   absent "secrets $env" "$out" "postgresql://"
   absent "secrets $env" "$out" "--data-file=/"
@@ -100,14 +109,25 @@ echo "$*" >>"$FAKE_OUT/calls.log"
 case "$1 $2 $3" in
   "secrets describe "*) grep -qxF "$3" "$FAKE_EXISTING" ;;
   "secrets create "*) exit 0 ;;
+  "secrets versions access") n="${*#*--secret=}"; n="${n%% *}"; cat "$FAKE_OUT/cur.$n" ;;
   "secrets versions add") cat >"$FAKE_OUT/$4.val" ;;
   *) exit 0 ;;
 esac
 FAKE
 chmod +x "$fake/gcloud"
+# Fake wrangler (the script must call "$WRANGLER_CMD secret put PROXY_KEY ..."); records args, saves stdin.
+cat >"$fake/wrangler" <<'FAKE'
+#!/usr/bin/env bash
+echo "$*" >>"$FAKE_OUT/wrangler.log"
+cat >"$FAKE_OUT/wrangler.stdin"
+FAKE
+chmod +x "$fake/wrangler"
 run_secrets() { # existing-list, then script args; fresh output dir each call
   export FAKE_OUT; FAKE_OUT=$(mktemp -d); export FAKE_EXISTING="$FAKE_OUT/existing"
   printf '%s' "$1" >"$FAKE_EXISTING"; shift
+  [ -n "${CUR_JWT:-}" ] && printf '%s' "$CUR_JWT" >"$FAKE_OUT/cur.jwt-signing-keys-staging"
+  [ -n "${CUR_PII:-}" ] && printf '%s' "$CUR_PII" >"$FAKE_OUT/cur.pii-encryption-keys-staging"
+  export WRANGLER_CMD="$fake/wrangler"
   sout=$(printf 'postgresql://swastik_app.ref:S3CRET-pw@host:5432/postgres\n' | PATH="$fake" bash ./secrets.sh "$@" 2>&1); srcode=$?
 }
 b64_32() { # value must be std base64 (with padding) of exactly 32 bytes
@@ -133,17 +153,46 @@ b64_32 "$blind" || { echo "FAIL: BLIND_INDEX_KEY must be bare std base64 of 32 b
 for v in "$jwt" "$pii" "$blind"; do [ -n "${v#*:}" ] && absent "secrets values" "$sout" "${v#*:}"; done
 absent "secrets values" "$sout" "S3CRET"
 
-run_secrets "$(printf 'database-url-staging\njwt-signing-keys-staging\npii-encryption-keys-staging\nblind-index-key-staging\n')" staging --with-auth
-[ "$srcode" -eq 0 ] || { echo "FAIL: idempotent re-run exit $srcode: $sout" >&2; fail=1; }
-grep -qE 'secrets create' "$FAKE_OUT/calls.log" && { echo "FAIL: existing secrets must not be created again" >&2; fail=1; }
-grep -qE 'versions add' "$FAKE_OUT/calls.log" && { echo "FAIL: existing secrets must not get a new version without --rotate" >&2; fail=1; }
-
-run_secrets "$(printf 'database-url-staging\njwt-signing-keys-staging\npii-encryption-keys-staging\nblind-index-key-staging\n')" staging --with-auth --rotate
+ALL5=$(printf 'database-url-staging\njwt-signing-keys-staging\npii-encryption-keys-staging\nblind-index-key-staging\nproxy-shared-secrets-staging\n')
+OLDJ=$(openssl rand -base64 32); OLDP=$(openssl rand -base64 32)
+CUR_JWT="k1:$OLDJ" CUR_PII="1:$OLDP" run_secrets "$ALL5" staging --with-auth --rotate
 [ "$srcode" -eq 0 ] || { echo "FAIL: --rotate exit $srcode: $sout" >&2; fail=1; }
 grep -qE 'secrets create' "$FAKE_OUT/calls.log" && { echo "FAIL: --rotate must add versions, not create" >&2; fail=1; }
-for s_ in jwt-signing-keys pii-encryption-keys blind-index-key; do
+for s_ in jwt-signing-keys pii-encryption-keys; do
   grep -q "versions add $s_-staging" "$FAKE_OUT/calls.log" || { echo "FAIL: --rotate must add a version to $s_-staging" >&2; fail=1; }
 done
+# BLIND_INDEX_KEY cannot be rotated without reindexing: --rotate never touches it.
+grep -q "versions add blind-index-key-staging" "$FAKE_OUT/calls.log" && { echo "FAIL: --rotate must NOT rotate blind-index-key (needs reindex; separate explicit flag)" >&2; fail=1; }
+# Append, never replace: ring is "<old ring>,<new id>:<new b64>".
+jwt=$(cat "$FAKE_OUT/jwt-signing-keys-staging.val" 2>/dev/null)
+pii=$(cat "$FAKE_OUT/pii-encryption-keys-staging.val" 2>/dev/null)
+[[ "$jwt" == "k1:$OLDJ,k2:"* ]] && b64_32 "${jwt#*,k2:}" || { echo "FAIL: JWT rotate must write k1:<old>,k2:<new b64 32 bytes>" >&2; fail=1; }
+[[ "$pii" == "1:$OLDP,2:"* ]] && b64_32 "${pii#*,2:}" || { echo "FAIL: PII rotate must write 1:<old>,2:<new b64 32 bytes>" >&2; fail=1; }
+absent "rotate output" "$sout" "$OLDJ"
+absent "rotate output" "$sout" "$OLDP"
+
+# Explicit ids are honoured and a ring that already has the new id is refused (nothing written).
+CUR_JWT="k1:$OLDJ,k2:$OLDJ" CUR_PII="1:$OLDP" run_secrets "$ALL5" staging --with-auth --rotate
+[ "$srcode" -ne 0 ] || { echo "FAIL: --rotate must refuse when new JWT key id k2 already exists" >&2; fail=1; }
+grep -q "versions add jwt-signing-keys-staging" "$FAKE_OUT/calls.log" && { echo "FAIL: refused rotate must not add a jwt version" >&2; fail=1; }
+CUR_JWT="k1:$OLDJ" CUR_PII="1:$OLDP,2:$OLDP" run_secrets "$ALL5" staging --with-auth --rotate
+[ "$srcode" -ne 0 ] || { echo "FAIL: --rotate must refuse when new PII key id 2 already exists" >&2; fail=1; }
+grep -q "versions add pii-encryption-keys-staging" "$FAKE_OUT/calls.log" && { echo "FAIL: refused rotate must not add a pii version" >&2; fail=1; }
+ROTATE_JWT_KID=k3 CUR_JWT="k1:$OLDJ,k2:$OLDJ" CUR_PII="1:$OLDP" run_secrets "$ALL5" staging --with-auth --rotate
+[ "$srcode" -eq 0 ] && [[ "$(cat "$FAKE_OUT/jwt-signing-keys-staging.val" 2>/dev/null)" == "k1:$OLDJ,k2:$OLDJ,k3:"* ]] || { echo "FAIL: ROTATE_JWT_KID=k3 must append k3 to the existing ring" >&2; fail=1; }
+
+# ---- proxy key reaches the Cloudflare Worker via the script, never printed (review fix) ---------
+run_secrets "" staging --with-auth
+proxy=$(cat "$FAKE_OUT/proxy-shared-secrets-staging.val" 2>/dev/null)
+b64_32 "$proxy" || { echo "FAIL: proxy-shared-secrets must hold a bare std base64 32-byte value" >&2; fail=1; }
+grep -qE '^secret put PROXY_KEY( |$)' "$FAKE_OUT/wrangler.log" 2>/dev/null || { echo "FAIL: script must run \$WRANGLER_CMD secret put PROXY_KEY ..." >&2; fail=1; }
+grep -q 'swastik-api-proxy-staging' "$FAKE_OUT/wrangler.log" 2>/dev/null || { echo "FAIL: wrangler must target worker swastik-api-proxy-staging" >&2; fail=1; }
+[ "$(cat "$FAKE_OUT/wrangler.stdin" 2>/dev/null)" = "$proxy" ] || { echo "FAIL: Worker PROXY_KEY must equal the stored proxy secret (piped on stdin)" >&2; fail=1; }
+[ -n "$proxy" ] && { absent "proxy key output" "$sout" "$proxy"; absent "proxy key args" "$(cat "$FAKE_OUT/wrangler.log" 2>/dev/null)" "$proxy"; absent "proxy key gcloud args" "$(cat "$FAKE_OUT/calls.log")" "$proxy"; }
+# Least privilege: tofu never gets secretmanager.admin nor any value-reading role.
+absent "secrets.sh grants" "$(cat "$FAKE_OUT/calls.log")" "secretmanager.admin"
+absent "secrets.sh grants" "$(cat "$FAKE_OUT/calls.log")" "secretmanager.secretAccessor"
+grep -q "add-iam-policy-binding database-url-staging.*projects/swastik-4fcc9/roles/" "$FAKE_OUT/calls.log" || { echo "FAIL: tofu SA must be granted the custom role projects/swastik-4fcc9/roles/<id> per secret" >&2; fail=1; }
 rm -rf "$fake"
 
 # ---- argument errors ------------------------------------------------------------------------

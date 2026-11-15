@@ -397,7 +397,8 @@
       "apps/api/internal/platform/observe/observe_scrub_internal_test.go",
       "apps/api/internal/platform/config/config_test.go",
       "apps/api/internal/platform/db/roles_test.go",
-      "apps/api/internal/platform/db/roles_review_test.go"
+      "apps/api/internal/platform/db/roles_review_test.go",
+      "infra/cloudflare/api-proxy/worker.test.js"
     ],
     "done_command": "bash infra/bootstrap/test.sh && bash infra/tofu/tests/lifecycle_test.sh && tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env && bash scripts/check-deploy-workflow.sh --pages --infra --nightly && bash infra/backup/drill_test.sh && (cd apps/api && go test ./internal/platform/observe/... ./internal/platform/config/... ./internal/platform/db/... -run 'Observe|Load|Roles')"
   }

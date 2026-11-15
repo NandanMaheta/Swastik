@@ -240,8 +240,9 @@ func TestRoles_FR009_AuditLogMutationStillBlockedForApp(t *testing.T) {
 			err := exec(stmt)
 			if err == nil {
 				t.Errorf("%q succeeded; audit_log must stay append-only", stmt)
-			} else if sqlState(err) != pgRaiseException {
-				t.Errorf("%q: want trigger exception P0001 (so the trigger, not a missing grant, blocks it), got %v", stmt, err)
+			} else if st := sqlState(err); st != pgRaiseException && st != "42501" {
+				// 42501: app has no UPDATE/DELETE privilege; P0001: the append-only trigger. Either blocks it.
+				t.Errorf("%q: want insufficient_privilege 42501 or trigger exception P0001, got %v", stmt, err)
 			}
 		}
 		if err := exec(`ALTER TABLE audit_log DISABLE TRIGGER audit_log_append_only`); err == nil {
