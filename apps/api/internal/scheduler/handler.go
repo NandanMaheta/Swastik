@@ -9,6 +9,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
+	"github.com/NandanMaheta/swastik/apps/api/internal/platform/authz"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/httpx"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/retry"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/tickauth"
@@ -38,6 +39,9 @@ func RegisterTick(api huma.API, t Ticker, auth tickauth.Authenticator) {
 		Summary:     "Run due scheduled jobs, then relay available outbox messages",
 		Tags:        []string{"Internal"},
 		Hidden:      true,
+		// The tick authenticates itself (tickauth) in its own middleware; authz lets it through.
+		Security:    authz.SelfAuthenticated(),
+		Metadata:    map[string]any{"authz": "self"},
 		Middlewares: huma.Middlewares{extendWriteDeadline(auth)},
 	}, func(ctx context.Context, in *tickInput) (*tickOutput, error) {
 		// The middleware authenticated the caller once, before extending the write deadline.

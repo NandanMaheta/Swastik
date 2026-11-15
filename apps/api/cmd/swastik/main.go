@@ -18,6 +18,7 @@ import (
 	"github.com/NandanMaheta/swastik/apps/api/internal/auth"
 	"github.com/NandanMaheta/swastik/apps/api/internal/health"
 	"github.com/NandanMaheta/swastik/apps/api/internal/outbox"
+	"github.com/NandanMaheta/swastik/apps/api/internal/platform/authz"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/clock"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/config"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/db"
@@ -97,14 +98,37 @@ type deps struct {
 	TrustedProxyHops int
 }
 
-// buildAPI registers every module's operations. New modules are wired here.
+// buildAPI registers every module's operations. New modules are wired here, in this order:
+// error problems, the authz middleware (before any registration: Huma captures middlewares at
+// registration time), the modules, then the startup guard that fails fast on an operation with no
+// declared Security.
 func buildAPI(d deps) huma.API {
+	httpx.InstallErrors()
 	_, api := httpx.NewAPI()
+	authz.Install(api, verifiersOf(d.Auth))
 	health.Register(api, health.NewService(d.Pool, httpx.Version, time.Now))
 	if d.Tick != nil {
 		scheduler.RegisterTick(api, d.Tick, d.TickAuth)
 	}
+	auth.Register(api, d.Auth, auth.HandlerConfig{WebOrigins: d.WebOrigins, TrustedProxyHops: d.TrustedProxyHops})
+	authz.AssertDeclared(api)
 	return api
+}
+
+// verifiersOf returns the verifier of each security scheme. Without a Service (the openapi command
+// and the static walk) every credential is refused.
+func verifiersOf(svc *auth.Service) map[string]authz.Verifier {
+	if svc == nil {
+		return map[string]authz.Verifier{"bearer": refuseAll{}, "mfaChallenge": refuseAll{}}
+	}
+	return map[string]authz.Verifier{"bearer": svc.BearerVerifier(), "mfaChallenge": svc.ChallengeVerifier()}
+}
+
+// refuseAll is the verifier of an API built without a Service: no token is ever valid.
+type refuseAll struct{}
+
+func (refuseAll) Verify(context.Context, string) (authz.Principal, error) {
+	return authz.Principal{}, errors.New("no authentication service is configured")
 }
 
 // selectTickAuth picks the tick authenticator from the configuration. Production verifies a
@@ -126,6 +150,19 @@ func selectTickAuth(ctx context.Context, log *slog.Logger, cfg config.Config) ti
 		tickauth.WithHTTPClient(&http.Client{Timeout: 10 * time.Second}))
 }
 
+// newAuthService builds the auth Service from the validated configuration.
+func newAuthService(cfg config.Config, txr db.TxRunner, log *slog.Logger) (*auth.Service, error) {
+	keys, err := auth.NewSigningKeys(cfg.Auth.JWTActiveKID, cfg.Auth.JWTSeeds)
+	if err != nil {
+		return nil, fmt.Errorf("auth: signing keys: %w", err)
+	}
+	return auth.New(auth.Deps{
+		Store: auth.NewPGStore(txr), Tx: txr, Now: clock.Real, Keys: keys,
+		Hasher: auth.NewHasher(auth.HasherOptions{MaxConcurrency: cfg.Auth.Argon2MaxConcurrency}),
+		Blind:  cfg.Auth.BlindIndex, Keyring: cfg.Auth.PII, Log: log,
+	})
+}
+
 func serve(ctx context.Context, log *slog.Logger, cfg config.Config, pool *pgxpool.Pool) error {
 	txr := db.NewTxRunner(pool)
 	ob := outbox.New(txr, clock.Real, log, outbox.DefaultOptions())
@@ -136,8 +173,18 @@ func serve(ctx context.Context, log *slog.Logger, cfg config.Config, pool *pgxpo
 	sched := scheduler.New(txr, ob, clock.Real, log, host, scheduler.DefaultOptions())
 	sched.Register(scheduler.RetentionKind, sched.RetentionHandler(), scheduler.RetentionOptions())
 
-	api := buildAPI(deps{Pool: pool, Tick: sched, TickAuth: selectTickAuth(ctx, log, cfg)}) //nolint:contextcheck // the tick middleware takes its context from each request
-	srv := httpx.NewServer(cfg.HTTPAddr, api.Adapter(), log)
+	authSvc, err := newAuthService(cfg, txr, log)
+	if err != nil {
+		return err
+	}
+	registerAuthJobs(sched, authSvc)
+
+	api := buildAPI(deps{ //nolint:contextcheck // the tick middleware takes its context from each request
+		Pool: pool, Tick: sched, TickAuth: selectTickAuth(ctx, log, cfg),
+		Auth: authSvc, WebOrigins: cfg.Auth.WebOrigins, TrustedProxyHops: cfg.Auth.TrustedProxyHops,
+	})
+	// CORS wraps the whole API: an exact-origin allowlist with credentials, never a wildcard.
+	srv := httpx.NewServer(cfg.HTTPAddr, httpx.CORS(cfg.Auth.WebOrigins)(api.Adapter()), log)
 	errCh := make(chan error, 1)
 	go func() {
 		log.Info("listening", slog.String("addr", cfg.HTTPAddr), slog.String("env", cfg.Env))

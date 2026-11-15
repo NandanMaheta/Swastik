@@ -69,7 +69,7 @@ Legend: `[P]` parallel-safe (flat `internal/auth` package: develop as separate w
   - Depends on: S17 | Rules: none (mechanism) | Expected: green | Replaces: T085-T088
   - Done command: `cd apps/api && go test -race -run 'TestCSRF|TestHandler' ./internal/auth/`
   - Note: Security review: handlers.
-- [ ] S19 **backend-dev**: Wire buildAPI and serve (InstallErrors, authz.Install, auth.Register, AssertDeclared, scheduler registration, CORS, rate limit), regenerate OpenAPI and TS client, packages/domain auth-error-codes.ts, deploy.yml secrets (OWNER GATE, no values), modules.md status.
+- [x] S19 **backend-dev**: Wire buildAPI and serve (InstallErrors, authz.Install, auth.Register, AssertDeclared, scheduler registration, CORS, rate limit), regenerate OpenAPI and TS client, packages/domain auth-error-codes.ts, deploy.yml secrets (OWNER GATE, no values), modules.md status.
   - Depends on: S18 | Rules: none (mechanism) | Expected: green | Replaces: T092,T093,T097,T099,T100,T101
   - Done command: `cd apps/api && go test -race -run 'TestContractWalk|TestOpenAPI|TestWiring' ./cmd/swastik/ && cd ../.. && pnpm --filter @swastik/domain test && pnpm --filter @swastik/api-client generate && python3 -c "import yaml;yaml.safe_load(open('.github/workflows/deploy.yml'))"`
   - Note: Owner gate: deploy.yml (security-sensitive).

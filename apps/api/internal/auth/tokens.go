@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
@@ -131,6 +132,17 @@ func (t *Tokens) Verify(raw string) (AccessClaims, error) {
 func (t *Tokens) verify(raw string) (AccessClaims, error) {
 	if raw == "" || len(raw) > maxTokenLength {
 		return AccessClaims{}, errors.New("size")
+	}
+	// 0. Canonical form: three base64url segments with no stray trailing bits, so a token cannot
+	// be altered into another string that decodes to the same signature (malleability).
+	parts := strings.Split(raw, ".")
+	if len(parts) != 3 {
+		return AccessClaims{}, errors.New("segments")
+	}
+	for _, part := range parts {
+		if _, err := base64.RawURLEncoding.Strict().DecodeString(part); err != nil {
+			return AccessClaims{}, errors.New("encoding")
+		}
 	}
 	// 1. Algorithm allowlist: none, HS* and RS* are rejected before any key is touched.
 	tok, err := jwt.ParseSigned(raw, []jose.SignatureAlgorithm{jose.EdDSA})
