@@ -268,7 +268,7 @@
       "owner": "backend-dev",
       "title": "refresh.go (P-03 algorithm), sessions.go, verifiers.go, password_change.go.",
       "done_command": "cd apps/api && go test -race -run 'TestRefresh|TestConcurrency|TestSessions|TestVerifier|TestAuthz|TestPasswordChange' ./internal/auth/",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "S13"
       ],

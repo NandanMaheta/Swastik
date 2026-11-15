@@ -48,10 +48,10 @@ Legend: `[P]` parallel-safe (flat `internal/auth` package: develop as separate w
 - [x] S12 **backend-dev**: accounts.go, accounts_more.go, throttle.go, signin.go (one Argon2 verify, short tx), lockout application in sign-in.
   - Depends on: S11 | Rules: BR-CLI-04, BR-CLI-05 | Expected: green | Replaces: T052,T053,T055,T058,T067
   - Done command: `cd apps/api && go test -race -run 'TestAccounts|TestThrottle|TestSignIn|TestLockoutService' ./internal/auth/`
-- [ ] S13 **test-engineer**: Service tests B: refresh rotation/reuse/device mismatch/expiry boundaries, concurrency (N goroutines one R1; parallel sign-in), sessions, bearer and challenge verifiers, password change.
+- [x] S13 **test-engineer**: Service tests B: refresh rotation/reuse/device mismatch/expiry boundaries, concurrency (N goroutines one R1; parallel sign-in), sessions, bearer and challenge verifiers, password change.
   - Depends on: S12 | Rules: BR-CLI-04 | Expected: red | Replaces: T059,T060,T062,T064,T068
   - Done command: `cd apps/api && go test -race -run 'TestRefresh|TestConcurrency|TestSessions|TestVerifier|TestAuthz|TestPasswordChange' ./internal/auth/`
-- [ ] S14 **backend-dev**: refresh.go (P-03 algorithm), sessions.go, verifiers.go, password_change.go.
+- [x] S14 **backend-dev**: refresh.go (P-03 algorithm), sessions.go, verifiers.go, password_change.go.
   - Depends on: S13 | Rules: BR-CLI-04 | Expected: green | Replaces: T061,T063,T065,T069
   - Done command: `cd apps/api && go test -race -run 'TestRefresh|TestConcurrency|TestSessions|TestVerifier|TestAuthz|TestPasswordChange' ./internal/auth/`
   - Note: Security review: crypto, authz.
