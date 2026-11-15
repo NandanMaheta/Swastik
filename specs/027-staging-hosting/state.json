@@ -255,7 +255,7 @@
       "title": "roles.sql: swastik_app, swastik_backup, anon/authenticated revoke, default privileges (idempotent, no passwords)",
       "slice": "S10",
       "done_command": "(cd apps/api && go test -race ./internal/platform/db/... -run Roles)",
-      "status": "todo",
+      "status": "blocked",
       "depends_on": [
         "T005"
       ],
@@ -264,14 +264,15 @@
         "FR-010"
       ],
       "expect": "green",
-      "owner_step": true
+      "owner_step": true,
+      "note": "roles.sql complete; 2 tests defective: FutureTables creates table as superuser swastik but asserts owner postgres (n==1); aclSnapshot SQL \"text || char\" operator is not unique (42725)."
     },
     "T015": {
       "owner": "backend-dev",
       "title": "deploy.yml rewrite: build, migrate, --no-traffic tagged revision, tagged /readyz, traffic switch, public /healthz, concurrency per env, no worker deploy, no --set-env-vars",
       "slice": "S11",
       "done_command": "/root/go/bin/actionlint .github/workflows/*.yml && bash scripts/check-deploy-workflow.sh",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "T005"
       ],
@@ -288,7 +289,7 @@
       "title": "Pages _headers/_redirects for admin and client; web build with API base URL and Pages upload steps",
       "slice": "S12",
       "done_command": "/root/go/bin/actionlint .github/workflows/*.yml && bash scripts/check-deploy-workflow.sh --pages",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "T015"
       ],
@@ -318,7 +319,7 @@
       "title": "infra.yml (PR checks, dispatch plan/apply in infra environment) and pr.yml infra/shell/yaml/gitleaks jobs",
       "slice": "S14",
       "done_command": "/root/go/bin/actionlint .github/workflows/*.yml && bash scripts/check-deploy-workflow.sh --infra",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "T015"
       ],
@@ -334,7 +335,7 @@
       "title": "nightly.yml backup + restore drill (backups environment) and infra/backup/drill.sh",
       "slice": "S15",
       "done_command": "shellcheck infra/backup/drill.sh && bash infra/backup/drill_test.sh && /root/go/bin/actionlint .github/workflows/nightly.yml && bash scripts/check-deploy-workflow.sh --nightly",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "T005"
       ],
