@@ -3,7 +3,16 @@
   "branch": "feat/027-staging-hosting",
   "worktree": "/home/user/divya-027",
   "tier": "B",
-  "phase": "spec",
+  "phase": "tasks",
   "tasks": {},
-  "metrics": []
+  "metrics": [],
+  "owner_approval": {
+    "date": "2026-11-15",
+    "spec_plan": "approved",
+    "decisions": {
+      "sentry_go": "approved (new runtime dependency)",
+      "gcp_project": "single project swastik-4fcc9 for staging and production",
+      "secret_manager_cost": "approx INR 10/month for 8 secrets approved"
+    }
+  }
 }
