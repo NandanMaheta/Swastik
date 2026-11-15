@@ -1,6 +1,6 @@
 # ADR 0008: In-transaction module signals (listener interfaces)
 
-- Status: Proposed with the 008 plan (2026-11-13). The owner accepts it together with the plan.
+- Status: Accepted (owner, 2026-11-15). Proposed with the 008 plan on 2026-11-13.
 - Applies to: every module that must react, in the same transaction, to a change owned by another module. First used by 008 (IPO `DatesChanged`, `EligibilityChanged`, `StatusChanged`). Consumed by 010/011, 012, 013, 018 and 019.
 
 ## Context

@@ -531,7 +531,8 @@
       "owner": "backend-dev",
       "title": "Final gate: accept ADR 0008 (Status line to Accepted, only after the owner's written acceptance of the plan is in the PR thread), set 008 status in docs/product/modules.md (owner decides the Depends-on cell, plan R-7), run the full suite with output pasted as evidence (GS-01..04, lint, sqlc, coverage >= 90 percent on internal/ipos, BR traceability).",
       "done_command": "cd apps/api && go test -race ./... && cd ../.. && make lint-go && cd apps/api && sqlc generate && sqlc vet && git diff --exit-code internal/platform/db/dbgen && go test -race -coverprofile=$(mktemp) ./internal/ipos/... && cd ../.. && bash scripts/check-lint-boundaries.sh && bash scripts/check-br-traceability.sh && grep -q 'Status: Accepted' docs/adr/0008-in-transaction-module-signals.md && pnpm turbo run typecheck test build",
-      "status": "done", "note": "ADR 0008 acceptance pending owner written acceptance in PR thread",
+      "status": "done",
+      "note": "ADR 0008 acceptance pending owner written acceptance in PR thread",
       "depends_on": [
         "S19",
         "002-merged",
@@ -552,5 +553,8 @@
       "protected_tests": []
     }
   },
-  "metrics": []
+  "metrics": [],
+  "owner_decisions": {
+    "2026-11-15_adr_0008": "ADR 0008 (in-transaction module signals) accepted by the owner"
+  }
 }
