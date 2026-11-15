@@ -2,7 +2,7 @@
   "feature": "003-auth-core",
   "branch": "feat/003-auth-core",
   "worktree": "/home/user/divya-003",
-  "phase": "review",
+  "phase": "review-fix",
   "tier": "A",
   "tasks": {
     "S01": {
@@ -396,5 +396,9 @@
       ]
     }
   },
-  "metrics": []
+  "metrics": [],
+  "owner_decisions": {
+    "2026-11-15_jwt_leeway": "5s leeway on iat/nbf only; exp strict",
+    "2026-11-15_proxy_key": "Cloudflare Worker sends a shared proxy key; API trusts X-Swastik-Client-IP only with a matching key (PROXY_SHARED_SECRETS); TRUSTED_PROXY_HOPS=1; extra Secret Manager cost approved"
+  }
 }
