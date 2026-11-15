@@ -7,12 +7,13 @@ Names: [contracts/deployment.md](../../specs/027-staging-hosting/contracts/deplo
 1. **Google Cloud Shell** (signed in as the owner, project `swastik-4fcc9`):
    - `bash infra/bootstrap/bootstrap.sh --dry-run` to read what it will do, then without `--dry-run`. It turns on the needed APIs, creates the state bucket, the `github` identity pool, and the `tofu` SA.
    - Billing → Budgets: create a budget of ₹100 with alerts at 1 % (₹1), 50 % and 100 %.
-2. **Secrets**: `bash infra/bootstrap/secrets.sh staging`. It asks for the Supabase session-pooler URL for `swastik_app` (hidden input) and creates the auth keys itself. Nothing is printed.
+2. **Secrets**: `bash infra/bootstrap/secrets.sh staging`. It asks for the Supabase session-pooler URL for `swastik_app` (hidden input) and creates only that secret. Once feature 003 is deployed, run it again with `--with-auth` (creates the JWT, PII, blind-index and proxy keys itself; existing secrets are left alone, `--rotate` adds a new version). Nothing is printed.
 3. **Supabase** (staging project, then production; run `roles.sql` after every migration batch that adds tables so grants stay complete):
    - Settings → API → switch off the Data API.
    - Cloud Shell: `psql "<postgres session-pooler URL>" -f infra/supabase/roles.sql`, then `\password swastik_app` (and `\password swastik_backup` on production).
-4. **Cloudflare**: note the zone id and set it as the `CLOUDFLARE_ZONE_ID` variable of the `infra` environment; add a payment method (needed to turn on R2; stays on the free tier); create the two tokens and the R2 key from the contract.
-5. **GitHub** → Settings → Environments: create `infra` and `backups`, set protections, add the variables and secrets from the contract.
+4. **Cloudflare**: turn on Zero Trust (free plan) and enable the One-time PIN login method, otherwise the admin Access application cannot apply; note the zone id and set it as the `CLOUDFLARE_ZONE_ID` variable of the `infra` environment; add a payment method (needed to turn on R2; stays on the free tier); create the two tokens and the R2 key from the contract.
+5. **Backups**: run `age-keygen -o backup.key` on your own machine, keep `backup.key` safe offline, and set the printed public key (`age1...`) as the `BACKUP_AGE_RECIPIENT` variable of the `backups` environment. Restoring needs `age -d -i backup.key`.
+5b. **GitHub** → Settings → Environments: create `infra` and `backups`, set protections, add the variables and secrets from the contract.
 6. Actions → **Infra** → run for `shared`, then `staging`; approve. Then merge any PR into `stage` and open `https://api-staging.swastikapp.co.in/healthz`, `https://admin-staging.swastikapp.co.in` (asks for your email PIN) and `https://app-staging.swastikapp.co.in`.
 7. UptimeRobot (free): one HTTPS monitor per environment on `/healthz`, every 5 minutes, alerts to your email.
 

@@ -1,6 +1,8 @@
 // Reverse proxy from the public API host to the Cloud Run origin (env.UPSTREAM).
 // - /internal and everything below it is never forwarded (404), in any encoded spelling (FR-008).
 // - X-Forwarded-For is replaced by CF-Connecting-IP so clients cannot spoof their address.
+// - X-Swastik-Client-IP (from CF-Connecting-IP) and X-Swastik-Proxy-Key (Worker secret PROXY_KEY) are set
+//   here and any incoming copies are removed.
 // - Redirects and Set-Cookie headers pass through untouched.
 
 function isInternal(pathname) {
@@ -39,6 +41,11 @@ export default {
     headers.delete("x-forwarded-for");
     const clientIp = request.headers.get("cf-connecting-ip");
     if (clientIp) headers.set("x-forwarded-for", clientIp);
+    // Never trust client-supplied copies; the API only believes values set here.
+    headers.delete("x-swastik-client-ip");
+    headers.delete("x-swastik-proxy-key");
+    if (clientIp) headers.set("x-swastik-client-ip", clientIp);
+    if (env.PROXY_KEY) headers.set("x-swastik-proxy-key", env.PROXY_KEY);
     headers.delete("host");
 
     const hasBody = request.method !== "GET" && request.method !== "HEAD";

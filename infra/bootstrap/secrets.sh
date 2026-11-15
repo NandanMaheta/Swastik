@@ -3,7 +3,8 @@
 # Usage: secrets.sh <staging|production> [--with-auth] [--rotate] [--dry-run]
 #   (default)    only the database URL secret (feature 003 not deployed yet)
 #   --with-auth  also the 003 auth keys: JWT_SIGNING_KEYS (k1:<b64>), PII_ENCRYPTION_KEYS (1:<b64>),
-#                BLIND_INDEX_KEY (bare <b64>); three distinct random 32-byte values
+#                BLIND_INDEX_KEY (bare <b64>); three distinct random 32-byte values; plus
+#                proxy-shared-secrets (PROXY_SHARED_SECRETS, also the Worker's PROXY_KEY)
 #   --rotate     add a NEW VERSION to secrets that already exist (new key id from
 #                ROTATE_JWT_KID, default k2, and ROTATE_PII_KEY_ID, default 2)
 # Existing secrets are never recreated and get no new version unless --rotate is given.
@@ -47,7 +48,7 @@ value() { # kind: db | jwt | pii | blind (never printed)
     db) printf '%s' "$DB_URL" ;;
     jwt) printf '%s:%s' "${ROTATE_JWT_KID:-k1}" "$(openssl rand -base64 32)" ;;
     pii) printf '%s:%s' "${ROTATE_PII_KEY_ID:-1}" "$(openssl rand -base64 32)" ;;
-    blind) openssl rand -base64 32 ;;
+    blind | proxy) openssl rand -base64 32 ;;
   esac
 }
 add_version() { # name, kind
@@ -85,5 +86,6 @@ if [ "$auth" -eq 1 ]; then
   ensure "jwt-signing-keys-$env" jwt
   ensure "pii-encryption-keys-$env" pii
   ensure "blind-index-key-$env" blind
+  ensure "proxy-shared-secrets-$env" proxy
 fi
 unset DB_URL

@@ -23,3 +23,27 @@ resource "google_secret_manager_secret_iam_member" "runtime" {
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.runtime.email}"
 }
+
+# Shared secret between the Cloudflare Worker and the API (X-Swastik-Proxy-Key). Created by
+# secrets.sh --with-auth. The Worker binding needs the value, so it is read here; the state bucket is
+# private and versioned (the one exception to "state holds no secret values").
+data "google_secret_manager_secret" "proxy" {
+  count     = var.auth_keys_enabled ? 1 : 0
+  project   = var.project_id
+  secret_id = "proxy-shared-secrets-${var.env}"
+}
+
+resource "google_secret_manager_secret_iam_member" "runtime_proxy" {
+  count     = var.auth_keys_enabled ? 1 : 0
+  project   = var.project_id
+  secret_id = data.google_secret_manager_secret.proxy[0].secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.runtime.email}"
+}
+
+data "google_secret_manager_secret_version_access" "proxy" {
+  count   = var.auth_keys_enabled ? 1 : 0
+  project = var.project_id
+  secret  = data.google_secret_manager_secret.proxy[0].secret_id
+  version = "latest"
+}

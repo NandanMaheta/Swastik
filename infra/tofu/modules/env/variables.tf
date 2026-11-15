@@ -57,9 +57,9 @@ variable "image" {
 }
 
 variable "trusted_proxy_hops" {
-  description = "TRUSTED_PROXY_HOPS (measured)."
+  description = "TRUSTED_PROXY_HOPS: Cloud Run sees one hop (the Cloudflare Worker)."
   type        = string
-  default     = "2"
+  default     = "1"
 }
 
 variable "jwt_active_kid" {

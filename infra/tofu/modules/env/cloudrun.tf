@@ -58,6 +58,19 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       dynamic "env" {
+        for_each = data.google_secret_manager_secret.proxy
+        content {
+          name = "PROXY_SHARED_SECRETS"
+          value_source {
+            secret_key_ref {
+              secret  = env.value.secret_id
+              version = "latest"
+            }
+          }
+        }
+      }
+
+      dynamic "env" {
         for_each = local.secret_env
         content {
           name = env.key
@@ -77,7 +90,7 @@ resource "google_cloud_run_v2_service" "api" {
     ignore_changes = [traffic, client, client_version, template[0].revision, template[0].containers[0].image]
   }
 
-  depends_on = [google_secret_manager_secret_iam_member.runtime]
+  depends_on = [google_secret_manager_secret_iam_member.runtime, google_secret_manager_secret_iam_member.runtime_proxy]
 }
 
 # Auth lives in the app (ADR 0003 Am. 1); /internal/tick is verified in-app via OIDC.

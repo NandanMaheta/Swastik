@@ -20,25 +20,56 @@ usage() {
 docker_pg() {
   local url=$1
   shift
-  DRILL_URL=$url docker run --rm --network host -e DRILL_URL -u "$(id -u):$(id -g)" "$@"
+  DRILL_URL=$url docker run --rm --network host -e DRILL_URL -e COUNT_SQL -u "$(id -u):$(id -g)" "$@"
 }
 
-# Table row counts of schema public as sorted `table<TAB>rows` lines (empty tables included).
+# Table row counts of schema public (empty tables included). Passed to the container via the environment.
+# shellcheck disable=SC2089
+COUNT_SQL="SELECT c.relname || chr(9) || (xpath('/row/c/text()', query_to_xml(format('SELECT count(*) AS c FROM public.%I', c.relname), false, true, '')))[1]::text
+  FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public' AND c.relkind IN ('r','p')"
+# shellcheck disable=SC2090
+export COUNT_SQL
+
+# Sorted `table<TAB>rows` lines from the current state of <url> (used after a restore).
 counts() {
-  docker_pg "$1" "$IMAGE" sh -c 'psql "$DRILL_URL" -v ON_ERROR_STOP=1 -q -At -F "	" -c "
-    SELECT c.relname, (xpath('"'"'/row/c/text()'"'"', query_to_xml(format('"'"'SELECT count(*) AS c FROM public.%I'"'"', c.relname), false, true, '"'"''"'"')))[1]::text
-    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE n.nspname = '"'"'public'"'"' AND c.relkind IN ('"'"'r'"'"','"'"'p'"'"')"' | LC_ALL=C sort
+  docker_pg "$1" "$IMAGE" sh -c 'psql "$DRILL_URL" -v ON_ERROR_STOP=1 -q -At -c "$COUNT_SQL" | LC_ALL=C sort'
 }
 
+# Dump and counts from ONE exported snapshot: a session exports the snapshot and stays open while pg_dump
+# (--snapshot) and the count query (SET TRANSACTION SNAPSHOT) both read exactly that state, so rows that
+# arrive during the dump can never cause a false MISMATCH on restore.
 do_dump() {
   local url=$1 out=$2 ts dump
   mkdir -p "$out"
   out=$(cd "$out" && pwd)
   ts=$(date -u +%Y%m%dT%H%M%SZ)
   dump="swastik-$ts.dump"
-  docker_pg "$url" -v "$out:/out" "$IMAGE" sh -c 'pg_dump --format=custom --schema=public --no-owner --no-privileges --file="/out/'"$dump"'" "$DRILL_URL"'
-  counts "$url" >"$out/$dump.counts"
+  docker_pg "$url" -v "$out:/out" -e DUMP="$dump" "$IMAGE" sh -c '
+    set -e
+    d=$(mktemp -d)
+    mkfifo "$d/in"
+    psql "$DRILL_URL" -v ON_ERROR_STOP=1 -q -At <"$d/in" >"$d/snap" &
+    holder=$!
+    exec 3>"$d/in"
+    echo "BEGIN ISOLATION LEVEL REPEATABLE READ; SELECT pg_export_snapshot();" >&3
+    snap=""
+    for _ in $(seq 1 100); do
+      snap=$(grep -E "^[0-9A-F]+-[0-9A-F]+-[0-9]+$" "$d/snap" | head -1 || true)
+      [ -n "$snap" ] && break
+      sleep 0.1
+    done
+    [ -n "$snap" ] || { echo "could not export a snapshot" >&2; exit 1; }
+    pg_dump --format=custom --schema=public --no-owner --no-privileges --snapshot="$snap" --file="/out/$DUMP" "$DRILL_URL" # runs inside the docker image
+    {
+      echo "BEGIN ISOLATION LEVEL REPEATABLE READ;"
+      echo "SET TRANSACTION SNAPSHOT '"'"'$snap'"'"';"
+      echo "$COUNT_SQL;"
+      echo "COMMIT;"
+    } | psql "$DRILL_URL" -v ON_ERROR_STOP=1 -q -At | awk -F"\t" "NF == 2" | LC_ALL=C sort >"/out/$DUMP.counts"
+    exec 3>&-
+    wait "$holder" || true
+  '
   echo "dump written: $dump ($(wc -l <"$out/$dump.counts") tables)"
 }
 

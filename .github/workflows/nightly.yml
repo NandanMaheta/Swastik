@@ -8,7 +8,8 @@ permissions:
 jobs:
   backup-and-restore-drill:
     # Production dump -> R2 -> restore into a throwaway container -> per-table row counts compared.
-    # An unconfigured environment fails the job loudly: a silent skip would mean no backups.
+    # Skips cleanly until hosting is configured; once configured, any missing value fails the job loudly.
+    if: vars.GCP_PROJECT_ID != ''
     runs-on: ubuntu-latest
     environment: backups
     env:
@@ -22,6 +23,15 @@ jobs:
           test -n "$BACKUP_DATABASE_URL"
           mkdir -p out
           bash infra/backup/drill.sh --dump "$BACKUP_DATABASE_URL" out
+      - name: Encrypt the dump with age
+        env:
+          BACKUP_AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+        run: |
+          test -n "$BACKUP_AGE_RECIPIENT"
+          sudo apt-get install -y --no-install-recommends age >/dev/null
+          for f in out/swastik-*.dump out/swastik-*.dump.counts; do
+            age -r "$BACKUP_AGE_RECIPIENT" -o "$f.age" "$f"
+          done
       - name: Upload to R2
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -30,7 +40,7 @@ jobs:
           R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
         run: |
           test -n "$AWS_ACCESS_KEY_ID" && test -n "$R2_ENDPOINT"
-          for f in out/swastik-*.dump out/swastik-*.dump.counts; do
+          for f in out/swastik-*.dump.age out/swastik-*.dump.counts.age; do
             aws s3 cp "$f" "s3://swastik-backups/$(basename "$f")" --endpoint-url "$R2_ENDPOINT"
           done
       - name: Restore drill

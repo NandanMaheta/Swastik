@@ -5,24 +5,28 @@ on:
     tags: ["v*"] # -> production (needs owner approval on the environment)
 permissions:
   contents: read
-  id-token: write # Workload Identity Federation: no long-lived cloud keys
 concurrency:
   group: deploy-${{ startsWith(github.event.ref, 'refs/tags/v') && 'production' || 'staging' }}
   cancel-in-progress: false
 jobs:
   deploy:
+    # Skips cleanly until the owner has configured hosting (vars come from the GitHub environment).
+    if: vars.GCP_PROJECT_ID != ''
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Workload Identity Federation: no long-lived cloud keys
     environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'production' || 'staging' }}
     env:
       REGION: asia-south1
       SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
     steps:
       - uses: actions/checkout@v5
-      - uses: google-github-actions/auth@v3
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOY_SA }}
-      - uses: google-github-actions/setup-gcloud@v3
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
       - name: Compute version and image
         run: |
           SHA7=$(echo "${GITHUB_SHA}" | cut -c1-7)
@@ -36,16 +40,20 @@ jobs:
           gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
           docker build -t "$IMAGE" --build-arg VERSION="$VERSION" apps/api
           docker push "$IMAGE"
+          # Deploy by immutable digest, never by the mutable tag.
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE")
+          case "$DIGEST" in *@sha256:*) ;; *) echo "no image digest" >&2; exit 1 ;; esac
+          echo "IMAGE_DIGEST=${DIGEST}" >> "$GITHUB_ENV"
       - name: Apply migrations
         env:
           MIGRATE_DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL }}
         run: |
           # Runs from the image just built, with the owner login (session pooler); the app login cannot do DDL.
-          docker run --rm -e DATABASE_URL="$MIGRATE_DATABASE_URL" "$IMAGE" migrate up
+          docker run --rm -e DATABASE_URL="$MIGRATE_DATABASE_URL" "$IMAGE_DIGEST" migrate up
       - name: Create a no-traffic revision
         run: |
           # Env vars, secrets and scaling are owned by OpenTofu; this only ships the image.
-          gcloud run deploy "$SERVICE" --image "$IMAGE" --region "$REGION" \
+          gcloud run deploy "$SERVICE" --image "$IMAGE_DIGEST" --region "$REGION" \
             --no-traffic "--tag=c-${SHA7}" --quiet
       - name: Check the new revision on its tagged URL
         run: |
@@ -67,7 +75,21 @@ jobs:
       - name: Public health check
         run: |
           curl -fsS --retry 5 --retry-delay 5 --retry-connrefused "${{ vars.API_BASE_URL }}/healthz"
-      - uses: pnpm/action-setup@v4
+      - name: Remove the temporary revision tag
+        run: |
+          gcloud run services update-traffic "$SERVICE" --region "$REGION" --remove-tags="c-${SHA7}"
+
+  pages:
+    # Static sites: Cloudflare token only, no GCP credentials.
+    if: vars.GCP_PROJECT_ID != ''
+    needs: deploy
+    runs-on: ubuntu-latest
+    environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'production' || 'staging' }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -81,13 +103,13 @@ jobs:
           pnpm --filter @swastik/admin build
           pnpm --filter @swastik/client build:web
       - name: Upload admin to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
           accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy apps/admin/dist --project-name=${{ vars.ADMIN_PAGES_PROJECT }} --branch=main --commit-dirty=true
       - name: Upload client web app to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
           accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
