@@ -85,7 +85,7 @@ func (r *recorder) WithGroup(string) slog.Handler { return r }
 func (r *recorder) messages() []string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	var out []string
+	out := make([]string, 0, len(r.recs))
 	for _, rec := range r.recs {
 		out = append(out, rec.Level.String()+":"+rec.Message)
 	}

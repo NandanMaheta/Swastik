@@ -9,6 +9,14 @@ mock_provider "google" {
     }
   }
 }
+override_resource {
+  target = module.env.google_service_account.deployer
+  values = {
+    name  = "projects/swastik-4fcc9/serviceAccounts/deploy-staging@swastik-4fcc9.iam.gserviceaccount.com"
+    email = "deploy-staging@swastik-4fcc9.iam.gserviceaccount.com"
+  }
+}
+
 mock_provider "cloudflare" {}
 
 variables {

@@ -13,6 +13,7 @@ package db_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -115,7 +116,8 @@ func as(ctx context.Context, t *testing.T, pool *pgxpool.Pool, role string, fn f
 }
 
 func sqlState(err error) string {
-	if pe, ok := err.(*pgconn.PgError); ok {
+	var pe *pgconn.PgError
+	if errors.As(err, &pe) {
 		return pe.Code
 	}
 	return ""
@@ -290,7 +292,7 @@ func TestRoles_FR009_SequencesAndFunctionsUsable(t *testing.T) {
 
 func TestRoles_FR009_FutureTablesAreCoveredByDefaultPrivileges(t *testing.T) {
 	ctx, pool, _ := rolesEnv(t)
-	if err := runScript(ctx, t, pool, `CREATE TABLE public.future_table (id int PRIMARY KEY, v text);`); err != nil {
+	if err := runScript(ctx, t, pool, `SET ROLE postgres; CREATE TABLE public.future_table (id int PRIMARY KEY, v text); RESET ROLE;`); err != nil {
 		t.Fatal(err)
 	}
 	for _, p := range []string{"SELECT", "INSERT", "UPDATE", "DELETE"} {
@@ -373,7 +375,7 @@ func aclSnapshot(ctx context.Context, t *testing.T, pool *pgxpool.Pool) string {
 	rows, err := pool.Query(ctx, `
 		SELECT 'rel ' || c.relname || ' ' || coalesce(c.relacl::text,'') FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public'
 		UNION ALL SELECT 'schema ' || coalesce(nspacl::text,'') FROM pg_namespace WHERE nspname='public'
-		UNION ALL SELECT 'defacl ' || coalesce(defaclacl::text,'') || defaclobjtype FROM pg_default_acl
+		UNION ALL SELECT 'defacl ' || coalesce(defaclacl::text,'') || defaclobjtype::text FROM pg_default_acl
 		UNION ALL SELECT 'role ' || rolname || rolcanlogin || rolsuper || rolcreatedb || rolcreaterole || rolbypassrls || coalesce(rolconfig::text,'') FROM pg_roles WHERE rolname LIKE 'swastik\_%'
 		UNION ALL SELECT 'member ' || r.rolname || '>' || m.rolname FROM pg_auth_members a JOIN pg_roles r ON r.oid=a.member JOIN pg_roles m ON m.oid=a.roleid WHERE r.rolname LIKE 'swastik\_%'
 		ORDER BY 1`)
