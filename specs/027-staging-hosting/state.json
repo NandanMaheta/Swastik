@@ -175,7 +175,7 @@
       "title": "Env module: Cloud Run service (config owned by tofu, image/traffic ignored), env vars and secret refs, auth_keys_enabled switch",
       "slice": "S5",
       "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=../../tests/env/cloudrun.tftest.hcl && bash infra/tofu/tests/lifecycle_test.sh && for e in staging production; do tofu -chdir=infra/tofu/envs/$e init -backend=false -input=false && tofu -chdir=infra/tofu/envs/$e validate; done",
-      "status": "blocked",
+      "status": "done",
       "depends_on": [
         "T008"
       ],
@@ -185,15 +185,14 @@
         "FR-014"
       ],
       "expect": "green",
-      "owner_step": false,
-      "note": "cloudrun.tftest.hcl run secrets_only_via_secret_key_ref_FR_003 first assertion uses != where == is needed (fails for every env var, plain and secret). Code complete otherwise."
+      "owner_step": false
     },
     "T010": {
       "owner": "backend-dev",
       "title": "Env module: Cloud Scheduler tick job, OIDC audience matching TICK_AUDIENCE",
       "slice": "S6",
       "done_command": "tofu fmt -check -recursive infra/tofu && tofu -chdir=infra/tofu/modules/env init -backend=false -input=false && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env -filter=../../tests/env/scheduler.tftest.hcl",
-      "status": "blocked",
+      "status": "done",
       "depends_on": [
         "T009"
       ],
@@ -201,8 +200,7 @@
         "FR-007"
       ],
       "expect": "green",
-      "owner_step": false,
-      "note": "scheduler.tftest.hcl: tick_target asserts oidc email == google_service_account.tick.email (mock constant x@...) while tick_job_production asserts literal tick-production@...; contradictory under the constant mock email."
+      "owner_step": false
     },
     "T011": {
       "owner": "backend-dev",
