@@ -58,7 +58,15 @@
         "FR-014"
       ],
       "expect": "red",
-      "owner_step": false
+      "owner_step": false,
+      "protected_tests": [
+        "infra/tofu/tests/shared/*.tftest.hcl",
+        "infra/tofu/tests/env/iam.tftest.hcl",
+        "infra/tofu/tests/env/cloudrun.tftest.hcl",
+        "infra/tofu/tests/env/scheduler.tftest.hcl",
+        "infra/tofu/tests/lifecycle_test.sh"
+      ],
+      "tests_written": true
     },
     "T004": {
       "owner": "test-engineer",
