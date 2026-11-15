@@ -23,7 +23,7 @@ components:
           type: string
           description: Stable, language-neutral problem code (see contracts/error-codes.md). Also encoded in `type` as urn:swastik:problem:<code>.
           examples: [auth.invalid_credentials]
-    DeviceInfo:
+    DeviceInfoRequest:
       type: object
       additionalProperties: false
       required: [id, name, platform]
@@ -39,8 +39,8 @@ components:
         identifier: { type: string, minLength: 1, maxLength: 320, description: Email, or Indian mobile in any D-17 form }
         password: { type: string, minLength: 1, maxLength: 1024, format: password }
         client_type: { type: string, enum: [mobile, web], description: "mobile: refresh token in body; web: refresh token only in HttpOnly cookie" }
-        device: { $ref: "#/components/schemas/DeviceInfo" }
-    UserSummary:
+        device: { $ref: "#/components/schemas/DeviceInfoRequest" }
+    SessionUser:
       type: object
       required: [id, role, name, email]
       properties:
@@ -48,7 +48,7 @@ components:
         role: { type: string, enum: [admin, client] }
         name: { type: string }
         email: { type: string }
-    SessionTokens:
+    SessionResponse:
       type: object
       required: [access_token, token_type, access_token_expires_at, session_id, session_expires_at, idle_expires_at, user]
       properties:
@@ -59,8 +59,8 @@ components:
         session_id: { type: string, format: uuid }
         session_expires_at: { type: string, format: date-time, description: Absolute expiry }
         idle_expires_at: { type: string, format: date-time }
-        user: { $ref: "#/components/schemas/UserSummary" }
-    Challenge:
+        user: { $ref: "#/components/schemas/SessionUser" }
+    ChallengeResponse:
       type: object
       required: [challenge_token, expires_at]
       properties:
@@ -71,8 +71,8 @@ components:
       required: [next_step]
       properties:
         next_step: { type: string, enum: [signed_in, mfa_required, mfa_enrolment_required] }
-        session: { $ref: "#/components/schemas/SessionTokens", description: "Present when next_step=signed_in" }
-        challenge: { $ref: "#/components/schemas/Challenge", description: "Present when next_step is mfa_*" }
+        session: { $ref: "#/components/schemas/SessionResponse", description: "Present when next_step=signed_in" }
+        challenge: { $ref: "#/components/schemas/ChallengeResponse", description: "Present when next_step is mfa_*" }
     MfaVerifyRequest:
       type: object
       additionalProperties: false
@@ -92,11 +92,11 @@ components:
       properties:
         secret: { type: string, description: Base32, shown once }
         otpauth_uri: { type: string, description: "otpauth://totp/Swastik:<email>?secret=…&issuer=Swastik&algorithm=SHA1&digits=6&period=30" }
-    EnrolmentResult:
+    EnrolmentResponse:
       type: object
       required: [session, recovery_codes]
       properties:
-        session: { $ref: "#/components/schemas/SessionTokens" }
+        session: { $ref: "#/components/schemas/SessionResponse" }
         recovery_codes: { type: array, minItems: 10, maxItems: 10, items: { type: string }, description: Shown once }
     RecoveryCodes:
       type: object
@@ -133,7 +133,7 @@ components:
         password: { type: string, minLength: 1, maxLength: 1024, format: password }
         code: { type: string, pattern: "^[0-9]{6}$" }
         recovery_code: { type: string, minLength: 16, maxLength: 24 }
-    Device:
+    DeviceItem:
       type: object
       required: [session_id, device_name, platform, signed_in_at, last_active_at, is_current]
       properties:
@@ -147,7 +147,7 @@ components:
       type: object
       required: [items]
       properties:
-        items: { type: array, items: { $ref: "#/components/schemas/Device" } }
+        items: { type: array, items: { $ref: "#/components/schemas/DeviceItem" } }
   parameters:
     WebOrigin: { name: Origin, in: header, required: false, schema: { type: string } }
     CsrfHeader: { name: X-Swastik-CSRF, in: header, required: false, schema: { type: string, enum: ["1"] }, description: Required when the refresh cookie is used and for client_type=web }
@@ -177,7 +177,7 @@ paths:
       parameters: [{ $ref: "#/components/parameters/WebOrigin" }, { $ref: "#/components/parameters/CsrfHeader" }]
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/MfaVerifyRequest" } } } }
       responses:
-        "200": { description: OK, headers: { Set-Cookie: { $ref: "#/components/headers/SetRefreshCookie" } }, content: { application/json: { schema: { $ref: "#/components/schemas/SessionTokens" } } } }
+        "200": { description: OK, headers: { Set-Cookie: { $ref: "#/components/headers/SetRefreshCookie" } }, content: { application/json: { schema: { $ref: "#/components/schemas/SessionResponse" } } } }
         default: { description: "401 auth.unauthenticated (challenge) | 401 auth.invalid_credentials (code, locked) | 403 auth.csrf_rejected (web) | 422 | 429" }
   /v1/auth/mfa/enrolment:
     post:
@@ -195,7 +195,7 @@ paths:
       parameters: [{ $ref: "#/components/parameters/WebOrigin" }, { $ref: "#/components/parameters/CsrfHeader" }]
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/TotpCodeRequest" } } } }
       responses:
-        "200": { description: OK, headers: { Set-Cookie: { $ref: "#/components/headers/SetRefreshCookie" } }, content: { application/json: { schema: { $ref: "#/components/schemas/EnrolmentResult" } } } }
+        "200": { description: OK, headers: { Set-Cookie: { $ref: "#/components/headers/SetRefreshCookie" } }, content: { application/json: { schema: { $ref: "#/components/schemas/EnrolmentResponse" } } } }
         default: { description: "401 auth.unauthenticated, auth.invalid_credentials | 403 auth.csrf_rejected (web) | 409 auth.mfa_no_pending_secret | 422" }
   /v1/auth/refresh:
     post:
@@ -205,7 +205,7 @@ paths:
       parameters: [{ $ref: "#/components/parameters/WebOrigin" }, { $ref: "#/components/parameters/CsrfHeader" }, { $ref: "#/components/parameters/RefreshCookie" }]
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/RefreshRequest" } } } }
       responses:
-        "200": { description: OK, headers: { Set-Cookie: { $ref: "#/components/headers/SetRefreshCookie" } }, content: { application/json: { schema: { $ref: "#/components/schemas/SessionTokens" } } } }
+        "200": { description: OK, headers: { Set-Cookie: { $ref: "#/components/headers/SetRefreshCookie" } }, content: { application/json: { schema: { $ref: "#/components/schemas/SessionResponse" } } } }
         default: { description: "401 auth.refresh_rejected | 403 auth.csrf_rejected | 422 | 429" }
   /v1/auth/sign-out:
     post:

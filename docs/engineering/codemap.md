@@ -85,6 +85,7 @@ type NewClient struct{ ... }
 type NewSession struct{ ... }
 type NewUser struct{ ... }
 type PasswordResetAfter struct{ ... }
+type PendingSecretSetAfter struct{ ... }
 type PolicyError struct{ ... }
 type PurgeCounts struct{ ... }
 type Reauth struct{ ... }
@@ -285,10 +286,11 @@ func NewSized(t *testing.T, maxConns int32) *pgxpool.Pool
 ```go
 var Version = "dev"
 func CORS(allowed []string) func(http.Handler) http.Handler
-func ClientIP(r *http.Request, hops int) string
+func ClientIP(r *http.Request, hops int, proxySecrets ...string) string
 func ExtendWriteDeadline(ctx huma.Context, d time.Duration) error
 func InstallErrors()
 func NewAPI() (*http.ServeMux, huma.API)
+func NewAPIFor(env string) (*http.ServeMux, huma.API)
 func NewServer(addr string, h http.Handler, log *slog.Logger) *http.Server
 func Problem(status int, code, detail string) error
 type ErrorModel struct{ ... }

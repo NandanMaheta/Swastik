@@ -202,7 +202,7 @@ One operation can record more than one event, and each event gets exactly one en
 | action | actor_kind | entity_id | `before` | `after` (typed struct; never secrets) |
 |---|---|---|---|---|
 | auth.sign_in.succeeded | client / admin | user | – | session_id, platform, client_type, ip, mfa_method?, replaced_session_id? |
-| auth.sign_in.failed | system | user or NULL | – | reason (`wrong_password`, `unknown_identifier`, `locked`, `not_active`, `wrong_totp`, `wrong_recovery_code`), identifier_kind, subject_ref (8-byte hex, only when entity_id is NULL), ip |
+| auth.sign_in.failed | system | user or NULL | – | reason (`wrong_password`, `wrong_current_password` (change-password re-authentication), `unknown_identifier`, `locked`, `not_active`, `wrong_totp`, `wrong_recovery_code`), identifier_kind, subject_ref (8-byte hex, only when entity_id is NULL), ip |
 | auth.lockout.started | system | user or NULL | – | locked_until, subject_ref?, ip |
 | auth.mfa.challenge_issued | system | user | – | purpose, platform, ip (extra event; records the challenge row mutation) |
 | auth.session.refreshed | client / admin | user | – | session_id, ip |
@@ -215,30 +215,29 @@ One operation can record more than one event, and each event gets exactly one en
 | auth.session.ended_by_feature | system / admin (caller decides) | user | – | session_ids[], feature (FR-054) |
 | auth.password.changed | client / admin | user | – | ended_session_ids[] |
 | auth.password.reset | system | user | – | ended_session_ids[], lock_cleared |
+| auth.mfa.pending_secret_set | admin | user | – | context (`enrol` or `replace`); never the secret, its URI or its ciphertext. Written by enrolment start and authenticator-replace start |
 | auth.mfa.enrolled | admin | user | – | session_id |
 | auth.mfa.replaced | admin | user | – | ended_session_ids[] |
 | auth.mfa.recovery_codes_regenerated | admin | user | – | batch_id, count=10 |
 | auth.mfa.recovery_code_used | admin | user | – | remaining, context (`sign_in` or `replace`) |
 | auth.user.created | system / admin (caller) | user | – | role, status, email, mobile (the user's own contact data, ADR 0007; never for unknown identifiers) |
 | auth.user.email_verified / auth.user.mobile_verified | system / admin (caller) | user | status | status |
-| auth.user.status_changed | system / admin (caller) | user | status | status, ended_session_ids[] (on disable) |
+| auth.user.status_changed | system / admin (caller) | user | status | status, ended_session_ids[] (on disable), status_before_disabled (when a verification changed the status a disabled user will be restored to) |
 | auth.user.contact_replaced | system / admin (caller) | user | {email or mobile} | {email or mobile} |
 | auth.admin.bootstrapped | system | user | – | email, org_id |
 | auth.housekeeping.purged | system | NULL (`entity='auth'`) | – | throttles, challenges, refresh_tokens (counts); written only when a count is non-zero (plan P-20) |
 
 ## Lock order (deadlock avoidance)
 
-Every transaction that takes several locks takes them in this order:
+A transaction that takes several locks takes them in this order:
 
-1. `users`: all admins ordered by id when guarding the last admin, otherwise the single user
-2. `device_sessions`
-3. `refresh_tokens`
-4. `admin_mfa`
-5. `mfa_recovery_codes`
-6. `mfa_challenges`
-7. `auth_throttles`
+1. The `users` row of the one user it acts on, or, when guarding the last admin, all admins of the org ordered by id (`LockAdmins`). Never two users in one transaction, except through `LockAdmins`.
+2. That user's own rows after it, in table order: `device_sessions`, `refresh_tokens`, `admin_mfa`, `mfa_recovery_codes`, `mfa_challenges`.
+3. `auth_throttles` last.
 
-The bootstrap advisory lock comes before everything. Failure paths lock only `auth_throttles`. The housekeeping job runs one single-table `DELETE` at a time (throttles, then challenges, then refresh tokens of long-dead families) and never waits on `users` or `device_sessions`, so it cannot form a lock cycle with a refresh.
+The rule in one line: user row (or all admins by id) first; that user's rows after it; never two users except `LockAdmins`.
+
+The bootstrap advisory lock comes before everything. Failure paths lock only `auth_throttles`. The housekeeping job runs one single-table `DELETE` at a time (throttles, then challenges, then refresh tokens of long-dead families) and never waits on `users` or `device_sessions`, so it cannot form a lock cycle with a refresh. Invalidating a user's challenges (password change and reset) is one `UPDATE` of that user's `mfa_challenges` rows under the user row lock.
 
 ## sqlc
 
