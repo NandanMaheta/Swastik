@@ -73,6 +73,7 @@ var handled = map[string]error{
 	"ipo.invalid_value":           &ValidationError{Code: "ipo.invalid_value", Issues: []FieldIssue{{Field: "name", Message: "m"}}},
 	"ipo.date_order":              &ValidationError{Code: "ipo.date_order", Issues: []FieldIssue{{Field: "open_date", Message: "m"}, {Field: "close_date", Message: "m"}}},
 	"ipo.publish_incomplete":      &ValidationError{Code: "ipo.publish_incomplete", Issues: []FieldIssue{{Field: "apply_flag", Message: "m"}, {Field: "lot_size", Message: "m"}}},
+	"ipo.idempotency_key_reused":  &ValidationError{Code: "ipo.idempotency_key_reused"},
 	"ipo.stale_version":           ErrStaleVersion,
 	"ipo.no_change":               ErrNoChange,
 	"ipo.published_not_deletable": ErrPublishedNotDeletable,
