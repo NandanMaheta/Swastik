@@ -55,14 +55,14 @@ Legend: `[P]` parallel-safe (flat `internal/auth` package: develop as separate w
   - Depends on: S13 | Rules: BR-CLI-04 | Expected: green | Replaces: T061,T063,T065,T069
   - Done command: `cd apps/api && go test -race -run 'TestRefresh|TestConcurrency|TestSessions|TestVerifier|TestAuthz|TestPasswordChange' ./internal/auth/`
   - Note: Security review: crypto, authz.
-- [ ] S15 **test-engineer**: Tests: admin MFA flow and management, TOTP/admin-removal concurrency, bootstrap service, CLI `swastik admin create`, housekeeping.
+- [x] S15 **test-engineer**: Tests: admin MFA flow and management, TOTP/admin-removal concurrency, bootstrap service, CLI `swastik admin create`, housekeeping.
   - Depends on: S14 | Rules: none (mechanism) | Expected: red | Replaces: T070-T072,T075,T077,T079
   - Done command: `cd apps/api && go test -race -run 'TestMFA|TestBootstrap|TestAdminCreate|TestHousekeep' ./internal/auth/ ./cmd/swastik/`
-- [ ] S16 **backend-dev**: mfa.go, mfa_manage.go, bootstrap.go (advisory lock, audit), cmd/swastik/admin.go, housekeeping.go.
+- [x] S16 **backend-dev**: mfa.go, mfa_manage.go, bootstrap.go (advisory lock, audit), cmd/swastik/admin.go, housekeeping.go.
   - Depends on: S15 | Rules: none (mechanism) | Expected: green | Replaces: T073,T074,T076,T078,T080
   - Done command: `cd apps/api && go test -race -run 'TestMFA|TestBootstrap|TestAdminCreate|TestHousekeep' ./internal/auth/ ./cmd/swastik/`
   - Note: Security review: TOTP, bootstrap.
-- [ ] S17 **test-engineer**: Tests: CSRF, handlers (sessions, MFA, password, admin), static and runtime contract walk, openapi/wiring tests, packages/domain auth-error-codes test.
+- [x] S17 **test-engineer**: Tests: CSRF, handlers (sessions, MFA, password, admin), static and runtime contract walk, openapi/wiring tests, packages/domain auth-error-codes test.
   - Depends on: S16 | Rules: none (mechanism) | Expected: red | Replaces: T081-T084,T089-T091,T098
   - Done command: `cd apps/api && go test -race -run 'TestCSRF|TestHandler|TestContractWalk|TestOpenAPI|TestWiring' ./internal/auth/ ./cmd/swastik/ && pnpm --filter @swastik/domain test`
 - [ ] S18 **backend-dev**: cookies.go, handler.go, handler_mfa.go, handler_admin.go (Security declared per operation, errors and rate limits).

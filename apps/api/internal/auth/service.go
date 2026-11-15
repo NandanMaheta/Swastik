@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -15,11 +14,6 @@ import (
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/db"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/istdate"
 )
-
-// Skeleton (S10): the Service shape and the methods of the Accounts, Throttle and housekeeping
-// contracts (contracts/go-capabilities.md sections 2 to 4). Methods return errNotImplemented
-// until the slice that owns them (S12 onward) fills them in.
-var errNotImplemented = errors.New("auth: not implemented")
 
 // Deps are the collaborators of Service. Time comes from Now, transactions from Tx and audit
 // entries from platform/audit; auth defines none of them (plan C-2 to C-4).
@@ -126,9 +120,3 @@ func HousekeepingNext(now time.Time) time.Time {
 
 // PurgeCounts is what one Housekeep run removed.
 type PurgeCounts struct{ Throttles, Challenges, RefreshTokens int }
-
-// Housekeep purges stale throttles, expired challenges and dead refresh families. It runs inside
-// the job transaction (db.MustTx).
-func (s *Service) Housekeep(context.Context, uuid.UUID) (PurgeCounts, error) {
-	return PurgeCounts{}, fmt.Errorf("housekeep: %w", errNotImplemented)
-}

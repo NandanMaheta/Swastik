@@ -156,6 +156,14 @@ type Store interface {
 	// DefaultOrg returns the single orgs row: ErrNoOrg when none, ErrMultipleOrgs when several.
 	DefaultOrg(ctx context.Context) (uuid.UUID, error)
 
+	// OrgExists reports whether the organisation exists.
+	OrgExists(ctx context.Context, id uuid.UUID) (bool, error)
+	// CreateOrg inserts an organisation named name at now and returns its id.
+	CreateOrg(ctx context.Context, name string, now time.Time) (uuid.UUID, error)
+	// LockBootstrap takes the transaction-scoped advisory lock that serialises the first-admin
+	// bootstrap; it requires a transaction and is released at its end.
+	LockBootstrap(ctx context.Context) error
+
 	// CreateUser inserts a user: ErrEmailTaken or ErrMobileTaken when the unique index refuses.
 	CreateUser(ctx context.Context, in NewUser) (UserRow, error)
 	// GetUser: ErrUserNotFound when absent.
@@ -254,4 +262,13 @@ type Store interface {
 	SaveThrottle(ctx context.Context, orgID uuid.UUID, scope string, subject []byte, st ThrottleState, now time.Time) error
 	// DeleteThrottle removes the row (no error when absent); requires a transaction.
 	DeleteThrottle(ctx context.Context, orgID uuid.UUID, scope string, subject []byte) error
+
+	// PurgeStaleThrottles deletes at most 1,000 throttle rows of the org that are outside the
+	// window and not locked at now, and returns how many; it requires a transaction.
+	PurgeStaleThrottles(ctx context.Context, orgID uuid.UUID, now time.Time) (int, error)
+	// PurgeExpiredChallenges deletes at most 1,000 challenges with expires_at <= now.
+	PurgeExpiredChallenges(ctx context.Context, orgID uuid.UUID, now time.Time) (int, error)
+	// PurgeDeadFamilyTokens deletes the refresh tokens of at most 1,000 sessions that ended, or
+	// passed their absolute expiry, 30 days or more before now. The sessions are kept.
+	PurgeDeadFamilyTokens(ctx context.Context, orgID uuid.UUID, now time.Time) (int, error)
 }

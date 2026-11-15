@@ -29,6 +29,13 @@ import (
 
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	if len(os.Args) > 1 && os.Args[1] == "admin" {
+		// The bootstrap command has its own exit statuses and reads only DATABASE_URL.
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		code := runAdmin(ctx, os.Args[2:], adminEnv{In: os.Stdin, Out: os.Stdout, Err: os.Stderr, Now: clock.Real, Log: log})
+		stop()
+		os.Exit(code)
+	}
 	if err := run(log, os.Args[1:]); err != nil {
 		log.Error("fatal", slog.Any("err", err))
 		os.Exit(1)
@@ -37,7 +44,7 @@ func main() {
 
 func run(log *slog.Logger, args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: swastik serve | swastik migrate up|down|status | swastik openapi")
+		return errors.New("usage: swastik serve | swastik migrate up|down|status | swastik openapi | swastik admin create")
 	}
 	if args[0] == "openapi" {
 		// Prints the OpenAPI 3.1 spec without needing a database; used to generate the TS client.

@@ -490,6 +490,22 @@ func (q *Queries) InsertChallenge(ctx context.Context, arg InsertChallengeParams
 	return i, err
 }
 
+const insertOrg = `-- name: InsertOrg :one
+INSERT INTO orgs (name, created_at) VALUES ($1, $2) RETURNING id
+`
+
+type InsertOrgParams struct {
+	Name string             `json:"name"`
+	Now  pgtype.Timestamptz `json:"now"`
+}
+
+func (q *Queries) InsertOrg(ctx context.Context, arg InsertOrgParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, insertOrg, arg.Name, arg.Now)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const insertRecoveryCodes = `-- name: InsertRecoveryCodes :execrows
 INSERT INTO mfa_recovery_codes (org_id, user_id, batch_id, code_hash, created_at)
 SELECT $1, $2, $3, h, $4 FROM unnest($5::bytea[]) AS h
@@ -812,6 +828,16 @@ func (q *Queries) LockAdminsByOrg(ctx context.Context, orgID uuid.UUID) ([]User,
 	return items, nil
 }
 
+const lockBootstrap = `-- name: LockBootstrap :exec
+SELECT pg_advisory_xact_lock($1::bigint)
+`
+
+// The bootstrap lock (plan P-13): serialises `swastik admin create` across processes until commit.
+func (q *Queries) LockBootstrap(ctx context.Context, key int64) error {
+	_, err := q.db.Exec(ctx, lockBootstrap, key)
+	return err
+}
+
 const lockRefreshTokenByID = `-- name: LockRefreshTokenByID :one
 SELECT id, org_id, session_id, token_hash, issued_at, used_at, replaced_by FROM refresh_tokens WHERE id = $1 FOR UPDATE
 `
@@ -967,6 +993,17 @@ func (q *Queries) MarkRefreshTokenUsed(ctx context.Context, arg MarkRefreshToken
 	var i MarkRefreshTokenUsedRow
 	err := row.Scan(&i.OrgID, &i.SessionID)
 	return i, err
+}
+
+const orgExists = `-- name: OrgExists :one
+SELECT EXISTS (SELECT 1 FROM orgs WHERE id = $1)
+`
+
+func (q *Queries) OrgExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, orgExists, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const purgeDeadFamilyTokens = `-- name: PurgeDeadFamilyTokens :execrows

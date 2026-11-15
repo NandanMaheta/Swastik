@@ -83,6 +83,7 @@ type Querier interface {
 	// Add: a repeated (org, topic, dedupe_key) is ignored whatever the first row's status (FR-024).
 	// Zero rows affected means duplicate.
 	InsertMessage(ctx context.Context, arg InsertMessageParams) (int64, error)
+	InsertOrg(ctx context.Context, arg InsertOrgParams) (uuid.UUID, error)
 	InsertRecoveryCodes(ctx context.Context, arg InsertRecoveryCodesParams) (int64, error)
 	// ---- refresh tokens ----
 	InsertRefreshToken(ctx context.Context, arg InsertRefreshTokenParams) (RefreshToken, error)
@@ -116,6 +117,8 @@ type Querier interface {
 	LockAdminMFA(ctx context.Context, userID uuid.UUID) (AdminMfa, error)
 	// Every admin of the org, any status, ordered by id: the last-admin guard (lock order step 1).
 	LockAdminsByOrg(ctx context.Context, orgID uuid.UUID) ([]User, error)
+	// The bootstrap lock (plan P-13): serialises `swastik admin create` across processes until commit.
+	LockBootstrap(ctx context.Context, key int64) error
 	LockRefreshTokenByID(ctx context.Context, id uuid.UUID) (RefreshToken, error)
 	LockSessionByID(ctx context.Context, id uuid.UUID) (DeviceSession, error)
 	LockThrottle(ctx context.Context, arg LockThrottleParams) (LockThrottleRow, error)
@@ -133,6 +136,7 @@ type Querier interface {
 	MarkMobileVerified(ctx context.Context, arg MarkMobileVerifiedParams) (int64, error)
 	// Rotation step 1: only an unused token can be marked used (no rows: unknown or already used).
 	MarkRefreshTokenUsed(ctx context.Context, arg MarkRefreshTokenUsedParams) (MarkRefreshTokenUsedRow, error)
+	OrgExists(ctx context.Context, id uuid.UUID) (bool, error)
 	Ping(ctx context.Context) (int32, error)
 	// The cap counts whole families (sessions), never half a family: replaced_by links tokens of
 	// one session, so deleting a family completely cannot break the self-referencing foreign key.

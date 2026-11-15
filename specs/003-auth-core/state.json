@@ -308,7 +308,7 @@
       "owner": "backend-dev",
       "title": "mfa.go, mfa_manage.go, bootstrap.go (advisory lock, audit), cmd/swastik/admin.go, housekeeping.go.",
       "done_command": "cd apps/api && go test -race -run 'TestMFA|TestBootstrap|TestAdminCreate|TestHousekeep' ./internal/auth/ ./cmd/swastik/",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "S15"
       ],

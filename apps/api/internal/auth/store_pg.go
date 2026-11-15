@@ -651,3 +651,73 @@ func (s *pgStore) DeleteThrottle(ctx context.Context, orgID uuid.UUID, scope str
 	}
 	return nil
 }
+
+// ---- bootstrap ----
+
+// bootstrapLockKey is the fixed pg_advisory_xact_lock key of `swastik admin create` (plan P-13).
+const bootstrapLockKey int64 = 0x5357_4153_5449_4b01
+
+func (s *pgStore) OrgExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	ok, err := s.q(ctx).OrgExists(ctx, id)
+	if err != nil {
+		return false, fmt.Errorf("auth: read org: %w", err)
+	}
+	return ok, nil
+}
+
+func (s *pgStore) CreateOrg(ctx context.Context, name string, now time.Time) (uuid.UUID, error) {
+	id, err := s.q(ctx).InsertOrg(ctx, dbgen.InsertOrgParams{Name: name, Now: db.Timestamptz(now)})
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("auth: create org: %w", err)
+	}
+	return id, nil
+}
+
+func (s *pgStore) LockBootstrap(ctx context.Context) error {
+	q, err := s.qTx(ctx)
+	if err != nil {
+		return err
+	}
+	if err := q.LockBootstrap(ctx, bootstrapLockKey); err != nil {
+		return fmt.Errorf("auth: bootstrap lock: %w", err)
+	}
+	return nil
+}
+
+// ---- housekeeping ----
+
+func (s *pgStore) PurgeStaleThrottles(ctx context.Context, orgID uuid.UUID, now time.Time) (int, error) {
+	q, err := s.qTx(ctx)
+	if err != nil {
+		return 0, err
+	}
+	n, err := q.PurgeStaleThrottles(ctx, dbgen.PurgeStaleThrottlesParams{OrgID: orgID, Now: db.Timestamptz(now)})
+	if err != nil {
+		return 0, fmt.Errorf("auth: purge throttles: %w", err)
+	}
+	return int(n), nil
+}
+
+func (s *pgStore) PurgeExpiredChallenges(ctx context.Context, orgID uuid.UUID, now time.Time) (int, error) {
+	q, err := s.qTx(ctx)
+	if err != nil {
+		return 0, err
+	}
+	n, err := q.PurgeExpiredChallenges(ctx, dbgen.PurgeExpiredChallengesParams{OrgID: orgID, Now: db.Timestamptz(now)})
+	if err != nil {
+		return 0, fmt.Errorf("auth: purge challenges: %w", err)
+	}
+	return int(n), nil
+}
+
+func (s *pgStore) PurgeDeadFamilyTokens(ctx context.Context, orgID uuid.UUID, now time.Time) (int, error) {
+	q, err := s.qTx(ctx)
+	if err != nil {
+		return 0, err
+	}
+	n, err := q.PurgeDeadFamilyTokens(ctx, dbgen.PurgeDeadFamilyTokensParams{OrgID: orgID, Now: db.Timestamptz(now)})
+	if err != nil {
+		return 0, fmt.Errorf("auth: purge refresh tokens: %w", err)
+	}
+	return int(n), nil
+}

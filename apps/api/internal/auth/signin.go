@@ -213,6 +213,18 @@ func (s *Service) completeSignIn(ctx context.Context, a attempt, user UserRow, i
 // refresh token, and audits the sign-in. Signing the access token needs no database, so it
 // happens here inside the transaction without holding it open on slow work.
 func (s *Service) openSession(ctx context.Context, a attempt, u UserRow, in SignInInput, now time.Time) (SessionTokens, error) {
+	return s.openSessionFor(ctx, a, u, sessionOrigin{Device: in.Device, ClientType: in.ClientType}, now)
+}
+
+// sessionOrigin is the installation and transport a session opens for, and for an admin the
+// second factor that completed it (MFAMethod "" for a client).
+type sessionOrigin struct {
+	Device     DeviceInfo
+	ClientType string
+	MFAMethod  string
+}
+
+func (s *Service) openSessionFor(ctx context.Context, a attempt, u UserRow, in sessionOrigin, now time.Time) (SessionTokens, error) {
 	// Every not-ended session counts, expired or not: the live-device unique index does.
 	existing, err := s.store.ListLiveSessions(ctx, u.ID, time.Unix(0, 0))
 	if err != nil {
@@ -231,7 +243,7 @@ func (s *Service) openSession(ctx context.Context, a attempt, u UserRow, in Sign
 	}
 	sess, err := s.store.CreateSession(ctx, NewSession{
 		OrgID: u.OrgID, UserID: u.ID, DeviceID: in.Device.ID, DeviceName: in.Device.Name, Platform: in.Device.Platform,
-		ClientType: in.ClientType, Now: now,
+		ClientType: in.ClientType, MFAMethod: in.MFAMethod, Now: now,
 		IdleExpiresAt: now.Add(idleLifetime(u.Role)), AbsoluteExpiresAt: now.Add(absoluteLifetime(u.Role)),
 	})
 	if err != nil {
@@ -252,7 +264,7 @@ func (s *Service) openSession(ctx context.Context, a attempt, u UserRow, in Sign
 		return SessionTokens{}, fmt.Errorf("auth: clear throttle: %w", err)
 	}
 	if err := s.writeAudit(ctx, u.OrgID, actorOf(u), u.ID, ActionSignInSucceeded, nil,
-		SignInSucceededAfter{SessionID: sess.ID, Platform: sess.Platform, ClientType: sess.ClientType, IP: a.ip, ReplacedSessionID: replaced}); err != nil {
+		SignInSucceededAfter{SessionID: sess.ID, Platform: sess.Platform, ClientType: sess.ClientType, IP: a.ip, MFAMethod: in.MFAMethod, ReplacedSessionID: replaced}); err != nil {
 		return SessionTokens{}, err
 	}
 	return s.sessionTokens(u, sess, refresh)

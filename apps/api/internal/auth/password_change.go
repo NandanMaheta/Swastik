@@ -82,13 +82,20 @@ func (s *Service) changePasswordOnce(ctx context.Context, p authz.Principal, cur
 
 // failReauth counts a wrong current password toward the account lockout (D-08) and audits it.
 func (s *Service) failReauth(ctx context.Context, u UserRow, subject []byte) error {
+	return s.failReauthWith(ctx, u, subject, ReasonWrongCurrentPassword)
+}
+
+// failReauthWith counts one failed re-authentication (a wrong password or second factor) toward
+// the account lockout and audits it with the internal reason. It always returns ErrReauthFailed
+// unless the bookkeeping itself fails.
+func (s *Service) failReauthWith(ctx context.Context, u UserRow, subject []byte, reason string) error {
 	err := s.inTx(ctx, func(ctx context.Context) error {
 		next, started, err := s.applyFailure(ctx, u.OrgID, scopeSignIn, subject, signInPolicy)
 		if err != nil {
 			return err
 		}
 		if err := s.writeAudit(ctx, u.OrgID, systemActor, u.ID, ActionSignInFailed, nil,
-			SignInFailedAfter{Reason: ReasonWrongCurrentPassword}); err != nil {
+			SignInFailedAfter{Reason: reason}); err != nil {
 			return err
 		}
 		if !started {

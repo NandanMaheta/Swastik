@@ -9,6 +9,16 @@
 -- name: ListFirstTwoOrgIDs :many
 SELECT id FROM orgs ORDER BY id LIMIT 2;
 
+-- name: InsertOrg :one
+INSERT INTO orgs (name, created_at) VALUES (@name, @now) RETURNING id;
+
+-- name: OrgExists :one
+SELECT EXISTS (SELECT 1 FROM orgs WHERE id = @id);
+
+-- The bootstrap lock (plan P-13): serialises `swastik admin create` across processes until commit.
+-- name: LockBootstrap :exec
+SELECT pg_advisory_xact_lock(@key::bigint);
+
 -- ---- users ----
 
 -- name: InsertUser :one
