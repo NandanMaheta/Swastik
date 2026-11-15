@@ -32,7 +32,7 @@ Rule IDs refer to `docs/product/business-rules.md`. Parallel tracks are marked; 
 | 024 | Client app: shell, auth flows (sign up, OTP, login, forgot password, biometric unlock)                    | M11 Client       | BR-CLI-04                        | 004        | ui    | todo           | B    |
 | 025 | Client app: Home, IPOs + Deals, Tasks, Allotment, Payments, Reports, Inbox, Family, Profile               | M11 Client       | (per screen)                     | 008–020    | ui    | todo           | B    |
 | 026 | Data worker: IPO import, subscription refresh, RHP → AI brief, GMP suggestion                             | M13 Data         | BR-IPO-04                        | 008        | data  | todo           | B    |
-| 027 | Release & ops: Cloud Run + Pages + Access via OpenTofu, APK pipeline, backups + restore drill, monitoring | M15 Ops          | —                                | 001        | ops   | todo           | B    |
+| 027 | Release & ops: Cloud Run + Pages + Access via OpenTofu, APK pipeline, backups + restore drill, monitoring | M15 Ops          | —                                | 001        | ops   | spec           | B    |
 
 Notes:
 

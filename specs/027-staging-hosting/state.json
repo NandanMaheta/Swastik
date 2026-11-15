@@ -1,0 +1,9 @@
+{
+  "feature": "027-staging-hosting",
+  "branch": "feat/027-staging-hosting",
+  "worktree": "/home/user/divya-027",
+  "tier": "B",
+  "phase": "spec",
+  "tasks": {},
+  "metrics": []
+}
