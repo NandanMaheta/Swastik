@@ -84,7 +84,15 @@
         "FR-012"
       ],
       "expect": "red",
-      "owner_step": false
+      "owner_step": false,
+      "protected_tests": [
+        "infra/tofu/tests/env/dns.tftest.hcl",
+        "infra/tofu/tests/env/pages.tftest.hcl",
+        "infra/tofu/tests/env/access.tftest.hcl",
+        "infra/tofu/tests/roots/staging.tftest.hcl",
+        "infra/tofu/tests/roots/production.tftest.hcl"
+      ],
+      "tests_written": true
     },
     "T005": {
       "owner": "test-engineer",
