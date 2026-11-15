@@ -10,7 +10,7 @@
       "title": "Compile skeleton: empty tofu roots/modules, pinned providers, .opentofu-version, Worker stub, empty roles.sql, observe stubs (errNotImplemented), check-script stubs; record domain-mapping, Supabase PG major and provider resource-name findings",
       "slice": "S1",
       "done_command": "cd infra/tofu && tofu fmt -check -recursive && for e in staging production; do tofu -chdir=infra/tofu/envs/$e init -backend=false -input=false && tofu -chdir=infra/tofu/envs/$e validate; done && cd apps/api && go build ./... && go vet ./internal/platform/observe/...",
-      "status": "todo",
+      "status": "done",
       "depends_on": [],
       "rules": [
         "FR-001"

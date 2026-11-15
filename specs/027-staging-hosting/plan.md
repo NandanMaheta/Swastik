@@ -116,3 +116,9 @@ S1 skeleton + checks (empty roots/modules, pinned providers, `.opentofu-version`
 ## Complexity tracking
 
 Worker proxy is extra moving parts versus a direct `run.app` URL; justified by 003's same-site cookie need (D-21) and ₹0.
+
+## S1 findings (T001)
+
+- Providers locked: google 7.46.2, cloudflare 5.29.0 (OpenTofu 1.13.9, `.opentofu-version`). Resource names confirmed in schema: `google_cloud_run_v2_service`, `google_cloud_scheduler_job`, `google_artifact_registry_repository`, `google_iam_workload_identity_pool(_provider)`, `cloudflare_workers_script`, `cloudflare_workers_route`, `cloudflare_pages_project`, `cloudflare_pages_domain`, `cloudflare_zero_trust_access_application`, `cloudflare_zero_trust_access_policy`, `cloudflare_r2_bucket`, `cloudflare_r2_bucket_lifecycle`, `cloudflare_dns_record`.
+- Cloud Run domain mapping in asia-south1: not verifiable offline (no cloud access); D-7 assumption (Worker proxy kept either way) stands.
+- Supabase Postgres major: not verifiable without credentials; owner to confirm (17 vs CI 18) before T019 picks the dump image.

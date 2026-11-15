@@ -1,0 +1,1 @@
+-- Stub (027 T001). Roles script lands in T014. Idempotent, no passwords.
