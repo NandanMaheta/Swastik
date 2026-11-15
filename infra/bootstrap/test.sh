@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2015 # `check && valid || { mark failure; }` is intended: C must run when A or B fails.
 # 027 T002 - bootstrap.sh / secrets.sh --dry-run tests (FR-002, FR-003).
 #
 # Contract for the scripts under test:

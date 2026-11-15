@@ -23,6 +23,7 @@ work=$(mktemp -d)
 fail=0
 prefix="swastik-drilltest-$$"
 # shellcheck disable=SC2317
+# shellcheck disable=SC2329 # invoked through `trap cleanup EXIT`
 cleanup() {
   docker ps -aq --filter "name=$prefix" | xargs -r docker rm -f >/dev/null 2>&1
   rm -rf "$work"
