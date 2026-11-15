@@ -32,6 +32,7 @@ _Last updated: 2026-11-14_
 | 002 Scheduler + outbox | `feat/002-scheduler-tick` | Phases 1–4 implemented and green; Phase 5–6 tests written (RED); next: one code pass for Phases 5–6, then Phase 7 + review + PR                     |
 | 003 Auth core          | `feat/003-auth-core`      | Spec/plan approved; T001 + Phase 2 tests written (RED); next: re-slice remaining tasks into v2 slices, Phase 2 code pass; the rest needs 002 merged |
 | 008 IPO catalogue      | `feat/008-ipo-catalogue`  | Spec/plan approved; 68 tasks planned; next: re-slice into v2 slices; build after 002 (core) and 003 (HTTP)                                          |
+| 027 Staging hosting    | `feat/027-staging-hosting` | Code complete; owner steps in `docs/engineering/runbook.md` (bootstrap, secrets, roles.sql, infra apply, environments). Open: protected-test defects listed in `specs/027-staging-hosting/state.json` |
 | Others                 | —                         | Not started; see `docs/product/modules.md` (Tier column)                                                                                            |
 
 ## Next steps

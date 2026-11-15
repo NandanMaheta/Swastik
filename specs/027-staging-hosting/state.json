@@ -304,7 +304,7 @@
       "title": "Sentry observe package (observe.Init, slog handler; empty DSN off); sentry-go only in platform/observe, depguard allowance, wired in cmd",
       "slice": "S13",
       "done_command": "(cd apps/api && go test -race ./internal/platform/observe/... ./internal/health/... && go mod tidy -diff)",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "T005"
       ],
@@ -350,7 +350,7 @@
       "title": "Gate and docs: quickstart to runbook, ADR 0009 final, handover, modules.md status, go mod tidy clean, full suite + lint, GS-01..04, BR traceability",
       "slice": "S16",
       "done_command": "(cd apps/api && go mod tidy -diff && go test -race ./...) && make lint-go && bash scripts/check-br-traceability.sh && tofu fmt -check -recursive infra/tofu && /root/go/bin/actionlint && bash scripts/check-deploy-workflow.sh --pages --infra --nightly",
-      "status": "todo",
+      "status": "blocked",
       "depends_on": [
         "T006",
         "T007",
@@ -371,7 +371,8 @@
         "all FR; GS-01..04"
       ],
       "expect": "green",
-      "owner_step": false
+      "owner_step": false,
+      "note": "Docs, modules.md (review), tidy, tofu, workflow, worker, bootstrap, drill checks green. Open: T014 roles tests (2 defective) and make lint-go (errorlint roles_test.go:118, prealloc observe_test.go:88, both protected)."
     }
   },
   "metrics": [],

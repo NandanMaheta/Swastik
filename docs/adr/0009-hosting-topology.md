@@ -1,6 +1,6 @@
 # ADR 0009: Hosting topology and infrastructure ownership
 
-- Status: Proposed (2026-11-15, feature 027; takes effect when the owner approves `specs/027-staging-hosting/plan.md`)
+- Status: Accepted (2026-11-15, feature 027; owner approved spec and plan, including Sentry and the Secret Manager cost)
 
 ## Context
 
@@ -17,3 +17,5 @@ The constitution fixes the hosting stack (Cloud Run in Mumbai, Supabase Postgres
 ## Consequences
 
 Adding configuration for a feature is an infra PR plus an owner-approved apply. A second GCP project for production can be introduced later by pointing the production root at it. Requests through the proxy add a few milliseconds. If the product outgrows free tiers, the same modules move to a load balancer or a VM by changing tofu, not app code.
+
+Sentry (`sentry-go`, confined to `internal/platform/observe`) reports ERROR logs; an empty `SENTRY_DSN` turns it off. Operations are in `docs/engineering/runbook.md`.

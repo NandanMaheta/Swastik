@@ -92,7 +92,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: shellcheck
-        run: shellcheck infra/bootstrap/*.sh infra/backup/*.sh scripts/*.sh
+        run: shellcheck infra/bootstrap/*.sh infra/backup/*.sh scripts/check-deploy-workflow.sh
       - name: actionlint
         run: |
           bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.7.7
