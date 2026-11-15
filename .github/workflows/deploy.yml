@@ -55,6 +55,7 @@ jobs:
           # Env vars, secrets and scaling are owned by OpenTofu; this only ships the image.
           gcloud run deploy "$SERVICE" --image "$IMAGE_DIGEST" --region "$REGION" \
             --no-traffic "--tag=c-${SHA7}" --quiet
+          echo "REVISION_TAGGED=1" >> "$GITHUB_ENV"
       - name: Check the new revision on its tagged URL
         run: |
           URL=$(gcloud run services describe "$SERVICE" --region "$REGION" --format=json |
@@ -76,6 +77,8 @@ jobs:
         run: |
           curl -fsS --retry 5 --retry-delay 5 --retry-connrefused "${{ vars.API_BASE_URL }}/healthz"
       - name: Remove the temporary revision tag
+        # Also after a failed check, but only once the tagged revision exists.
+        if: always() && env.REVISION_TAGGED == '1'
         run: |
           gcloud run services update-traffic "$SERVICE" --region "$REGION" --remove-tags="c-${SHA7}"
 

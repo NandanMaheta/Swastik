@@ -24,9 +24,9 @@
 | `jwt-signing-keys-<env>` | `JWT_SIGNING_KEYS` | 003 (`auth_keys_enabled = true`) |
 | `pii-encryption-keys-<env>` | `PII_ENCRYPTION_KEYS` | 003 |
 | `blind-index-key-<env>` | `BLIND_INDEX_KEY` | 003 |
-| `proxy-shared-secrets-<env>` | `PROXY_SHARED_SECRETS` (API) and the Worker secret binding `PROXY_KEY` | 003 |
+| `proxy-shared-secrets-<env>` | `PROXY_SHARED_SECRETS` (API) and the Worker secret binding `PROXY_KEY` | 003 (created in the default run) |
 
-Formats written by `secrets.sh <env> --with-auth` (random 32 bytes each, standard base64, distinct values; never printed): `JWT_SIGNING_KEYS=k1:<b64>`, `PII_ENCRYPTION_KEYS=1:<b64>`, `BLIND_INDEX_KEY=<b64>`, `PROXY_SHARED_SECRETS=<b64>`. Without `--with-auth` only `database-url-<env>` is created. Existing secrets are never recreated or changed unless a rotate flag is given:
+`secrets.sh <env>` always creates `database-url-<env>` and `proxy-shared-secrets-<env>` (the Worker returns 500 without its key); it re-sends a stored proxy key to the Worker when `wrangler secret list` shows it missing, or with `--push-proxy`. Formats written by `secrets.sh <env>` (proxy) and `--with-auth` (the rest) (random 32 bytes each, standard base64, distinct values; never printed): `JWT_SIGNING_KEYS=k1:<b64>`, `PII_ENCRYPTION_KEYS=1:<b64>`, `BLIND_INDEX_KEY=<b64>`, `PROXY_SHARED_SECRETS=<b64>`. Without `--with-auth` only the database URL and proxy secrets are created. Existing secrets are never recreated or changed unless a rotate flag is given:
 
 - `--rotate`: reads the current JWT and PII versions and appends the new key (`k1:<old>,k2:<new>`, `1:<old>,2:<new>`); ids from `ROTATE_JWT_KID` (default `k2`) and `ROTATE_PII_KEY_ID` (default `2`); an id already in the ring is refused. Afterwards change `jwt_active_kid` / `pii_active_key_id` in tfvars through the infra workflow; remove old keys only once sessions and data are migrated. Never touches the blind-index key.
 - `--rotate-blind-index`: new `BLIND_INDEX_KEY` version; existing blind indexes stop matching, so a reindex is required.
