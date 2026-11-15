@@ -67,3 +67,28 @@ jobs:
       - name: Public health check
         run: |
           curl -fsS --retry 5 --retry-delay 5 --retry-connrefused "${{ vars.API_BASE_URL }}/healthz"
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build admin and client web
+        env:
+          VITE_API_BASE_URL: ${{ vars.API_BASE_URL }}
+          EXPO_PUBLIC_API_BASE_URL: ${{ vars.API_BASE_URL }}
+        run: |
+          pnpm --filter @swastik/admin build
+          pnpm --filter @swastik/client build:web
+      - name: Upload admin to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy apps/admin/dist --project-name=${{ vars.ADMIN_PAGES_PROJECT }} --branch=main --commit-dirty=true
+      - name: Upload client web app to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy apps/client/dist --project-name=${{ vars.CLIENT_PAGES_PROJECT }} --branch=main --commit-dirty=true
