@@ -1,0 +1,128 @@
+name: Infra
+on:
+  pull_request:
+    paths:
+      ["infra/tofu/**", "infra/cloudflare/**", ".opentofu-version", ".github/workflows/infra.yml"]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Which root to plan and apply
+        type: choice
+        options: [shared, staging, production]
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: infra-${{ inputs.target || 'checks' }}-${{ github.event_name }}
+  cancel-in-progress: false # never cancel a run that may hold the state lock
+jobs:
+  checks:
+    # Offline: mock providers, no backend, no credentials.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version_file: .opentofu-version
+      - run: tofu fmt -check -recursive infra/tofu
+      - run: bash infra/tofu/tests/lifecycle_test.sh
+      - name: Validate and test every root
+        run: |
+          set -e
+          tofu -chdir=infra/tofu/shared init -backend=false -input=false
+          tofu -chdir=infra/tofu/shared validate
+          tofu -chdir=infra/tofu/shared test -test-directory=../tests/shared
+          tofu -chdir=infra/tofu/modules/env init -backend=false -input=false
+          tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env
+          for e in staging production; do
+            tofu -chdir=infra/tofu/envs/$e init -backend=false -input=false
+            tofu -chdir=infra/tofu/envs/$e validate
+            tofu -chdir=infra/tofu/envs/$e test -test-directory=../../tests/roots -filter=../../tests/roots/$e.tftest.hcl
+          done
+
+  plan:
+    # Read-only plan, published in the run summary so it can be reviewed before the apply job is approved.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: infra
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ROOT: ${{ inputs.target == 'shared' && 'infra/tofu/shared' || format('infra/tofu/envs/{0}', inputs.target) }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_TOFU_TOKEN }}
+      TF_VAR_cloudflare_account_id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      TF_VAR_sentry_dsn: ${{ vars.SENTRY_DSN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version_file: .opentofu-version
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_TOFU_SA }}
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+      - name: Environment inputs
+        run: |
+          PROJECT_NUMBER=$(gcloud projects describe "${{ vars.GCP_PROJECT_ID }}" --format='value(projectNumber)')
+          {
+            echo "TF_VAR_project_number=${PROJECT_NUMBER}"
+            echo "TF_VAR_cloudflare_zone_id=${{ vars.CLOUDFLARE_ZONE_ID }}"
+            echo "TF_VAR_access_emails=$(echo '${{ vars.ACCESS_ALLOWED_EMAILS }}' | jq -c 'split(",") | map(gsub("^ +| +$"; ""))')"
+          } >> "$GITHUB_ENV"
+      - run: tofu -chdir="$ROOT" init -input=false
+      - run: tofu -chdir="$ROOT" plan -input=false -out=tfplan
+      - name: Publish the plan
+        run: |
+          {
+            echo '### tofu plan'
+            echo '```'
+            tofu -chdir="$ROOT" show -no-color tfplan
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v5
+        with:
+          name: tfplan
+          path: ${{ env.ROOT }}/tfplan
+          retention-days: 1
+
+  apply:
+    # Applies exactly the plan the owner reviewed; the infra environment requires owner approval.
+    needs: plan
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: infra
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ROOT: ${{ inputs.target == 'shared' && 'infra/tofu/shared' || format('infra/tofu/envs/{0}', inputs.target) }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_TOFU_TOKEN }}
+      TF_VAR_cloudflare_account_id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      TF_VAR_sentry_dsn: ${{ vars.SENTRY_DSN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version_file: .opentofu-version
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_TOFU_SA }}
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+      - name: Environment inputs
+        run: |
+          PROJECT_NUMBER=$(gcloud projects describe "${{ vars.GCP_PROJECT_ID }}" --format='value(projectNumber)')
+          {
+            echo "TF_VAR_project_number=${PROJECT_NUMBER}"
+            echo "TF_VAR_cloudflare_zone_id=${{ vars.CLOUDFLARE_ZONE_ID }}"
+            echo "TF_VAR_access_emails=$(echo '${{ vars.ACCESS_ALLOWED_EMAILS }}' | jq -c 'split(",") | map(gsub("^ +| +$"; ""))')"
+          } >> "$GITHUB_ENV"
+      - run: tofu -chdir="$ROOT" init -input=false
+      - uses: actions/download-artifact@v5
+        with:
+          name: tfplan
+          path: ${{ env.ROOT }}
+      - run: tofu -chdir="$ROOT" apply -input=false tfplan

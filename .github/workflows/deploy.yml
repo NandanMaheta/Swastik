@@ -5,46 +5,115 @@ on:
     tags: ["v*"] # -> production (needs owner approval on the environment)
 permissions:
   contents: read
-  id-token: write # Workload Identity Federation: no long-lived cloud keys
 concurrency:
-  group: deploy-${{ github.ref }}
+  group: deploy-${{ startsWith(github.event.ref, 'refs/tags/v') && 'production' || 'staging' }}
+  cancel-in-progress: false
 jobs:
   deploy:
+    # Skips cleanly until the owner has configured hosting (vars come from the GitHub environment).
+    if: vars.GCP_PROJECT_ID != ''
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Workload Identity Federation: no long-lived cloud keys
     environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'production' || 'staging' }}
+    env:
+      REGION: asia-south1
+      SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
     steps:
       - uses: actions/checkout@v5
-      - name: Check deployment is configured
-        id: cfg
-        run: |
-          if [ -z "${{ vars.GCP_PROJECT_ID }}" ]; then
-            echo "Deployment not configured yet (feature 027). Skipping."; echo "skip=true" >> "$GITHUB_OUTPUT"
-          fi
-      - if: steps.cfg.outputs.skip != 'true'
-        uses: google-github-actions/auth@v3
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOY_SA }}
-      - if: steps.cfg.outputs.skip != 'true'
-        uses: google-github-actions/setup-gcloud@v3
-      - name: Build and push images
-        if: steps.cfg.outputs.skip != 'true'
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+      - name: Compute version and image
         run: |
-          REG=asia-south1-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/swastik
+          SHA7=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          {
+            echo "SHA7=${SHA7}"
+            echo "VERSION=${GITHUB_REF_NAME}-${SHA7}"
+            echo "IMAGE=asia-south1-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/swastik/api:${GITHUB_SHA}"
+          } >> "$GITHUB_ENV"
+      - name: Build and push the API image
+        run: |
           gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
-          docker build -t $REG/api:${{ github.sha }} --build-arg VERSION=${{ github.ref_name }} apps/api
-          docker build -t $REG/worker:${{ github.sha }} apps/worker
-          docker push $REG/api:${{ github.sha }} && docker push $REG/worker:${{ github.sha }}
-      - name: Migrate and deploy to Cloud Run (Mumbai)
-        if: steps.cfg.outputs.skip != 'true'
+          docker build -t "$IMAGE" --build-arg VERSION="$VERSION" apps/api
+          docker push "$IMAGE"
+          # Deploy by immutable digest, never by the mutable tag.
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE")
+          case "$DIGEST" in *@sha256:*) ;; *) echo "no image digest" >&2; exit 1 ;; esac
+          echo "IMAGE_DIGEST=${DIGEST}" >> "$GITHUB_ENV"
+      - name: Apply migrations
+        env:
+          MIGRATE_DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL }}
         run: |
-          REG=asia-south1-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/swastik
-          gcloud run jobs deploy swastik-migrate --image $REG/api:${{ github.sha }} --args migrate,up \
-            --region asia-south1 --set-secrets DATABASE_URL=database-url:latest --execute-now --wait
-          gcloud run deploy swastik-api --image $REG/api:${{ github.sha }} --region asia-south1 \
-            --set-secrets DATABASE_URL=database-url:latest,JWT_SIGNING_KEYS=jwt-signing-keys:latest,PII_ENCRYPTION_KEYS=pii-encryption-keys:latest,BLIND_INDEX_KEY=blind-index-key:latest,PROXY_SHARED_SECRETS=proxy-shared-secrets:latest \
-            --set-env-vars "^;^APP_ENV=${{ vars.APP_ENV }};TICK_AUDIENCE=${{ vars.TICK_AUDIENCE }};TICK_SERVICE_ACCOUNT=${{ vars.TICK_SERVICE_ACCOUNT }};JWT_ACTIVE_KID=${{ vars.JWT_ACTIVE_KID }};PII_ACTIVE_KEY_ID=${{ vars.PII_ACTIVE_KEY_ID }};WEB_ORIGINS=${{ vars.WEB_ORIGINS }};TRUSTED_PROXY_HOPS=1"
-          gcloud run deploy swastik-worker --image $REG/worker:${{ github.sha }} --region asia-south1 --no-allow-unauthenticated
-      - name: Smoke test
-        if: steps.cfg.outputs.skip != 'true'
-        run: curl -fsS "${{ vars.API_BASE_URL }}/readyz"
+          # Runs from the image just built, with the owner login (session pooler); the app login cannot do DDL.
+          docker run --rm -e DATABASE_URL="$MIGRATE_DATABASE_URL" "$IMAGE_DIGEST" migrate up
+      - name: Create a no-traffic revision
+        run: |
+          # Env vars, secrets and scaling are owned by OpenTofu; this only ships the image.
+          gcloud run deploy "$SERVICE" --image "$IMAGE_DIGEST" --region "$REGION" \
+            --no-traffic "--tag=c-${SHA7}" --quiet
+          echo "REVISION_TAGGED=1" >> "$GITHUB_ENV"
+      - name: Check the new revision on its tagged URL
+        run: |
+          URL=$(gcloud run services describe "$SERVICE" --region "$REGION" --format=json |
+            jq -r --arg t "c-${SHA7}" '.status.traffic[] | select(.tag == $t) | .url')
+          test -n "$URL"
+          for _ in 1 2 3 4 5 6; do
+            BODY=$(curl -fsS --max-time 20 "$URL/readyz" || true)
+            if echo "$BODY" | jq -e --arg v "$VERSION" '.version == $v and .status == "ok"' >/dev/null 2>&1; then
+              echo "revision ready"; exit 0
+            fi
+            sleep 10
+          done
+          echo "new revision failed its readiness check; traffic was not moved" >&2
+          exit 1
+      - name: Move traffic to the new revision
+        run: |
+          gcloud run services update-traffic "$SERVICE" --region "$REGION" --to-latest
+      - name: Public health check
+        run: |
+          curl -fsS --retry 5 --retry-delay 5 --retry-connrefused "${{ vars.API_BASE_URL }}/healthz"
+      - name: Remove the temporary revision tag
+        # Also after a failed check, but only once the tagged revision exists.
+        if: always() && env.REVISION_TAGGED == '1'
+        run: |
+          gcloud run services update-traffic "$SERVICE" --region "$REGION" --remove-tags="c-${SHA7}"
+
+  pages:
+    # Static sites: Cloudflare token only, no GCP credentials.
+    if: vars.GCP_PROJECT_ID != ''
+    needs: deploy
+    runs-on: ubuntu-latest
+    environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'production' || 'staging' }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build admin and client web
+        env:
+          VITE_API_BASE_URL: ${{ vars.API_BASE_URL }}
+          EXPO_PUBLIC_API_BASE_URL: ${{ vars.API_BASE_URL }}
+        run: |
+          pnpm --filter @swastik/admin build
+          pnpm --filter @swastik/client build:web
+      - name: Upload admin to Cloudflare Pages
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy apps/admin/dist --project-name=${{ vars.ADMIN_PAGES_PROJECT }} --branch=main --commit-dirty=true
+      - name: Upload client web app to Cloudflare Pages
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy apps/client/dist --project-name=${{ vars.CLIENT_PAGES_PROJECT }} --branch=main --commit-dirty=true
