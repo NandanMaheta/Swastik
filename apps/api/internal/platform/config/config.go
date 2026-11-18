@@ -12,12 +12,14 @@ import (
 // Config holds every setting the API needs. Values come only from the environment
 // so the same binary runs locally, in CI and on Cloud Run.
 type Config struct {
-	Env             string
-	HTTPAddr        string
-	DatabaseURL     string
-	ShutdownTimeout time.Duration
-	Tick            Tick
-	Auth            AuthConfig
+	Env string
+	// SentryEnvironment tags error events; SENTRY_ENVIRONMENT, defaulting to APP_ENV.
+	SentryEnvironment string
+	HTTPAddr          string
+	DatabaseURL       string
+	ShutdownTimeout   time.Duration
+	Tick              Tick
+	Auth              AuthConfig
 }
 
 // LogValue implements slog.LogValuer so logging a Config never reveals the database password,
@@ -25,6 +27,7 @@ type Config struct {
 func (c Config) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("env", c.Env),
+		slog.String("sentry_environment", c.SentryEnvironment),
 		slog.String("http_addr", c.HTTPAddr),
 		slog.String("database_url", "[redacted]"),
 		slog.Duration("shutdown_timeout", c.ShutdownTimeout),
@@ -69,6 +72,7 @@ func Load() (Config, error) {
 		DatabaseURL:     os.Getenv("DATABASE_URL"),
 		ShutdownTimeout: 10 * time.Second,
 	}
+	cfg.SentryEnvironment = getenv("SENTRY_ENVIRONMENT", cfg.Env)
 	cfg.Tick = Tick{
 		Auth:           getenv("TICK_AUTH", defaultTickAuth(cfg.Env)),
 		Audience:       os.Getenv("TICK_AUDIENCE"),

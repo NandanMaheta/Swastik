@@ -14,3 +14,5 @@ e7901b28cb575ed7af2530b3978b76ba6ab1d0f6:apps/api/internal/auth/totp_test.go:gen
 5d538b0f7aa8a402176a6fd10977e81555e08eb6:apps/api/internal/ipos/schema/schema_test.go:generic-api-key:333
 5d538b0f7aa8a402176a6fd10977e81555e08eb6:apps/api/internal/ipos/schema/schema_test.go:generic-api-key:341
 815182ec7146327a84b8ff88ace3ae9f9b96f284:apps/api/internal/ipos/store_test.go:generic-api-key:605
+# Fake Cloudflare zone id ("fedcba9876543210…") in a tofu mock test.
+93404848244842d26d4176e57775f288bab2ea5f:infra/tofu/tests/env/dns.tftest.hcl:generic-api-key:89
