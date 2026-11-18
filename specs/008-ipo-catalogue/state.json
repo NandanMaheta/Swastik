@@ -1,0 +1,569 @@
+{
+  "feature": "008-ipo-catalogue",
+  "branch": "feat/008-ipo-catalogue",
+  "worktree": "/home/user/divya-008",
+  "tier": "B",
+  "phase": "tasks",
+  "tasks": {
+    "S01": {
+      "owner": "backend-dev",
+      "title": "Compile skeleton: internal/ipos (model, errors, signals, service, store, validate, suggest, lifecycle_steps, handler stubs registerAdmin/Actions/Client, ipostest), internal/platform/inr Format stub, internal/ipos/schema package doc. Exported names from contracts/go-module-api.md; bodies panic(errNotImplemented). Store has one stub method per data-model section 6 query (domain types only, no dbgen).",
+      "done_command": "cd apps/api && go build ./... && go vet ./internal/ipos/... ./internal/platform/inr/...",
+      "status": "done",
+      "depends_on": [
+        "002-merged"
+      ],
+      "rules": [],
+      "expect": "green",
+      "parallel": false,
+      "est_lines": 420,
+      "files": [
+        "apps/api/internal/ipos/{doc,model,errors,signals,service,store,validate,suggest,lifecycle_steps,handler,handler_actions,handler_client}.go",
+        "apps/api/internal/ipos/ipostest/ipostest.go",
+        "apps/api/internal/platform/inr/inr.go",
+        "apps/api/internal/ipos/schema/doc.go"
+      ],
+      "protected_tests": []
+    },
+    "S02": {
+      "owner": "test-engineer",
+      "title": "Foundation tests: inr.Format table (grouping, paise, negative, MaxInt64), schema CHECK/trigger tests in package ipos/schema (SME/duplicate exchange, publish-without-flag, date order, band, source, delete trigger, https URL), lint-boundary deliberate violations for ipos.",
+      "done_command": "cd apps/api && go test -race ./internal/platform/inr/... ./internal/ipos/schema/... && cd ../.. && bash scripts/check-lint-boundaries.sh",
+      "status": "blocked",
+      "depends_on": [
+        "S01",
+        "002-merged"
+      ],
+      "rules": [
+        "BR-IPO-01",
+        "BR-IPO-02",
+        "BR-IPO-03"
+      ],
+      "expect": "red",
+      "parallel": true,
+      "est_lines": 330,
+      "files": [
+        "apps/api/internal/platform/inr/inr_test.go",
+        "apps/api/internal/ipos/schema/schema_test.go",
+        "scripts/check-lint-boundaries.sh"
+      ],
+      "protected_tests": [
+        "apps/api/internal/platform/inr/inr_test.go",
+        "apps/api/internal/ipos/schema/schema_test.go",
+        "scripts/check-lint-boundaries.sh"
+      ],
+      "tests_written": true
+    },
+    "S03": {
+      "owner": "backend-dev",
+      "title": "Foundations: inr.Format (integer-only Indian grouping), migrations/00004_ipos.sql (expand-only, all CHECKs, indexes, delete trigger), depguard rules in apps/api/.golangci.yml. Migration PR needs owner approval (CODEOWNERS); merges after 003, never renumber.",
+      "done_command": "cd apps/api && go test -race ./internal/platform/inr/... ./internal/ipos/schema/... && cd ../.. && bash scripts/check-lint-boundaries.sh",
+      "status": "done",
+      "depends_on": [
+        "S02",
+        "002-merged"
+      ],
+      "rules": [
+        "BR-IPO-01",
+        "BR-IPO-02",
+        "BR-IPO-03"
+      ],
+      "expect": "green",
+      "parallel": false,
+      "est_lines": 250,
+      "files": [
+        "apps/api/internal/platform/inr/inr.go",
+        "apps/api/migrations/00004_ipos.sql",
+        "apps/api/.golangci.yml"
+      ],
+      "protected_tests": []
+    },
+    "S04": {
+      "owner": "test-engineer",
+      "title": "Store and pure-rule tests: store_test.go TestQueries_* through Store (keyset order, IST months, filters incl. NONE, org isolation, version guard, delete guard, idempotency lookup); model_test (min application, warning bounds, eligible, rank); suggest_test (weekdays only); validate_test (segments, SME, band, values).",
+      "done_command": "cd apps/api && go test -race -run 'TestQueries_|TestMinApplication_FR004|TestWarning_FR005|TestEligible_BR_IPO_02|TestStatusRank|TestSuggestDates_BR_IPO_03|TestValidate_BR_IPO_01|TestValidate_PriceBand|TestValidate_Values' ./internal/ipos/",
+      "status": "blocked",
+      "depends_on": [
+        "S01",
+        "S03",
+        "002-merged"
+      ],
+      "rules": [
+        "BR-IPO-01",
+        "BR-IPO-02",
+        "BR-IPO-03"
+      ],
+      "expect": "red",
+      "parallel": false,
+      "est_lines": 550,
+      "files": [
+        "apps/api/internal/ipos/store_test.go",
+        "apps/api/internal/ipos/model_test.go",
+        "apps/api/internal/ipos/suggest_test.go",
+        "apps/api/internal/ipos/validate_test.go"
+      ],
+      "protected_tests": [
+        "apps/api/internal/ipos/store_test.go",
+        "apps/api/internal/ipos/model_test.go",
+        "apps/api/internal/ipos/suggest_test.go",
+        "apps/api/internal/ipos/validate_test.go"
+      ],
+      "tests_written": true
+    },
+    "S05": {
+      "owner": "backend-dev",
+      "title": "queries/ipos.sql (14 queries, all filter org_id) + sqlc generate/vet; store.go over dbgen; model.go (rank, eligible, exact MinApplication, warning via inr); suggest.go (istdate.AddWeekdays).",
+      "done_command": "cd apps/api && sqlc generate && sqlc vet && go test -race -run 'TestQueries_|TestMinApplication_FR004|TestWarning_FR005|TestEligible_BR_IPO_02|TestStatusRank|TestSuggestDates_BR_IPO_03' ./internal/ipos/",
+      "status": "done",
+      "depends_on": [
+        "S04",
+        "002-merged"
+      ],
+      "rules": [
+        "BR-IPO-02",
+        "BR-IPO-03"
+      ],
+      "expect": "green",
+      "parallel": false,
+      "est_lines": 500,
+      "files": [
+        "apps/api/queries/ipos.sql",
+        "apps/api/internal/ipos/store.go",
+        "apps/api/internal/ipos/model.go",
+        "apps/api/internal/ipos/suggest.go"
+      ],
+      "protected_tests": []
+    },
+    "S06": {
+      "owner": "test-engineer",
+      "title": "Date and step tests: validate_dates (order table, closure, publish requirements, FR-021), validate_prop (rapid: date order, min application, SME tokens), step_test (IST instants, decision table, diff), step_prop (forward-only, idempotent, never SETTLED).",
+      "done_command": "cd apps/api && go test -race -run 'TestValidate_BR_IPO_03|TestValidate_BR_IPO_02|TestDateOrder_BR_IPO_03|TestSegments_BR_IPO_01_Properties|TestMinApplication_Properties|TestStepInstant_BR_IPO_03|TestStepDecision_BR_IPO_03|TestStepDiff_BR_IPO_03' ./internal/ipos/",
+      "status": "blocked",
+      "depends_on": [
+        "S01",
+        "002-merged"
+      ],
+      "rules": [
+        "BR-IPO-01",
+        "BR-IPO-02",
+        "BR-IPO-03"
+      ],
+      "expect": "red",
+      "parallel": true,
+      "est_lines": 620,
+      "files": [
+        "apps/api/internal/ipos/validate_dates_test.go",
+        "apps/api/internal/ipos/validate_prop_test.go",
+        "apps/api/internal/ipos/step_test.go",
+        "apps/api/internal/ipos/step_prop_test.go"
+      ],
+      "protected_tests": [
+        "apps/api/internal/ipos/validate_dates_test.go",
+        "apps/api/internal/ipos/validate_prop_test.go",
+        "apps/api/internal/ipos/step_test.go",
+        "apps/api/internal/ipos/step_prop_test.go"
+      ],
+      "tests_written": true
+    },
+    "S07": {
+      "owner": "backend-dev",
+      "title": "validate.go (segment mapping, values, band, publish completeness), validate_dates.go (transitive closure of FR-040), lifecycle_steps.go (step table, stepInstant, stepDecision, stepDiff, job payload).",
+      "done_command": "cd apps/api && go test -race -run 'TestValidate_|TestDateOrder_BR_IPO_03|TestSegments_BR_IPO_01|TestMinApplication_Properties|TestStep' ./internal/ipos/",
+      "status": "done",
+      "depends_on": [
+        "S04",
+        "S05",
+        "S06",
+        "002-merged"
+      ],
+      "rules": [
+        "BR-IPO-01",
+        "BR-IPO-02",
+        "BR-IPO-03"
+      ],
+      "expect": "green",
+      "parallel": false,
+      "est_lines": 430,
+      "files": [
+        "apps/api/internal/ipos/validate.go",
+        "apps/api/internal/ipos/validate_dates.go",
+        "apps/api/internal/ipos/lifecycle_steps.go"
+      ],
+      "protected_tests": []
+    },
+    "S08": {
+      "owner": "test-engineer",
+      "title": "Service tests A: create (draft defaults, audit, SME stores nothing, concurrent idempotent create), update (stale version, SME edit rejected, no-op, FR-021, audit diff), read (list filters/pages, Get/GetPublished, delete rules, org isolation).",
+      "done_command": "cd apps/api && go test -race -run 'TestCreate_|TestUpdate_|TestList_FR009|TestGet_|TestDelete_' ./internal/ipos/",
+      "status": "blocked",
+      "depends_on": [
+        "S01",
+        "002-merged"
+      ],
+      "rules": [
+        "BR-IPO-01",
+        "BR-IPO-02",
+        "BR-IPO-03"
+      ],
+      "expect": "red",
+      "parallel": true,
+      "est_lines": 550,
+      "files": [
+        "apps/api/internal/ipos/service_helpers_test.go",
+        "apps/api/internal/ipos/service_create_test.go",
+        "apps/api/internal/ipos/service_update_test.go",
+        "apps/api/internal/ipos/service_read_test.go"
+      ],
+      "protected_tests": [
+        "apps/api/internal/ipos/service_helpers_test.go",
+        "apps/api/internal/ipos/service_create_test.go",
+        "apps/api/internal/ipos/service_update_test.go",
+        "apps/api/internal/ipos/service_read_test.go"
+      ],
+      "tests_written": true
+    },
+    "S09": {
+      "owner": "test-engineer",
+      "title": "Service tests B: publish/setflag/unpublish, RequireEligible (FOR SHARE, ErrNoTx), signals (fire order, DatesChanged once per edit, EligibilityChanged cases, rollback on error/panic, RejectedError, StatusChanged exactly once, step listener retry).",
+      "done_command": "cd apps/api && go test -race -run 'TestPublish_BR_IPO_02|TestSetFlag_BR_IPO_02|TestUnpublish_BR_IPO_02|TestRequireEligible_BR_IPO_02|TestSignals_' ./internal/ipos/",
+      "status": "blocked",
+      "depends_on": [
+        "S01",
+        "002-merged"
+      ],
+      "rules": [
+        "BR-IPO-02",
+        "BR-IPO-03"
+      ],
+      "expect": "red",
+      "parallel": true,
+      "est_lines": 610,
+      "files": [
+        "apps/api/internal/ipos/service_publish_test.go",
+        "apps/api/internal/ipos/eligible_test.go",
+        "apps/api/internal/ipos/signals_test.go",
+        "apps/api/internal/ipos/signals_status_test.go"
+      ],
+      "protected_tests": [
+        "apps/api/internal/ipos/service_publish_test.go",
+        "apps/api/internal/ipos/eligible_test.go",
+        "apps/api/internal/ipos/signals_test.go",
+        "apps/api/internal/ipos/signals_status_test.go"
+      ],
+      "tests_written": true
+    },
+    "S10": {
+      "owner": "backend-dev",
+      "title": "Service core: NewService, tx helper, audit helper, idempotency via audit, Get/List/ListPublished/GetPublished, cursor; signals.go (registration, fire order, panic recovery, RejectedError); ipostest implementation (NewService, RecordingListener, FailingListener, ExampleIPO).",
+      "done_command": "cd apps/api && go test -race -run 'TestList_FR009|TestGet_|TestSignals_FireOrder' ./internal/ipos/ && go vet ./internal/ipos/...",
+      "status": "done",
+      "depends_on": [
+        "S05",
+        "S07",
+        "S08",
+        "S09",
+        "002-merged"
+      ],
+      "rules": [
+        "BR-IPO-02",
+        "BR-IPO-03"
+      ],
+      "expect": "green",
+      "parallel": false,
+      "est_lines": 450,
+      "files": [
+        "apps/api/internal/ipos/service.go",
+        "apps/api/internal/ipos/signals.go",
+        "apps/api/internal/ipos/ipostest/ipostest.go"
+      ],
+      "protected_tests": [],
+      "tests_written": true
+    },
+    "S11": {
+      "owner": "backend-dev",
+      "title": "Service mutations: Create (idempotent, schedule steps), Update (lock, version, no-op, step diff, DatesChanged), SetFlag/Publish/Unpublish/RequireEligible (EligibilityChanged, ipo.no_change).",
+      "done_command": "cd apps/api && go test -race -run 'TestCreate_|TestUpdate_|TestPublish_BR_IPO_02|TestSetFlag_BR_IPO_02|TestUnpublish_BR_IPO_02|TestRequireEligible_BR_IPO_02|TestSignals_BR_IPO_03_DatesChanged|TestSignals_BR_IPO_02' ./internal/ipos/",
+      "status": "done",
+      "depends_on": [
+        "S10",
+        "S08",
+        "S09",
+        "002-merged"
+      ],
+      "rules": [
+        "BR-IPO-01",
+        "BR-IPO-02",
+        "BR-IPO-03"
+      ],
+      "expect": "green",
+      "parallel": false,
+      "est_lines": 530,
+      "files": [
+        "apps/api/internal/ipos/service_create.go",
+        "apps/api/internal/ipos/service_update.go",
+        "apps/api/internal/ipos/service_publish.go"
+      ],
+      "protected_tests": []
+    },
+    "S12": {
+      "owner": "test-engineer",
+      "title": "Lifecycle tests (fake clock, real Tick): open/close/allotment/listing boundaries, never SETTLED by time, drafts advance, catch-up after downtime (three audit rows in order), duplicate runs, RegisterJobs; reschedule US5.*.",
+      "done_command": "cd apps/api && go test -race -run 'TestLifecycle_BR_IPO_03|TestRegisterJobs|TestReschedule_BR_IPO_03' ./internal/ipos/",
+      "status": "blocked",
+      "depends_on": [
+        "S01",
+        "002-merged"
+      ],
+      "rules": [
+        "BR-IPO-03"
+      ],
+      "expect": "red",
+      "parallel": true,
+      "est_lines": 550,
+      "files": [
+        "apps/api/internal/ipos/lifecycle_test.go",
+        "apps/api/internal/ipos/lifecycle_catchup_test.go",
+        "apps/api/internal/ipos/reschedule_test.go"
+      ],
+      "protected_tests": [
+        "apps/api/internal/ipos/lifecycle_test.go",
+        "apps/api/internal/ipos/lifecycle_catchup_test.go",
+        "apps/api/internal/ipos/reschedule_test.go"
+      ],
+      "tests_written": true
+    },
+    "S13": {
+      "owner": "test-engineer",
+      "title": "Override, settle and idempotency tests: override forward/backward/re-arm/reason/no-change/SETTLED, race with a running step (barrier), MarkSettled, replay of every mutation, one audit row per mutation (SC-005).",
+      "done_command": "cd apps/api && go test -race -run 'TestOverride_BR_IPO_03|TestMarkSettled_BR_IPO_03|TestIdempotency_FR007|TestAudit_SC005' ./internal/ipos/",
+      "status": "blocked",
+      "depends_on": [
+        "S01",
+        "002-merged"
+      ],
+      "rules": [
+        "BR-IPO-02",
+        "BR-IPO-03"
+      ],
+      "expect": "red",
+      "parallel": true,
+      "est_lines": 480,
+      "files": [
+        "apps/api/internal/ipos/override_test.go",
+        "apps/api/internal/ipos/override_race_test.go",
+        "apps/api/internal/ipos/idempotency_test.go"
+      ],
+      "protected_tests": [
+        "apps/api/internal/ipos/override_test.go",
+        "apps/api/internal/ipos/override_race_test.go",
+        "apps/api/internal/ipos/idempotency_test.go"
+      ],
+      "tests_written": true
+    },
+    "S14": {
+      "owner": "backend-dev",
+      "title": "Lifecycle handlers + RegisterJobs (four kinds), status_apply helper (StatusChanged), OverrideStatus/MarkSettled/Delete, close idempotency and audit gaps in owning files, wire ipos service and jobs in cmd/swastik/main.go (no HTTP; rebase on stage first).",
+      "done_command": "cd apps/api && go test -race ./internal/ipos/... && go build ./... && go test -race -short ./cmd/...",
+      "status": "done",
+      "depends_on": [
+        "S11",
+        "S12",
+        "S13",
+        "002-merged"
+      ],
+      "rules": [
+        "BR-IPO-02",
+        "BR-IPO-03"
+      ],
+      "expect": "green",
+      "parallel": false,
+      "est_lines": 480,
+      "files": [
+        "apps/api/internal/ipos/lifecycle.go",
+        "apps/api/internal/ipos/status_apply.go",
+        "apps/api/internal/ipos/service_status.go",
+        "apps/api/cmd/swastik/main.go"
+      ],
+      "protected_tests": []
+    },
+    "S15": {
+      "owner": "test-engineer",
+      "title": "HTTP tests A (humatest + authz.Install): admin create/get/list/update/flag status and error codes, idempotent replay, route precedence; actions (publish, unpublish, override, delete, suggest side-effect-free, RejectedError 409, client 403); client list/get (published only, byte-identical 404, no admin fields, cursor/limit, 401).",
+      "done_command": "cd apps/api && go test -race -run 'TestAdmin_|TestActions_|TestSuggest_|TestAdminOps_FR050|TestClient_' ./internal/ipos/",
+      "status": "done",
+      "depends_on": [
+        "S01",
+        "002-merged",
+        "003-merged"
+      ],
+      "rules": [
+        "BR-IPO-01",
+        "BR-IPO-02",
+        "BR-IPO-03"
+      ],
+      "expect": "red",
+      "parallel": true,
+      "est_lines": 570,
+      "files": [
+        "apps/api/internal/ipos/handler_admin_test.go",
+        "apps/api/internal/ipos/handler_actions_test.go",
+        "apps/api/internal/ipos/handler_client_test.go"
+      ],
+      "protected_tests": [
+        "apps/api/internal/ipos/handler_admin_test.go",
+        "apps/api/internal/ipos/handler_actions_test.go",
+        "apps/api/internal/ipos/handler_client_test.go"
+      ],
+      "tests_written": true
+    },
+    "S16": {
+      "owner": "test-engineer",
+      "title": "HTTP tests B: problems mapping parsed from error-codes.md, OpenAPI contract test (12 operation ids, security, Idempotency-Key, ClientIPO fields, committed spec current), list performance (SC-008, EXPLAIN uses indexes), packages/domain ipo.test.ts.",
+      "done_command": "cd apps/api && go test -race -run 'TestProblems_|TestList_SC008|TestIPOContract_' ./internal/ipos/ ./cmd/swastik/... && cd ../.. && pnpm --filter @swastik/domain test",
+      "status": "done",
+      "depends_on": [
+        "S01",
+        "002-merged",
+        "003-merged"
+      ],
+      "rules": [
+        "BR-IPO-01",
+        "BR-IPO-02",
+        "BR-IPO-03"
+      ],
+      "expect": "red",
+      "parallel": true,
+      "est_lines": 470,
+      "files": [
+        "apps/api/internal/ipos/problems_test.go",
+        "apps/api/internal/ipos/perf_test.go",
+        "apps/api/cmd/swastik/ipos_contract_test.go",
+        "packages/domain/src/ipo.test.ts"
+      ],
+      "protected_tests": [
+        "apps/api/internal/ipos/problems_test.go",
+        "apps/api/internal/ipos/perf_test.go",
+        "apps/api/cmd/swastik/ipos_contract_test.go",
+        "packages/domain/src/ipo.test.ts"
+      ],
+      "tests_written": true
+    },
+    "S17": {
+      "owner": "backend-dev",
+      "title": "HTTP A: api_types.go (Huma DTOs, separate ClientIPO), problems.go (ipo.* codes, locations, inr warning detail), registerAdmin (create, admin list/get, update, set-flag, suggest-dates; authz.Require admin, Idempotency-Key, route order).",
+      "done_command": "cd apps/api && go test -race -run 'TestAdmin_|TestSuggest_|TestProblems_' ./internal/ipos/",
+      "status": "done",
+      "depends_on": [
+        "S14",
+        "S15",
+        "S16",
+        "002-merged",
+        "003-merged"
+      ],
+      "rules": [
+        "BR-IPO-01",
+        "BR-IPO-02",
+        "BR-IPO-03"
+      ],
+      "expect": "green",
+      "parallel": false,
+      "est_lines": 530,
+      "files": [
+        "apps/api/internal/ipos/api_types.go",
+        "apps/api/internal/ipos/problems.go",
+        "apps/api/internal/ipos/handler.go"
+      ],
+      "protected_tests": []
+    },
+    "S18": {
+      "owner": "backend-dev",
+      "title": "HTTP B: registerActions (publish, unpublish, override, delete 204), registerClient (list, get, cursor); ipos.Register in main.go after authz.Install; 10 ids appended to cmd/swastik/testdata/admin-operations.txt.",
+      "done_command": "cd apps/api && go test -race ./internal/ipos/... ./cmd/...",
+      "status": "done",
+      "depends_on": [
+        "S17",
+        "002-merged",
+        "003-merged"
+      ],
+      "rules": [
+        "BR-IPO-02",
+        "BR-IPO-03"
+      ],
+      "expect": "green",
+      "parallel": false,
+      "est_lines": 325,
+      "files": [
+        "apps/api/internal/ipos/handler_actions.go",
+        "apps/api/internal/ipos/handler_client.go",
+        "apps/api/cmd/swastik/main.go",
+        "apps/api/cmd/swastik/testdata/admin-operations.txt"
+      ],
+      "protected_tests": []
+    },
+    "S19": {
+      "owner": "backend-dev",
+      "title": "Contract artefacts: regenerate packages/api-client/openapi.yaml and schema.ts (additive IPO paths only); add packages/domain/src/ipo.ts (statuses, flags, segments, ipo error codes) and export it.",
+      "done_command": "cd apps/api && go test -race -run 'TestIPOContract_' ./cmd/swastik/... && cd ../.. && pnpm --filter @swastik/api-client generate && git diff --exit-code packages/api-client && pnpm --filter @swastik/domain test && pnpm turbo run typecheck",
+      "status": "done",
+      "depends_on": [
+        "S18",
+        "S16",
+        "002-merged",
+        "003-merged"
+      ],
+      "rules": [
+        "BR-IPO-01",
+        "BR-IPO-02",
+        "BR-IPO-03"
+      ],
+      "expect": "green",
+      "parallel": false,
+      "est_lines": 90,
+      "files": [
+        "packages/api-client/openapi.yaml",
+        "packages/api-client/src/schema.ts",
+        "packages/domain/src/ipo.ts",
+        "packages/domain/src/index.ts"
+      ],
+      "protected_tests": []
+    },
+    "S20": {
+      "owner": "backend-dev",
+      "title": "Final gate: accept ADR 0008 (Status line to Accepted, only after the owner's written acceptance of the plan is in the PR thread), set 008 status in docs/product/modules.md (owner decides the Depends-on cell, plan R-7), run the full suite with output pasted as evidence (GS-01..04, lint, sqlc, coverage >= 90 percent on internal/ipos, BR traceability).",
+      "done_command": "cd apps/api && go test -race ./... && cd ../.. && make lint-go && cd apps/api && sqlc generate && sqlc vet && git diff --exit-code internal/platform/db/dbgen && go test -race -coverprofile=$(mktemp) ./internal/ipos/... && cd ../.. && bash scripts/check-lint-boundaries.sh && bash scripts/check-br-traceability.sh && grep -q 'Status: Accepted' docs/adr/0008-in-transaction-module-signals.md && pnpm turbo run typecheck test build",
+      "status": "done",
+      "note": "ADR 0008 acceptance pending owner written acceptance in PR thread",
+      "depends_on": [
+        "S19",
+        "002-merged",
+        "003-merged"
+      ],
+      "rules": [
+        "BR-IPO-01",
+        "BR-IPO-02",
+        "BR-IPO-03"
+      ],
+      "expect": "green",
+      "parallel": false,
+      "est_lines": 5,
+      "files": [
+        "docs/adr/0008-in-transaction-module-signals.md",
+        "docs/product/modules.md"
+      ],
+      "protected_tests": []
+    }
+  },
+  "metrics": [],
+  "owner_decisions": {
+    "2026-11-15_adr_0008": "ADR 0008 (in-transaction module signals) accepted by the owner"
+  },
+  "review_fix": {
+    "protected_tests": [
+      "apps/api/internal/ipos/idempotency_review_test.go",
+      "apps/api/internal/ipos/schema_limits_test.go",
+      "apps/api/internal/ipos/perf_test.go",
+      "apps/api/internal/ipos/handler_client_test.go",
+      "apps/api/internal/ipos/handler_admin_test.go"
+    ]
+  }
+}

@@ -39,6 +39,8 @@ linters:
               desc: platform packages must not import business modules
             - pkg: "github.com/NandanMaheta/swastik/apps/api/internal/outbox"
               desc: platform packages must not import business modules
+            - pkg: "github.com/NandanMaheta/swastik/apps/api/internal/ipos"
+              desc: platform packages must not import business modules
             - pkg: "github.com/NandanMaheta/swastik/apps/api/internal/auth"
               desc: platform packages must not import business modules
         outbox-does-not-know-scheduler:
@@ -46,6 +48,27 @@ linters:
           deny:
             - pkg: "github.com/NandanMaheta/swastik/apps/api/internal/scheduler"
               desc: scheduler depends on outbox, never the reverse
+        scheduler-does-not-know-owners:
+          files: ["**/internal/scheduler/**", "**/internal/outbox/**"]
+          deny:
+            - pkg: "github.com/NandanMaheta/swastik/apps/api/internal/ipos"
+              desc: owners depend on the scheduler, never the reverse
+        ipos-boundaries:
+          list-mode: strict
+          files: ["**/internal/ipos/**", "!$test"]
+          allow:
+            - $gostd
+            - github.com/danielgtaylor/huma/v2
+            - github.com/google/uuid
+            - github.com/jackc/pgx/v5
+            - github.com/NandanMaheta/swastik/apps/api/internal/ipos
+            - github.com/NandanMaheta/swastik/apps/api/internal/platform
+            - github.com/NandanMaheta/swastik/apps/api/internal/scheduler
+        ipos-pgx-only-in-store:
+          files: ["**/internal/ipos/**", "!**/internal/ipos/store.go", "!$test"]
+          deny:
+            - pkg: "github.com/jackc/pgx/v5"
+              desc: pgx types stay in store.go (go-module-pattern)
         oidc-only-in-tickauth:
           files: ["$all", "!**/internal/platform/tickauth/**"]
           deny:

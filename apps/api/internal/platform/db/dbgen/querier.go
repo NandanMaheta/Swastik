@@ -40,6 +40,7 @@ type Querier interface {
 	CountJobsByState(ctx context.Context, orgID uuid.UUID) (CountJobsByStateRow, error)
 	CountMessagesByState(ctx context.Context, orgID uuid.UUID) (CountMessagesByStateRow, error)
 	CountUsableRecoveryCodes(ctx context.Context, userID uuid.UUID) (int32, error)
+	DeleteIPO(ctx context.Context, arg DeleteIPOParams) (int64, error)
 	DeleteThrottle(ctx context.Context, arg DeleteThrottleParams) error
 	// The first end stands: an already ended session is left alone (zero rows).
 	EndSession(ctx context.Context, arg EndSessionParams) (int64, error)
@@ -57,16 +58,23 @@ type Querier interface {
 	FailJob(ctx context.Context, arg FailJobParams) (FailJobRow, error)
 	// Back to pending at available_at (already moved out of quiet hours), or dead when attempts are used up.
 	FailMessage(ctx context.Context, arg FailMessageParams) (FailMessageRow, error)
+	FindIPOAuditByIdempotencyKey(ctx context.Context, arg FindIPOAuditByIdempotencyKeyParams) (FindIPOAuditByIdempotencyKeyRow, error)
 	FinishTickRun(ctx context.Context, arg FinishTickRunParams) error
 	// tick_runs is global, not per org: the retention job purges it only for the first org.
 	FirstOrgID(ctx context.Context) (uuid.UUID, error)
 	// ---- admin MFA ----
 	GetAdminMFA(ctx context.Context, userID uuid.UUID) (AdminMfa, error)
 	GetChallengeByHash(ctx context.Context, tokenHash []byte) (MfaChallenge, error)
+	GetCreateRequestHash(ctx context.Context, arg GetCreateRequestHashParams) (pgtype.Text, error)
+	GetIPO(ctx context.Context, arg GetIPOParams) (Ipo, error)
+	GetIPOByCreateKey(ctx context.Context, arg GetIPOByCreateKeyParams) (Ipo, error)
+	GetIPOForShare(ctx context.Context, arg GetIPOForShareParams) (Ipo, error)
+	GetIPOForUpdate(ctx context.Context, arg GetIPOForUpdateParams) (Ipo, error)
 	// The row is locked so a retry or cancel decides on a state nobody changes meanwhile.
 	GetJobForOrg(ctx context.Context, arg GetJobForOrgParams) (ScheduledJob, error)
 	// The row is locked so a retry or cancel decides on a state nobody changes meanwhile.
 	GetMessageForOrg(ctx context.Context, arg GetMessageForOrgParams) (OutboxMessage, error)
+	GetPublishedIPO(ctx context.Context, arg GetPublishedIPOParams) (Ipo, error)
 	// No row means the default window (21:30-08:00 IST).
 	GetQuietHours(ctx context.Context, orgID uuid.UUID) (GetQuietHoursRow, error)
 	GetRefreshTokenByHash(ctx context.Context, tokenHash []byte) (RefreshToken, error)
@@ -82,6 +90,8 @@ type Querier interface {
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
 	// ---- MFA challenges ----
 	InsertChallenge(ctx context.Context, arg InsertChallengeParams) (MfaChallenge, error)
+	// IPO catalogue (feature 008). Every query filters by org_id. Instants come from @now.
+	InsertIPO(ctx context.Context, arg InsertIPOParams) (Ipo, error)
 	// Outbox queries (feature 002). Every instant is a parameter taken from the injected clock.
 	// Add: a repeated (org, topic, dedupe_key) is ignored whatever the first row's status (FR-024).
 	// Zero rows affected means duplicate.
@@ -113,11 +123,13 @@ type Querier interface {
 	// ---- organisation ----
 	// Two rows are enough to tell "none", "one" and "many" apart.
 	ListFirstTwoOrgIDs(ctx context.Context) ([]uuid.UUID, error)
+	ListIPOsAdmin(ctx context.Context, arg ListIPOsAdminParams) ([]Ipo, error)
 	// Live: not ended and strictly before both expiry instants.
 	ListLiveSessionsByUser(ctx context.Context, arg ListLiveSessionsByUserParams) ([]DeviceSession, error)
 	// Scheduler queries (feature 002). Every instant is a parameter taken from the injected clock;
 	// nothing here calls now() (FR-032). Rows are claimed one at a time with FOR UPDATE SKIP LOCKED.
 	ListOrgIDs(ctx context.Context) ([]uuid.UUID, error)
+	ListPublishedIPOs(ctx context.Context, arg ListPublishedIPOsParams) ([]Ipo, error)
 	LockAdminMFA(ctx context.Context, userID uuid.UUID) (AdminMfa, error)
 	// Every admin of the org, any status, ordered by id: the last-admin guard (the first lock of the order).
 	LockAdminsByOrg(ctx context.Context, orgID uuid.UUID) ([]User, error)
@@ -172,12 +184,16 @@ type Querier interface {
 	SelectUnalertedDeadJobs(ctx context.Context) ([]SelectUnalertedDeadJobsRow, error)
 	// Dead messages not yet included in an alert. Locked, so a concurrent sweep skips them.
 	SelectUnalertedDeadMessages(ctx context.Context) ([]SelectUnalertedDeadMessagesRow, error)
+	SetIPOFlag(ctx context.Context, arg SetIPOFlagParams) (Ipo, error)
+	SetIPOPublished(ctx context.Context, arg SetIPOPublishedParams) (Ipo, error)
+	SetIPOStatus(ctx context.Context, arg SetIPOStatusParams) (Ipo, error)
 	// Rotation step 3: link the used token to its successor.
 	SetRefreshTokenReplacedBy(ctx context.Context, arg SetRefreshTokenReplacedByParams) (int64, error)
 	SetUserLastSignIn(ctx context.Context, arg SetUserLastSignInParams) (int64, error)
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) (int64, error)
 	SetUserStatus(ctx context.Context, arg SetUserStatusParams) (int64, error)
 	TouchSession(ctx context.Context, arg TouchSessionParams) (int64, error)
+	UpdateIPOFacts(ctx context.Context, arg UpdateIPOFactsParams) (Ipo, error)
 	// Schedule: one active (pending or running) job per (org, kind, dedupe_key). A pending row takes
 	// the latest values; a running row is flagged to run again at the new time when it finishes.
 	UpsertJob(ctx context.Context, arg UpsertJobParams) (uuid.UUID, error)

@@ -7,3 +7,13 @@ auth-authenticator-replace-confirm
 auth-admin-user-devices-list
 auth-admin-user-device-revoke
 auth-admin-user-sessions-end-all
+ipos-create
+ipos-admin-list
+ipos-suggest-dates
+ipos-admin-get
+ipos-update
+ipos-delete
+ipos-set-flag
+ipos-publish
+ipos-unpublish
+ipos-override-status
