@@ -1,6 +1,6 @@
 # Data model: 004 OTP delivery
 
-Migration `apps/api/migrations/00005_otp.sql` (expand-only; owner gate). Queries: `apps/api/queries/otp.sql` (new) and `apps/api/queries/outbox.sql` (edited, section 6). Times are written from the injected clock via `@now` parameters; `now()` defaults are only a safety net. PostgreSQL 17 in staging/production: `DEFAULT uuidv7()` relies on the function added by `fix/postgres-17-compat` (must merge first; see plan gate G-PG17).
+Migration `apps/api/migrations/00006_otp.sql` (expand-only; owner gate). Queries: `apps/api/queries/otp.sql` (new) and `apps/api/queries/outbox.sql` (edited, section 6). Times are written from the injected clock via `@now` parameters; `now()` defaults are only a safety net. PostgreSQL 17 in staging/production: `DEFAULT uuidv7()` relies on the function added by `fix/postgres-17-compat` (must merge first; see plan gate G-PG17).
 
 The `otp_*` tables are mutable operational tables owned by `internal/otp` (no `forbid_mutation()`); every business event is recorded in the existing append-only `audit_log`. No other module reads them (constitution IV).
 

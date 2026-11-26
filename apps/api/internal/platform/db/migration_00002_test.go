@@ -138,7 +138,7 @@ var expectedColumns = map[string]map[string]colSpec{
 		"locked_until": {tstz, true}, "lock_token": {uid, true}, "locked_by": {txt, true},
 		"alerted_at": {tstz, true}, "sent_at": {tstz, true}, "finished_at": {tstz, true},
 		"created_at": {tstz, false}, "updated_at": {tstz, false},
-		"sensitive_payload": {bl, false}, // added by migration 00005 (feature 004, ADR 0003 Am. 2)
+		"sensitive_payload": {bl, false}, // added by migration 00006 (feature 004, ADR 0003 Am. 2)
 	},
 	"quiet_hours": {
 		"org_id": {uid, false}, "start_minute": {"smallint", false}, "end_minute": {"smallint", false},
@@ -717,7 +717,7 @@ func TestMigration00002_TablesAreMutableAndHaveNoAppendOnlyTrigger(t *testing.T)
 	var n int
 	err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_trigger tg JOIN pg_class c ON c.oid = tg.tgrelid
 		WHERE NOT tg.tgisinternal AND c.relname IN ('scheduled_jobs','outbox_messages','quiet_hours','tick_runs')
-		AND tg.tgname <> 'outbox_erase_sensitive_payload'`).Scan(&n) // 00005 erase trigger is not append-only
+		AND tg.tgname <> 'outbox_erase_sensitive_payload'`).Scan(&n) // 00006 erase trigger is not append-only
 	if err != nil {
 		t.Fatalf("pg_trigger: %v", err)
 	}

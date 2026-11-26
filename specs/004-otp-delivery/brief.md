@@ -16,12 +16,12 @@
 - Go `internal/otp`: `Start`, `Deliver`, `Get`, `Cancel`, `NotifyOldContact`, `DailyCounts`; handle ops `Status`, `Resend`, `VerifyEmail`, `VerifyMobile`, `StartReset`, `CompleteReset`; `Sender()`; `Register`, `RegisterJobs` (`otp.housekeeping`).
 - New platform: `platform/email` (`Mailer`, `NewResend`, `Discard`), `platform/firebaseauth` (`Verifier`). Additive: `outbox.Message.SensitivePayload`, `outbox.DeliverNow`; `auth.FindUser`, `auth.DefaultOrg`; `httpx.ProblemRetry`; `config.OTPConfig`.
 - HTTP: POST `/v1/verifications/{status,resend,verify-email,verify-mobile}` (public, handle in body), POST `/v1/password-reset/{start,complete}` (public), POST `/v1/me/verifications/{status,resend,verify-email,verify-mobile}` (client).
-- DB: `00005_otp.sql`: `otp_verifications`, `otp_email_codes`, `otp_used_proofs`, `otp_limits`, `otp_daily_counts`; outbox `sensitive_payload` + erase trigger (`data-model.md`).
+- DB: `00006_otp.sql`: `otp_verifications`, `otp_email_codes`, `otp_used_proofs`, `otp_limits`, `otp_daily_counts`; outbox `sensitive_payload` + erase trigger (`data-model.md`).
 
-**Files to touch:** `apps/api/internal/otp/**`, `apps/api/internal/platform/{email,firebaseauth}/**`, `apps/api/internal/{outbox,auth}/` (additive), `apps/api/internal/platform/{httpx,config}/`, `apps/api/migrations/00005_otp.sql`, `apps/api/queries/{otp,outbox,outbox_admin}.sql`, `apps/api/cmd/swastik/{main,jobs}.go`, `apps/api/.golangci.yml`, `scripts/check-lint-boundaries.sh`, `packages/domain/src/otp-error-codes.ts`, `packages/api-client` (generated), `infra/bootstrap/{secrets,test}.sh`, `infra/tofu/modules/env/*`, `docs/engineering/runbook.md`.
+**Files to touch:** `apps/api/internal/otp/**`, `apps/api/internal/platform/{email,firebaseauth}/**`, `apps/api/internal/{outbox,auth}/` (additive), `apps/api/internal/platform/{httpx,config}/`, `apps/api/migrations/00006_otp.sql`, `apps/api/queries/{otp,outbox,outbox_admin}.sql`, `apps/api/cmd/swastik/{main,jobs}.go`, `apps/api/.golangci.yml`, `scripts/check-lint-boundaries.sh`, `packages/domain/src/otp-error-codes.ts`, `packages/api-client` (generated), `infra/bootstrap/{secrets,test}.sh`, `infra/tofu/modules/env/*`, `docs/engineering/runbook.md`.
 
 **Depends on:** 003 (users, FR-051/053, audit, crypto), 002 (outbox: quiet-hours exemption, expiry, withdraw), `fix/postgres-17-compat` (uuidv7 on PG 17); see `docs/engineering/codemap.md`.
 
-**Owner gates:** migration 00005 (G-MIG), outbox change + ADR 0003 Am. 2 (G-OUTBOX), secrets `RESEND_API_KEY`, `OTP_HMAC_KEY` + `otp_enabled` (G-SECRETS), additive auth API (G-AUTH), PG17 fix merged (G-PG17).
+**Owner gates:** migration 00006 (G-MIG), outbox change + ADR 0003 Am. 2 (G-OUTBOX), secrets `RESEND_API_KEY`, `OTP_HMAC_KEY` + `otp_enabled` (G-SECRETS), additive auth API (G-AUTH), PG17 fix merged (G-PG17).
 
 **Risks and non-goals:** Resend 100/day shared cap; Firebase iPhone PWA spike and real-device SMS test before 024 (Q3); timing uniformity relies on the response floor. Non-goals: SMS sent by us, WhatsApp, passwordless login, admin reset, screens, SME, automated applying.

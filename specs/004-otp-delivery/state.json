@@ -90,7 +90,7 @@
     },
     "S05": {
       "owner": "backend-dev",
-      "title": "OWNER GATES G-MIG, G-OUTBOX, G-PG17: migrations/00005_otp.sql (data-model 1-6, expand-only, down drops), queries/outbox.sql + outbox_admin.sql edits, ClaimMessageByKey, sqlc generate/vet, outbox SensitivePayload + DeliverNow.",
+      "title": "OWNER GATES G-MIG, G-OUTBOX, G-PG17: migrations/00006_otp.sql (data-model 1-6, expand-only, down drops), queries/outbox.sql + outbox_admin.sql edits, ClaimMessageByKey, sqlc generate/vet, outbox SensitivePayload + DeliverNow.",
       "done_command": "cd apps/api && sqlc generate && sqlc vet && go test -race ./internal/otp/schema/... ./internal/outbox/...",
       "status": "done",
       "depends_on": [
@@ -363,9 +363,9 @@
     }
   },
   "owner_gates": {
-    "G-MIG": "migration 00005_otp.sql (CODEOWNERS) - S05",
+    "G-MIG": "migration 00006_otp.sql (CODEOWNERS) - S05",
     "G-OUTBOX": "outbox sensitive payload, expiry, DeliverNow + ADR 0003 Am. 2 (security-sensitive) - S05",
-    "G-PG17": "fix/postgres-17-compat (uuidv7) merged before 00005 reaches staging - S05",
+    "G-PG17": "fix/postgres-17-compat (uuidv7) merged before 00006 reaches staging - S05",
     "G-AUTH": "additive auth API FindUser/DefaultOrg (ADR 0004: auth PRs need owner approval) - S09",
     "G-SECRETS": "owner creates resend-api-key-<env>, otp-hmac-key-<env> (secrets.sh --with-otp) and sets otp_enabled - S19"
   },

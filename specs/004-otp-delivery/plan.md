@@ -6,7 +6,7 @@
 
 ## Summary
 
-New module `internal/otp` owns four tables (migration `00005_otp.sql`) and offers (a) an in-process capability for 005/007 (`Start`, `Deliver`, `Get`, `Cancel`, `NotifyOldContact`, `DailyCounts`) and (b) ten HTTP operations for 024 (handle-keyed public sign-up/reset operations; `/v1/me/*` change operations for the signed-in owner). Email codes: 6 uniform digits, stored as an HMAC digest, written with an encrypted outbox message in one transaction, delivered at once in the request through a new `outbox.DeliverNow` and the Resend sender, with the tick relay as fallback. Mobile: the app sends a Firebase phone sign-in ID token; `internal/platform/firebaseauth` verifies it with go-oidc; otp checks provider, freshness, number and single use. Durable limits live in `otp_limits`. Sign-up success calls `auth.MarkEmailVerified/MarkMobileVerified` in the same transaction; reset ends in `auth.ResetPassword`. Every event is audited without contacts, codes or proofs.
+New module `internal/otp` owns four tables (migration `00006_otp.sql`) and offers (a) an in-process capability for 005/007 (`Start`, `Deliver`, `Get`, `Cancel`, `NotifyOldContact`, `DailyCounts`) and (b) ten HTTP operations for 024 (handle-keyed public sign-up/reset operations; `/v1/me/*` change operations for the signed-in owner). Email codes: 6 uniform digits, stored as an HMAC digest, written with an encrypted outbox message in one transaction, delivered at once in the request through a new `outbox.DeliverNow` and the Resend sender, with the tick relay as fallback. Mobile: the app sends a Firebase phone sign-in ID token; `internal/platform/firebaseauth` verifies it with go-oidc; otp checks provider, freshness, number and single use. Durable limits live in `otp_limits`. Sign-up success calls `auth.MarkEmailVerified/MarkMobileVerified` in the same transaction; reset ends in `auth.ResetPassword`. Every event is audited without contacts, codes or proofs.
 
 ## Technical Context
 
@@ -90,7 +90,7 @@ Public operations: handle in the JSON body (never in URLs), per-IP in-memory bur
 |---|---|---|
 | Unit | `otp/code_test`, `limits_test`, `mask_test`, `errors_test`, `templates_test`, `email/resend_test` (httptest: headers, 429/5xx ⇒ unavailable, 4xx ⇒ rejected, no body/recipient in errors), `firebaseauth/verify_test` (minted RS256 tokens: wrong iss/aud/alg/kid, expired, future iat) | D-01…D-04, D-08 |
 | Property (rapid) | `limits_prop_test` (never more than N accepted per window; retry_after exact; IST-day reset), `code_prop_test` (6 digits, uniform bucket check, digest binds verification/purpose/code id) | BR-CLI-04 D-02/D-03 |
-| Integration (DB) | `00005` schema tests (CHECKs, unique live code/open flow, outbox erase trigger and CHECK on every terminal path), outbox `DeliverNow`/expiry tests, otp store tests | FR-011, FR-013, FR-015 |
+| Integration (DB) | `00006` schema tests (CHECKs, unique live code/open flow, outbox erase trigger and CHECK on every terminal path), outbox `DeliverNow`/expiry tests, otp store tests | FR-011, FR-013, FR-015 |
 | Integration (service, fake clock) | US1–US6 acceptance scenarios incl. boundaries 10:09:59/10:10:00, 59 s/60 s, 5th wrong, concurrent double verify, decoys, superseded email withdrawn, quiet-hours 23:00 IST send, D-05, contact unavailable, reset ends sessions; audit content scan | BR-CLI-04, BR-CLI-05, SC-001, SC-003 |
 | Contract | `cmd/swastik/otp_contract_test.go`: operations, security, public allowlist, schemas vs contracts; secrets never in examples; oasdiff additive | FR-009, FR-016 |
 | Handler (humatest) | uniform shapes/status for known vs unknown reset; Retry-After; `/v1/me/*` other-user 404; timing test median diff < 10% (SC-004, as 003) | D-07 |
@@ -109,7 +109,7 @@ Leak scan (SC-003): a test-wide log handler + audit/outbox/problem scan assertin
 
 ## Owner gates
 
-- **G-MIG** migration `00005_otp.sql` (CODEOWNERS). **G-OUTBOX** outbox change + ADR 0003 Am. 2 (security-sensitive, approved in principle as Q2). **G-SECRETS** secret creation by the owner (`secrets.sh --with-otp`) and `otp_enabled=true` per env. **G-PG17** `fix/postgres-17-compat` merged before 00005 reaches staging. **G-AUTH** additive `auth` API (ADR 0004: auth PRs need owner approval). No new dependency.
+- **G-MIG** migration `00006_otp.sql` (CODEOWNERS). **G-OUTBOX** outbox change + ADR 0003 Am. 2 (security-sensitive, approved in principle as Q2). **G-SECRETS** secret creation by the owner (`secrets.sh --with-otp`) and `otp_enabled=true` per env. **G-PG17** `fix/postgres-17-compat` merged before 00006 reaches staging. **G-AUTH** additive `auth` API (ADR 0004: auth PRs need owner approval). No new dependency.
 
 ## Complexity Tracking
 
