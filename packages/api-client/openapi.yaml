@@ -1928,6 +1928,7 @@ paths:
           required: true
           schema:
             description: Comma-separated IPO ids, 1 to 200
+            maxLength: 7500
             type: string
       responses:
         "200":
@@ -2943,6 +2944,7 @@ paths:
           required: true
           schema:
             description: Comma-separated IPO ids, 1 to 200
+            maxLength: 7500
             type: string
       responses:
         "200":

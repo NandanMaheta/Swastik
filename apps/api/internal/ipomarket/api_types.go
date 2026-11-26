@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/google/uuid"
 )
 
 // GMPEntryInput is the body of ipomarket-record-gmp.
@@ -196,7 +197,7 @@ func gmpEntryOut(e GMPEntry) AdminGMPEntry {
 	o := AdminGMPEntry{
 		ID: e.ID.String(), GMPPaise: e.GMPPaise, ExpectedProfitPaise: e.ExpectedProfitPaise, Note: e.Note,
 		Source: e.Source, RecordedAt: rfc3339(e.RecordedAt),
-		Actor: actorOut(e.Actor.Kind, e.Actor.ID.String(), e.Actor.ID.String() != "00000000-0000-0000-0000-000000000000"),
+		Actor: actorOut(e.Actor.Kind, e.Actor.ID.String(), e.Actor.ID != uuid.Nil),
 	}
 	if e.CorrectsEntryID != nil {
 		o.CorrectsEntryID = strPtr(e.CorrectsEntryID, true)
@@ -210,7 +211,7 @@ func gmpEntryOut(e GMPEntry) AdminGMPEntry {
 func adminSubOut(s Snapshot) AdminSubscription {
 	return AdminSubscription{
 		ID: s.ID.String(), SubscriptionView: subViewOut(s), Source: s.Source, RecordedAt: rfc3339(s.RecordedAt),
-		Actor: actorOut(s.Actor.Kind, s.Actor.ID.String(), s.Actor.ID.String() != "00000000-0000-0000-0000-000000000000"),
+		Actor: actorOut(s.Actor.Kind, s.Actor.ID.String(), s.Actor.ID != uuid.Nil),
 	}
 }
 

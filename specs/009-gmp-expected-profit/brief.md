@@ -14,9 +14,9 @@
 **Public surface:**
 - Go: package `internal/ipomarket`: `NewService(Deps)`, `Register`, `ExpectedProfitPerLot`, `CurrentGMP`, `RecordGMP`, `RecordSubscription`, reads, errors (see `contracts/go-module-api.md`); 008 gains additive `ipos.(*Service).GetMany`.
 - HTTP: 7 operations `ipomarket-*`: `POST|GET /v1/admin/ipos/{ipoId}/gmp`, `POST|GET /v1/admin/ipos/{ipoId}/subscription`, `GET /v1/admin/ipos/market`, `GET /v1/ipos/{ipoId}/market`, `GET /v1/ipos/market` (see `contracts/http-api.md`).
-- DB: migration `00006_ipo_market.sql`: `ipo_gmp_entries`, `ipo_subscription_snapshots`, both append-only (`forbid_mutation()`), see `data-model.md`.
+- DB: migration `00005_ipo_market.sql`: `ipo_gmp_entries`, `ipo_subscription_snapshots`, both append-only (`forbid_mutation()`), see `data-model.md`.
 
-**Files to touch:** `apps/api/internal/ipomarket/**`, `apps/api/queries/ipomarket.sql`, `apps/api/migrations/00006_ipo_market.sql`, `apps/api/internal/ipos/service_read.go` + `queries/ipos.sql` (`GetMany`), `apps/api/cmd/swastik/main.go`, `apps/api/.golangci.yml`, `scripts/check-lint-boundaries.sh`, `packages/domain/src/ipo-market.ts`, `packages/api-client`, `specs/008-ipo-catalogue/contracts/go-module-api.md` (GetMany line), `docs/product/modules.md`.
+**Files to touch:** `apps/api/internal/ipomarket/**`, `apps/api/queries/ipomarket.sql`, `apps/api/migrations/00005_ipo_market.sql`, `apps/api/internal/ipos/service_read.go` + `queries/ipos.sql` (`GetMany`), `apps/api/cmd/swastik/main.go`, `apps/api/.golangci.yml`, `scripts/check-lint-boundaries.sh`, `packages/domain/src/ipo-market.ts`, `packages/api-client`, `specs/008-ipo-catalogue/contracts/go-module-api.md` (GetMany line), `docs/product/modules.md`.
 
 **Depends on:** 008 (merged: `ipos.Get`, `IPO.LotSize`, status, `FirstPublishedAt`), 002 (db, clock, audit), 003 (authz, httpx.Problem). See `docs/engineering/codemap.md`.
 

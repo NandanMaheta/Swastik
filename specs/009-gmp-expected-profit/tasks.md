@@ -22,10 +22,10 @@
   - Rules: BR-IPO-04
   - Files (~300 lines): `apps/api/internal/ipomarket/schema_test.go`
   - Done command (red): `cd apps/api && go test -race -run 'TestSchema_' ./internal/ipomarket/`
-- [x] S03 **data-dev**: Migration migrations/00006_ipo_market.sql (two tables, indexes, forbid_mutation triggers; owner approval on PR; 004 holds 00005, rename 00005 to 00006 in brief, plan, data-model) plus depguard rules in .golangci.yml (platform-is-a-leaf, ipomarket-boundaries, ipomarket-pgx-only-in-store).
+- [x] S03 **data-dev**: Migration migrations/00005_ipo_market.sql (two tables, indexes, forbid_mutation triggers; owner approval on PR; 004 holds 00005, rename 00005 to 00006 in brief, plan, data-model) plus depguard rules in .golangci.yml (platform-is-a-leaf, ipomarket-boundaries, ipomarket-pgx-only-in-store).
   - Depends on: S02, uuidv7-fix-merged
   - Rules: BR-IPO-04
-  - Files (~260 lines): `apps/api/migrations/00006_ipo_market.sql`, `apps/api/.golangci.yml`, `specs/009-gmp-expected-profit/{brief,plan,data-model}.md`
+  - Files (~260 lines): `apps/api/migrations/00005_ipo_market.sql`, `apps/api/.golangci.yml`, `specs/009-gmp-expected-profit/{brief,plan,data-model}.md`
   - Done command (green): `cd apps/api && go test -race -run 'TestSchema_' ./internal/ipomarket/`
 - [ ] S04 [P] **test-engineer**: Pure unit and property tests: TestExpectedProfitPerLot_BR_IPO_04_Property (rapid, 10k) and value table (US1.1, 1.2, 1.4); validate tests (note trim, as-of window IST open date and +5 min, x100 ranges, typo-guard warning by issue price, band cap, none).
   - Depends on: S01
@@ -37,7 +37,7 @@
   - Rules: BR-IPO-04
   - Files (~220 lines): `apps/api/internal/ipomarket/profit.go`, `apps/api/internal/ipomarket/validate.go`
   - Done command (green): `cd apps/api && go test -race -run 'TestExpectedProfitPerLot_BR_IPO_04|TestValidate_' ./internal/ipomarket/`
-- [ ] S06 [P] **test-engineer**: Store and 008 read tests: TestQueries_* through Store (insert, idem lookup, current/effective, is-corrected, history keyset, trend cap 500, batch DISTINCT ON, org isolation, subscription ordering by as_of, recorded_at, id); ipos TestGetMany_* (org scoping, drafts included, unknown ids absent, ≤200).
+- [ ] S06 [P] **test-engineer**: Store and 008 read tests: TestQueries_* through Store (insert, idem lookup, current/effective, is-corrected, history keyset, trend cap 500, batch LATERAL, org isolation, subscription ordering by as_of, recorded_at, id); ipos TestGetMany_* (org scoping, drafts included, unknown ids absent, ≤200).
   - Depends on: S01, S03
   - Rules: BR-IPO-04
   - Files (~420 lines): `apps/api/internal/ipomarket/store_test.go`, `apps/api/internal/ipos/service_read_test.go`

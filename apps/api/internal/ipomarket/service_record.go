@@ -146,9 +146,6 @@ func (s *Service) RecordSubscription(ctx context.Context, by audit.Actor, org, i
 		if err != nil {
 			return err
 		}
-		if err := validateSubscription(in, ipo, s.d.Now()); err != nil {
-			return err
-		}
 		if err := s.store.lockIPO(ctx, ipoID); err != nil {
 			return err
 		}
@@ -171,6 +168,9 @@ func (s *Service) RecordSubscription(ctx context.Context, by audit.Actor, org, i
 			case !errors.Is(err, ErrNotFound):
 				return err
 			}
+		}
+		if err := validateSubscription(in, ipo, s.d.Now()); err != nil {
+			return err
 		}
 		if err := checkWritable(ipo); err != nil {
 			return err

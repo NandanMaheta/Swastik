@@ -54,7 +54,7 @@
   },
   "S03": {
    "owner": "data-dev",
-   "title": "Migration migrations/00006_ipo_market.sql (two tables, indexes, forbid_mutation triggers; owner approval on PR; 004 holds 00005, rename 00005 to 00006 in brief, plan, data-model) plus depguard rules in .golangci.yml (platform-is-a-leaf, ipomarket-boundaries, ipomarket-pgx-only-in-store).",
+   "title": "Migration migrations/00005_ipo_market.sql (two tables, indexes, forbid_mutation triggers; owner approval on PR; 004 holds 00005, rename 00005 to 00006 in brief, plan, data-model) plus depguard rules in .golangci.yml (platform-is-a-leaf, ipomarket-boundaries, ipomarket-pgx-only-in-store).",
    "done_command": "cd apps/api && go test -race -run 'TestSchema_' ./internal/ipomarket/",
    "status": "done",
    "depends_on": [
@@ -68,7 +68,7 @@
    "parallel": false,
    "est_lines": 260,
    "files": [
-    "apps/api/migrations/00006_ipo_market.sql",
+    "apps/api/migrations/00005_ipo_market.sql",
     "apps/api/.golangci.yml",
     "specs/009-gmp-expected-profit/{brief,plan,data-model}.md"
    ],

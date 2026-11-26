@@ -37,7 +37,7 @@ type PageQuery struct {
 }
 
 type idsQuery struct {
-	IPOIDs string `query:"ipo_ids" required:"true" doc:"Comma-separated IPO ids, 1 to 200"`
+	IPOIDs string `query:"ipo_ids" required:"true" maxLength:"7500" doc:"Comma-separated IPO ids, 1 to 200"`
 }
 
 func parseID(s string) uuid.UUID {

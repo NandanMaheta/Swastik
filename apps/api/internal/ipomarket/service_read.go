@@ -182,6 +182,9 @@ func (s *Service) MarketView(ctx context.Context, org, ipoID uuid.UUID, publishe
 // Summaries returns the batch summaries (at most 200 ids), in first-seen order of the ids. Unknown
 // and other orgs' ids are absent; with publishedOnly so are unpublished IPOs.
 func (s *Service) Summaries(ctx context.Context, org uuid.UUID, ids []uuid.UUID, publishedOnly bool) ([]Summary, error) {
+	if len(ids) > maxBatchIDs {
+		return nil, &ValidationError{Code: codeInvalidValue, Issues: []FieldIssue{{Field: "ipo_ids", Message: "at most 200 ids"}}}
+	}
 	seen := make(map[uuid.UUID]bool, len(ids))
 	uniq := make([]uuid.UUID, 0, len(ids))
 	for _, id := range ids {
@@ -235,3 +238,6 @@ func (s *Service) Summaries(ctx context.Context, org uuid.UUID, ids []uuid.UUID,
 	}
 	return out, nil
 }
+
+// maxBatchIDs bounds the ids accepted by the batch summaries.
+const maxBatchIDs = 200
