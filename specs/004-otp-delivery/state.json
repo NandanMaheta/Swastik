@@ -92,7 +92,7 @@
       "owner": "backend-dev",
       "title": "OWNER GATES G-MIG, G-OUTBOX, G-PG17: migrations/00005_otp.sql (data-model 1-6, expand-only, down drops), queries/outbox.sql + outbox_admin.sql edits, ClaimMessageByKey, sqlc generate/vet, outbox SensitivePayload + DeliverNow.",
       "done_command": "cd apps/api && sqlc generate && sqlc vet && go test -race ./internal/otp/schema/... ./internal/outbox/...",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "S04"
       ],
@@ -136,7 +136,7 @@
       "owner": "backend-dev",
       "title": "Implement code.go, limits.go, model.go masks, templates.go, errors.go.",
       "done_command": "cd apps/api && go test -race -run 'TestGenerateCode|TestCodeDigest|TestApplyLimits|TestMask|TestTemplate|TestProblemFor' ./internal/otp/",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "S06"
       ],

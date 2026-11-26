@@ -29,6 +29,7 @@ WHERE org_id = @org_id;
 SELECT * FROM outbox_messages WHERE id = @id AND org_id = @org_id FOR UPDATE;
 
 -- Retry: fresh attempts; available_at is computed by the caller so quiet hours still apply.
+-- A sensitive message has no payload left to send, so it is never retried (no row = ErrConflict).
 -- name: AdminRetryMessage :one
 UPDATE outbox_messages SET
     status           = 'pending',
@@ -38,7 +39,7 @@ UPDATE outbox_messages SET
     alerted_at       = NULL,
     finished_at      = NULL,
     updated_at       = @now
-WHERE id = @id AND org_id = @org_id AND status = 'dead'
+WHERE id = @id AND org_id = @org_id AND status = 'dead' AND NOT sensitive_payload
 RETURNING *;
 
 -- Cancel keeps the dedupe key reserved: the row stays, as withdrawn.

@@ -132,7 +132,12 @@ func (s *Service) RetryMessage(ctx context.Context, actor audit.Actor, org, id u
 		if err != nil {
 			return dbgen.OutboxMessage{}, err
 		}
-		return q.AdminRetryMessage(ctx, dbgen.AdminRetryMessageParams{AvailableAt: db.Timestamptz(at), Now: db.Timestamptz(now), ID: id, OrgID: org})
+		upd, err := q.AdminRetryMessage(ctx, dbgen.AdminRetryMessageParams{AvailableAt: db.Timestamptz(at), Now: db.Timestamptz(now), ID: id, OrgID: org})
+		if errors.Is(err, pgx.ErrNoRows) {
+			// The row was dead (checked under lock), so only a sensitive one is excluded: its payload is gone.
+			return dbgen.OutboxMessage{}, fmt.Errorf("%w: message %s carries an erased payload and cannot be retried", ErrConflict, id)
+		}
+		return upd, err
 	})
 }
 

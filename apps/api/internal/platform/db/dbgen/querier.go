@@ -17,6 +17,7 @@ type Querier interface {
 	AdminCancelMessage(ctx context.Context, arg AdminCancelMessageParams) (OutboxMessage, error)
 	AdminRetryJob(ctx context.Context, arg AdminRetryJobParams) (ScheduledJob, error)
 	// Retry: fresh attempts; available_at is computed by the caller so quiet hours still apply.
+	// A sensitive message has no payload left to send, so it is never retried (no row = ErrConflict).
 	AdminRetryMessage(ctx context.Context, arg AdminRetryMessageParams) (OutboxMessage, error)
 	// Replay guard: only a strictly greater step is accepted, atomically.
 	AdvanceMFAStep(ctx context.Context, arg AdvanceMFAStepParams) (int64, error)
@@ -28,6 +29,8 @@ type Querier interface {
 	// Claim one available message (or one whose send lease ran out), oldest id first, so messages
 	// of one recipient are relayed in the order they were recorded (FR-030).
 	ClaimMessage(ctx context.Context, arg ClaimMessageParams) (OutboxMessage, error)
+	// The same claim for one message by (org, topic, dedupe key): DeliverNow (feature 004).
+	ClaimMessageByKey(ctx context.Context, arg ClaimMessageByKeyParams) (OutboxMessage, error)
 	// Complete runs inside the handler's transaction and is fenced by the lock token: zero rows
 	// means the lease was lost and the caller rolls the whole transaction back.
 	CompleteJob(ctx context.Context, arg CompleteJobParams) (int64, error)
@@ -52,6 +55,7 @@ type Querier interface {
 	// Expiry sweep: time-sensitive work whose expiry has passed is never run (FR-014). Bounded per tick.
 	ExpireDueJobs(ctx context.Context, now pgtype.Timestamptz) (int64, error)
 	// Expiry sweep: a message past its expiry is never handed to a sender (FR-028). Bounded per tick.
+	// A 'sending' row whose lease ran out (the relay crashed) expires too: it is never claimed again.
 	ExpireDueMessages(ctx context.Context, now pgtype.Timestamptz) (int64, error)
 	// Fail: back to pending after a backoff, dead when attempts are used up, cancelled when a cancel
 	// was requested during the run, pending again at the new time when it was rescheduled meanwhile.

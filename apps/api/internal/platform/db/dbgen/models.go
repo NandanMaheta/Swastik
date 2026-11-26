@@ -131,6 +131,61 @@ type Org struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type OtpDailyCount struct {
+	OrgID  uuid.UUID   `json:"org_id"`
+	Day    pgtype.Date `json:"day"`
+	Metric string      `json:"metric"`
+	Count  int32       `json:"count"`
+}
+
+type OtpEmailCode struct {
+	ID             uuid.UUID          `json:"id"`
+	OrgID          uuid.UUID          `json:"org_id"`
+	VerificationID uuid.UUID          `json:"verification_id"`
+	CodeDigest     []byte             `json:"code_digest"`
+	IssuedAt       pgtype.Timestamptz `json:"issued_at"`
+	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
+	WrongAttempts  int16              `json:"wrong_attempts"`
+	OutboxKey      pgtype.Text        `json:"outbox_key"`
+	EndedAt        pgtype.Timestamptz `json:"ended_at"`
+	EndReason      pgtype.Text        `json:"end_reason"`
+}
+
+type OtpLimit struct {
+	OrgID     uuid.UUID            `json:"org_id"`
+	Scope     string               `json:"scope"`
+	Subject   []byte               `json:"subject"`
+	Events    []pgtype.Timestamptz `json:"events"`
+	UpdatedAt pgtype.Timestamptz   `json:"updated_at"`
+}
+
+type OtpUsedProof struct {
+	Fingerprint    []byte             `json:"fingerprint"`
+	OrgID          uuid.UUID          `json:"org_id"`
+	VerificationID uuid.UUID          `json:"verification_id"`
+	UsedAt         pgtype.Timestamptz `json:"used_at"`
+}
+
+type OtpVerification struct {
+	ID                  uuid.UUID          `json:"id"`
+	OrgID               uuid.UUID          `json:"org_id"`
+	UserID              uuid.NullUUID      `json:"user_id"`
+	Purpose             string             `json:"purpose"`
+	HandleHash          []byte             `json:"handle_hash"`
+	Email               pgtype.Text        `json:"email"`
+	Mobile              pgtype.Text        `json:"mobile"`
+	EmailDoneAt         pgtype.Timestamptz `json:"email_done_at"`
+	MobileDoneAt        pgtype.Timestamptz `json:"mobile_done_at"`
+	ResetTokenHash      []byte             `json:"reset_token_hash"`
+	ResetTokenExpiresAt pgtype.Timestamptz `json:"reset_token_expires_at"`
+	FinishedAt          pgtype.Timestamptz `json:"finished_at"`
+	CancelledAt         pgtype.Timestamptz `json:"cancelled_at"`
+	CancelReason        pgtype.Text        `json:"cancel_reason"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt           pgtype.Timestamptz `json:"expires_at"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+}
+
 type OutboxMessage struct {
 	ID                 uuid.UUID          `json:"id"`
 	OrgID              uuid.UUID          `json:"org_id"`
@@ -157,6 +212,7 @@ type OutboxMessage struct {
 	FinishedAt         pgtype.Timestamptz `json:"finished_at"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	SensitivePayload   bool               `json:"sensitive_payload"`
 }
 
 type QuietHour struct {
