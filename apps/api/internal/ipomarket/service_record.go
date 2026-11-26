@@ -123,9 +123,18 @@ func (s *Service) RecordGMP(ctx context.Context, by audit.Actor, org, ipoID uuid
 	return out, nil
 }
 
-// checkCorrection is filled in by the correction slice.
+// checkCorrection requires the target to be the current effective entry of the IPO (FR-005); an
+// unknown, foreign, older or already corrected target gives ErrCorrectionNotLatest. The caller
+// holds the per-IPO lock (D-06), so the answer cannot change before the insert.
 func (s *Service) checkCorrection(ctx context.Context, org, ipoID uuid.UUID, target *uuid.UUID) error {
-	return nil
+	if target == nil {
+		return nil
+	}
+	cur, err := s.store.currentGMP(ctx, org, ipoID)
+	if errors.Is(err, ErrNotFound) || (err == nil && cur.ID != *target) {
+		return ErrCorrectionNotLatest
+	}
+	return err
 }
 
 // RecordSubscription appends a subscription snapshot.
