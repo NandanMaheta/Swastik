@@ -1,8 +1,8 @@
 package httpx
 
 import (
-	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -39,9 +39,26 @@ func Problem(status int, code, detail string) error {
 
 // ProblemRetry is Problem for a refusal that clears with time: the response carries Retry-After
 // (whole seconds, rounded up) and retry_after_seconds. It implements huma.HeadersError.
-func ProblemRetry(_ int, _, _ string, _ time.Duration) error { return errNotImplemented }
+func ProblemRetry(status int, code, detail string, after time.Duration) error {
+	secs := int((after + time.Second - 1) / time.Second)
+	if after <= 0 || secs < 1 {
+		secs = 1
+	}
+	m := Problem(status, code, detail).(*ErrorModel)
+	m.RetryAfterSeconds = secs
+	h := http.Header{}
+	h.Set("Retry-After", strconv.Itoa(secs))
+	return &retryError{ErrorModel: m, headers: h}
+}
 
-var errNotImplemented = errors.New("httpx: not implemented")
+// retryError is an ErrorModel that also sets response headers (huma.HeadersError).
+type retryError struct {
+	*ErrorModel
+	headers http.Header
+}
+
+// GetHeaders implements huma.HeadersError.
+func (e *retryError) GetHeaders() http.Header { return e.headers }
 
 var installOnce sync.Once
 

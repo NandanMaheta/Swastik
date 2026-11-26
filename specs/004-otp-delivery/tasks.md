@@ -35,7 +35,7 @@
 - [ ] S02 [P] **test-engineer**: Platform tests: email Resend client (httptest: Bearer, Idempotency-Key, from, 429/5xx=>ErrUnavailable, 4xx=>ErrRejected, timeout, no recipient/body in errors), firebaseauth (minted RS256 tokens + local JWKS: iss/aud/alg/kid/exp/future iat/empty sub, claims parsed, Disabled), httpx.ProblemRetry (header + field), config OTP all-or-nothing, JWKS URL refused in staging/production, LogValue hides secrets.
   - Depends on: S01 | Rules: BR-CLI-04 | Gates: none | ~520 lines | expect red
   - Done command: `cd apps/api && go test -race ./internal/platform/email/... ./internal/platform/firebaseauth/... ./internal/platform/httpx/... ./internal/platform/config/...`
-- [ ] S03 **backend-dev**: Implement platform/email (Resend over net/http, Discard), platform/firebaseauth (go-oidc verifier like tickauth), httpx.ProblemRetry, config/otp.go.
+- [x] S03 **backend-dev**: Implement platform/email (Resend over net/http, Discard), platform/firebaseauth (go-oidc verifier like tickauth), httpx.ProblemRetry, config/otp.go.
   - Depends on: S02 | Rules: BR-CLI-04 | Gates: none | ~380 lines | expect green
   - Done command: `cd apps/api && go test -race ./internal/platform/email/... ./internal/platform/firebaseauth/... ./internal/platform/httpx/... ./internal/platform/config/...`
 - [ ] S04 [P] **test-engineer**: Schema + outbox tests: otp/schema (every CHECK, one live code, one open flow per user+purpose, decoy shape, cascade) and outbox (erase trigger on sent/dead/withdrawn/expired/admin-cancel/withdraw-subject; CHECK; expired stale 'sending' never re-claimed; admin retry of sensitive => ErrConflict; DeliverNow: sends one, skips claimed/absent/expired/in-tx, failure recorded as attempt; non-sensitive unchanged).

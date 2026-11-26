@@ -55,7 +55,7 @@
       "owner": "backend-dev",
       "title": "Implement platform/email (Resend over net/http, Discard), platform/firebaseauth (go-oidc verifier like tickauth), httpx.ProblemRetry, config/otp.go.",
       "done_command": "cd apps/api && go test -race ./internal/platform/email/... ./internal/platform/firebaseauth/... ./internal/platform/httpx/... ./internal/platform/config/...",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "S02"
       ],
