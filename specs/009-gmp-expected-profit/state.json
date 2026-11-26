@@ -120,7 +120,7 @@
   },
   "S06": {
    "owner": "test-engineer",
-   "title": "Store and 008 read tests: TestQueries_* through Store (insert, idem lookup, current/effective, is-corrected, history keyset, trend cap 500, batch DISTINCT ON, org isolation, subscription ordering by as_of, recorded_at, id); ipos TestGetMany_* (org scoping, drafts included, unknown ids absent, ≤200).",
+   "title": "Store and 008 read tests: TestQueries_* through Store (insert, idem lookup, current/effective, is-corrected, history keyset, trend cap 500, batch DISTINCT ON, org isolation, subscription ordering by as_of, recorded_at, id); ipos TestGetMany_* (org scoping, drafts included, unknown ids absent, \u2264200).",
    "done_command": "cd apps/api && go test -race -run 'TestQueries_|TestGetMany_' ./internal/ipomarket/ ./internal/ipos/",
    "status": "todo",
    "depends_on": [
@@ -349,7 +349,7 @@
   },
   "S16": {
    "owner": "test-engineer",
-   "title": "HTTP contract tests (humatest) for the 7 operations: status and problem codes per contracts/http-api.md, 403 for clients on admin ops, client 404 identical for draft/unknown/other org, TestClient_BR_IPO_04_LatestWithUpdatedAt, TestClient_FR014_NoAdminFields, batch ≤200 and omission, optional Idempotency-Key.",
+   "title": "HTTP contract tests (humatest) for the 7 operations: status and problem codes per contracts/http-api.md, 403 for clients on admin ops, client 404 identical for draft/unknown/other org, TestClient_BR_IPO_04_LatestWithUpdatedAt, TestClient_FR014_NoAdminFields, batch \u2264200 and omission, optional Idempotency-Key.",
    "done_command": "cd apps/api && go test -race -run 'TestAdmin_|TestClient_' ./internal/ipomarket/",
    "status": "todo",
    "depends_on": [
@@ -400,7 +400,7 @@
   },
   "S18": {
    "owner": "test-engineer",
-   "title": "Boundary, TS and perf tests: scripts/check-lint-boundaries.sh cases (platform to ipomarket, ipos to ipomarket), packages/domain ipo-market.test.ts (every problem code has a message, formatTimesSubscribed 1234 -> 12.34×, 0, 10,000,000), perf_test.go (short-skipped, 200 IPOs x 500 entries, summaries p95 < 200 ms).",
+   "title": "Boundary, TS and perf tests: scripts/check-lint-boundaries.sh cases (platform to ipomarket, ipos to ipomarket), packages/domain ipo-market.test.ts (every problem code has a message, formatTimesSubscribed 1234 -> 12.34\u00d7, 0, 10,000,000), perf_test.go (short-skipped, 200 IPOs x 500 entries, summaries p95 < 200 ms).",
    "done_command": "pnpm --filter @swastik/domain test -- ipo-market",
    "status": "todo",
    "depends_on": [
@@ -481,5 +481,10 @@
  },
  "gates": {
   "uuidv7-fix-merged": "owner's PostgreSQL 17 uuidv7() fix merged to stage; migration 00006 uses DEFAULT uuidv7()"
+ },
+ "review_fix": {
+  "protected_tests": [
+   "apps/api/internal/ipomarket/review_fix_test.go"
+  ]
  }
 }
