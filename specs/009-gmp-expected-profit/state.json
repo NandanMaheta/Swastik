@@ -320,7 +320,10 @@
    "files": [
     "apps/api/internal/ipomarket/service_read_test.go"
    ],
-   "protected_tests": []
+   "protected_tests": [
+    "apps/api/internal/ipomarket/service_read_test.go"
+   ],
+   "tests_written": true
   },
   "S15": {
    "owner": "backend-dev",
