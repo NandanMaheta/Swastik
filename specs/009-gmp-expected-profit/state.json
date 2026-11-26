@@ -3,7 +3,7 @@
  "branch": "feat/009-gmp-expected-profit",
  "worktree": "/home/user/divya-009",
  "tier": "B",
- "phase": "tasks",
+ "phase": "review",
  "open_questions": [
   "Q1 negative GMP",
   "Q2 client trend",
