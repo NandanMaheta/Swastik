@@ -1,7 +1,7 @@
 name: swastik
 services:
   postgres:
-    image: postgres:18-alpine
+    image: postgres:17-alpine
     environment:
       POSTGRES_USER: swastik
       POSTGRES_PASSWORD: swastik

@@ -2,7 +2,7 @@
 
 Read this first in every new conductor session (with `CLAUDE.md` and `docs/engineering/delivery-pipeline.md`). Keep it short and current: update it whenever a feature merges or a decision is made.
 
-_Last updated: 2026-11-14_
+_Last updated: 2026-11-26_
 
 ## Owner and setup
 
@@ -23,21 +23,32 @@ _Last updated: 2026-11-14_
 - Libraries approved:
   - 002: go-oidc v3, uuid, rapid
   - 003: go-jose v4, pquerna/otp, x/crypto, x/term, x/text
+  - 027: sentry-go
+- Owner decisions (2026-11-15):
+  - JWT leeway 5 s on `iat`/`nbf` only; `exp` strict.
+  - Cloudflare Worker sends a shared proxy key; the API trusts the client IP only with it (`PROXY_SHARED_SECRETS`, `TRUSTED_PROXY_HOPS=1`).
+  - One GCP project for staging and production; about ₹15/month for Secret Manager is accepted.
+  - ADR 0008 (in-transaction module signals) accepted.
 - Pipeline v2 (risk tiers, briefs, slices, batched passes) applies to all work from 2026-11-14.
 
 ## Feature status
 
-| Feature                | Branch                     | State                                                                                                                                                                                                 |
-| ---------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 002 Scheduler + outbox | `feat/002-scheduler-tick`  | Phases 1–4 implemented and green; Phase 5–6 tests written (RED); next: one code pass for Phases 5–6, then Phase 7 + review + PR                                                                       |
-| 003 Auth core          | `feat/003-auth-core`       | Spec/plan approved; T001 + Phase 2 tests written (RED); next: re-slice remaining tasks into v2 slices, Phase 2 code pass; the rest needs 002 merged                                                   |
-| 008 IPO catalogue      | `feat/008-ipo-catalogue`   | Spec/plan approved; 68 tasks planned; next: re-slice into v2 slices; build after 002 (core) and 003 (HTTP)                                                                                            |
-| 027 Staging hosting    | `feat/027-staging-hosting` | Code complete; owner steps in `docs/engineering/runbook.md` (bootstrap, secrets, roles.sql, infra apply, environments). Open: protected-test defects listed in `specs/027-staging-hosting/state.json` |
-| Others                 | —                          | Not started; see `docs/product/modules.md` (Tier column)                                                                                                                                              |
+| Feature                | State                                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------------------------ |
+| 001 Platform           | done                                                                                             |
+| 002 Scheduler + outbox | done (PR #9)                                                                                     |
+| 003 Auth core          | done (PR #10)                                                                                    |
+| 008 IPO catalogue      | done (PR #12)                                                                                    |
+| 027 Staging hosting    | done (PR #11); owner is following `docs/engineering/staging-setup-guide.md` to make staging live |
+| Others                 | not started; see `docs/product/modules.md`                                                       |
+
+Small follow-ups:
+
+- 008: the generated TS client still lists Huma's optional `$schema` field. Also add tests for the OverrideStatus warnings and for concurrent same-key creates with different bodies.
+- 027: if the first Infra apply fails on `actAs`, bind the two exact service accounts (see `specs/027-staging-hosting/security.md`). Confirm the Supabase Postgres major version, because backups use `postgres:18-alpine`.
 
 ## Next steps
 
-1. Merge the pipeline v2 PR into `stage`; merge `stage` into the 002/003/008 branches.
-2. Re-slice 003 and 008 (planner) into 8–20 slices each.
-3. 002: code pass for Phases 5–6 → Phase 7 → review → PR (owner merges).
-4. Bring hosting (027) forward after 002/003 so staging is live.
+1. Owner: finish the staging setup guide. Then create the first admin with `swastik admin create`.
+2. Next features, which can run in parallel: 004 OTP delivery (Tier A, unblocks 005 registration and 024 client auth) and 009 GMP and expected profit (Tier B).
+3. Then 005, 006 and 012 (clients, family accounts, apply tasks), and the admin shell (022) once 005 is done.

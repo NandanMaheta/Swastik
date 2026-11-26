@@ -43,7 +43,7 @@ jobs:
         run: |
           go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
           sqlc vet && sqlc generate && git diff --exit-code
-      - name: Unit + integration tests (testcontainers, PostgreSQL 18)
+      - name: Unit + integration tests (testcontainers, PostgreSQL 17)
         run: go test -race -coverprofile=coverage.out ./...
       - name: govulncheck
         run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
