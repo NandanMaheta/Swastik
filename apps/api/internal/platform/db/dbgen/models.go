@@ -99,6 +99,41 @@ type Ipo struct {
 	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
 }
 
+type IpoGmpEntry struct {
+	ID              uuid.UUID          `json:"id"`
+	OrgID           uuid.UUID          `json:"org_id"`
+	IpoID           uuid.UUID          `json:"ipo_id"`
+	GmpPaise        int64              `json:"gmp_paise"`
+	Note            pgtype.Text        `json:"note"`
+	CorrectsEntryID uuid.NullUUID      `json:"corrects_entry_id"`
+	Source          string             `json:"source"`
+	ActorKind       string             `json:"actor_kind"`
+	ActorID         uuid.NullUUID      `json:"actor_id"`
+	IdempotencyKey  pgtype.Text        `json:"idempotency_key"`
+	RequestHash     pgtype.Text        `json:"request_hash"`
+	RecordedAt      pgtype.Timestamptz `json:"recorded_at"`
+}
+
+type IpoSubscriptionSnapshot struct {
+	ID             uuid.UUID          `json:"id"`
+	OrgID          uuid.UUID          `json:"org_id"`
+	IpoID          uuid.UUID          `json:"ipo_id"`
+	AsOf           pgtype.Timestamptz `json:"as_of"`
+	TotalX100      int32              `json:"total_x100"`
+	QibX100        pgtype.Int4        `json:"qib_x100"`
+	NiiX100        pgtype.Int4        `json:"nii_x100"`
+	BniiX100       pgtype.Int4        `json:"bnii_x100"`
+	SniiX100       pgtype.Int4        `json:"snii_x100"`
+	RetailX100     pgtype.Int4        `json:"retail_x100"`
+	EmployeeX100   pgtype.Int4        `json:"employee_x100"`
+	Source         string             `json:"source"`
+	ActorKind      string             `json:"actor_kind"`
+	ActorID        uuid.NullUUID      `json:"actor_id"`
+	IdempotencyKey pgtype.Text        `json:"idempotency_key"`
+	RequestHash    pgtype.Text        `json:"request_hash"`
+	RecordedAt     pgtype.Timestamptz `json:"recorded_at"`
+}
+
 type MfaChallenge struct {
 	ID         uuid.UUID          `json:"id"`
 	OrgID      uuid.UUID          `json:"org_id"`

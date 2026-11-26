@@ -313,6 +313,23 @@ func (s *Store) ListPublishedIPOs(ctx context.Context, org uuid.UUID, f ClientFi
 	return toIPOs(rows), nil
 }
 
+// GetIPOsByIDs reads the org's IPOs among ids, keyed by id; unknown ids are absent.
+func (s *Store) GetIPOsByIDs(ctx context.Context, org uuid.UUID, ids []uuid.UUID) (map[uuid.UUID]IPO, error) {
+	q, err := s.q(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := q.GetIPOsByIDs(ctx, dbgen.GetIPOsByIDsParams{OrgID: org, Ids: ids})
+	if err != nil {
+		return nil, fmt.Errorf("ipos: get many: %w", err)
+	}
+	out := make(map[uuid.UUID]IPO, len(rows))
+	for _, r := range rows {
+		out[r.ID] = toIPO(r)
+	}
+	return out, nil
+}
+
 // FindIPOAuditByIdempotencyKey finds the audit row an earlier call with the same key wrote.
 func (s *Store) FindIPOAuditByIdempotencyKey(ctx context.Context, org, id uuid.UUID, action, key string) (uuid.UUID, bool, error) {
 	got, _, ok, err := s.findAuditReplay(ctx, org, id, action, key)

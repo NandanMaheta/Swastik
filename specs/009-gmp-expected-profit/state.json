@@ -148,7 +148,7 @@
       "owner": "backend-dev",
       "title": "queries/ipomarket.sql (13 queries per data-model 5) and GetIPOsByIDs in queries/ipos.sql; sqlc generate and vet; store.go over dbgen; ipos.(*Service).GetMany; add GetMany line to 008 go-module-api.md.",
       "done_command": "cd apps/api && sqlc generate && sqlc vet && go test -race -run 'TestQueries_|TestGetMany_' ./internal/ipomarket/ ./internal/ipos/",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "S06",
         "S05"

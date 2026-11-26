@@ -40,6 +40,10 @@ type Querier interface {
 	CountJobsByState(ctx context.Context, orgID uuid.UUID) (CountJobsByStateRow, error)
 	CountMessagesByState(ctx context.Context, orgID uuid.UUID) (CountMessagesByStateRow, error)
 	CountUsableRecoveryCodes(ctx context.Context, userID uuid.UUID) (int32, error)
+	CurrentGMP(ctx context.Context, arg CurrentGMPParams) (IpoGmpEntry, error)
+	CurrentGMPBatch(ctx context.Context, arg CurrentGMPBatchParams) ([]IpoGmpEntry, error)
+	CurrentSubscription(ctx context.Context, arg CurrentSubscriptionParams) (IpoSubscriptionSnapshot, error)
+	CurrentSubscriptionBatch(ctx context.Context, arg CurrentSubscriptionBatchParams) ([]IpoSubscriptionSnapshot, error)
 	DeleteIPO(ctx context.Context, arg DeleteIPOParams) (int64, error)
 	DeleteThrottle(ctx context.Context, arg DeleteThrottleParams) error
 	// The first end stands: an already ended session is left alone (zero rows).
@@ -58,7 +62,9 @@ type Querier interface {
 	FailJob(ctx context.Context, arg FailJobParams) (FailJobRow, error)
 	// Back to pending at available_at (already moved out of quiet hours), or dead when attempts are used up.
 	FailMessage(ctx context.Context, arg FailMessageParams) (FailMessageRow, error)
+	FindGMPByIdemKey(ctx context.Context, arg FindGMPByIdemKeyParams) (IpoGmpEntry, error)
 	FindIPOAuditByIdempotencyKey(ctx context.Context, arg FindIPOAuditByIdempotencyKeyParams) (FindIPOAuditByIdempotencyKeyRow, error)
+	FindSubscriptionByIdemKey(ctx context.Context, arg FindSubscriptionByIdemKeyParams) (IpoSubscriptionSnapshot, error)
 	FinishTickRun(ctx context.Context, arg FinishTickRunParams) error
 	// tick_runs is global, not per org: the retention job purges it only for the first org.
 	FirstOrgID(ctx context.Context) (uuid.UUID, error)
@@ -70,6 +76,7 @@ type Querier interface {
 	GetIPOByCreateKey(ctx context.Context, arg GetIPOByCreateKeyParams) (Ipo, error)
 	GetIPOForShare(ctx context.Context, arg GetIPOForShareParams) (Ipo, error)
 	GetIPOForUpdate(ctx context.Context, arg GetIPOForUpdateParams) (Ipo, error)
+	GetIPOsByIDs(ctx context.Context, arg GetIPOsByIDsParams) ([]Ipo, error)
 	// The row is locked so a retry or cancel decides on a state nobody changes meanwhile.
 	GetJobForOrg(ctx context.Context, arg GetJobForOrgParams) (ScheduledJob, error)
 	// The row is locked so a retry or cancel decides on a state nobody changes meanwhile.
@@ -90,6 +97,7 @@ type Querier interface {
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
 	// ---- MFA challenges ----
 	InsertChallenge(ctx context.Context, arg InsertChallengeParams) (MfaChallenge, error)
+	InsertGMPEntry(ctx context.Context, arg InsertGMPEntryParams) (IpoGmpEntry, error)
 	// IPO catalogue (feature 008). Every query filters by org_id. Instants come from @now.
 	InsertIPO(ctx context.Context, arg InsertIPOParams) (Ipo, error)
 	// Outbox queries (feature 002). Every instant is a parameter taken from the injected clock.
@@ -102,10 +110,12 @@ type Querier interface {
 	InsertRefreshToken(ctx context.Context, arg InsertRefreshTokenParams) (RefreshToken, error)
 	// ---- device sessions ----
 	InsertSession(ctx context.Context, arg InsertSessionParams) (DeviceSession, error)
+	InsertSubscription(ctx context.Context, arg InsertSubscriptionParams) (IpoSubscriptionSnapshot, error)
 	// Scheduler status, admin and retention queries (feature 002).
 	InsertTickRun(ctx context.Context, arg InsertTickRunParams) (uuid.UUID, error)
 	// ---- users ----
 	InsertUser(ctx context.Context, arg InsertUserParams) (User, error)
+	IsGMPCorrected(ctx context.Context, arg IsGMPCorrectedParams) (bool, error)
 	// The most recent tick, whatever its outcome (FR-021).
 	LastTickRun(ctx context.Context) (TickRun, error)
 	// Retrying and dead jobs of one org, newest last attempt first, keyset-paginated (FR-019).
@@ -123,6 +133,8 @@ type Querier interface {
 	// ---- organisation ----
 	// Two rows are enough to tell "none", "one" and "many" apart.
 	ListFirstTwoOrgIDs(ctx context.Context) ([]uuid.UUID, error)
+	ListGMPHistory(ctx context.Context, arg ListGMPHistoryParams) ([]ListGMPHistoryRow, error)
+	ListGMPTrend(ctx context.Context, arg ListGMPTrendParams) ([]IpoGmpEntry, error)
 	ListIPOsAdmin(ctx context.Context, arg ListIPOsAdminParams) ([]Ipo, error)
 	// Live: not ended and strictly before both expiry instants.
 	ListLiveSessionsByUser(ctx context.Context, arg ListLiveSessionsByUserParams) ([]DeviceSession, error)
@@ -130,11 +142,15 @@ type Querier interface {
 	// nothing here calls now() (FR-032). Rows are claimed one at a time with FOR UPDATE SKIP LOCKED.
 	ListOrgIDs(ctx context.Context) ([]uuid.UUID, error)
 	ListPublishedIPOs(ctx context.Context, arg ListPublishedIPOsParams) ([]Ipo, error)
+	ListSubscriptionHistory(ctx context.Context, arg ListSubscriptionHistoryParams) ([]IpoSubscriptionSnapshot, error)
 	LockAdminMFA(ctx context.Context, userID uuid.UUID) (AdminMfa, error)
 	// Every admin of the org, any status, ordered by id: the last-admin guard (the first lock of the order).
 	LockAdminsByOrg(ctx context.Context, orgID uuid.UUID) ([]User, error)
 	// The bootstrap lock (plan P-13): serialises `swastik admin create` across processes until commit.
 	LockBootstrap(ctx context.Context, key int64) error
+	// IPO market data (feature 009). Every query filters by org_id. GMP and snapshot tables are
+	// append-only; "effective" GMP entries are those no later entry corrects.
+	LockIPOMarket(ctx context.Context, ipoID string) error
 	LockRefreshTokenByID(ctx context.Context, id uuid.UUID) (RefreshToken, error)
 	LockSessionByID(ctx context.Context, id uuid.UUID) (DeviceSession, error)
 	LockThrottle(ctx context.Context, arg LockThrottleParams) (LockThrottleRow, error)

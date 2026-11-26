@@ -42,7 +42,7 @@
   - Rules: BR-IPO-04
   - Files (~420 lines): `apps/api/internal/ipomarket/store_test.go`, `apps/api/internal/ipos/service_read_test.go`
   - Done command (red): `cd apps/api && go test -race -run 'TestQueries_|TestGetMany_' ./internal/ipomarket/ ./internal/ipos/`
-- [ ] S07 **backend-dev**: queries/ipomarket.sql (13 queries per data-model 5) and GetIPOsByIDs in queries/ipos.sql; sqlc generate and vet; store.go over dbgen; ipos.(*Service).GetMany; add GetMany line to 008 go-module-api.md.
+- [x] S07 **backend-dev**: queries/ipomarket.sql (13 queries per data-model 5) and GetIPOsByIDs in queries/ipos.sql; sqlc generate and vet; store.go over dbgen; ipos.(*Service).GetMany; add GetMany line to 008 go-module-api.md.
   - Depends on: S06, S05
   - Rules: BR-IPO-04
   - Files (~380 lines): `apps/api/queries/ipomarket.sql`, `apps/api/queries/ipos.sql`, `apps/api/internal/ipomarket/store.go`, `apps/api/internal/ipos/service_read.go`, `specs/008-ipo-catalogue/contracts/go-module-api.md`
