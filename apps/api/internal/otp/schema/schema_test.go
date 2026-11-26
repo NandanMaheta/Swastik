@@ -1,4 +1,4 @@
-// Schema tests for migration 00005_otp.sql (feature 004, S04; BR-CLI-04, BR-CLI-05, D-01, D-02, D-08).
+// Schema tests for migration 00006_otp.sql (feature 004, S04; BR-CLI-04, BR-CLI-05, D-01, D-02, D-08).
 // Real PostgreSQL through dbtest.New; every constraint is exercised with plain SQL, so a missing or
 // weakened CHECK, UNIQUE index, FK or cascade fails here. Column and constraint names are the ones
 // in specs/004-otp-delivery/data-model.md sections 1 to 5 (CHECK violation = SQLSTATE 23514,
@@ -20,7 +20,9 @@ import (
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/dbtest"
 )
 
-var t0 = time.Date(2026, time.November, 26, 10, 0, 0, 0, time.UTC)
+// t0 is relative to now so rows with a 24 h expiry never trip the expiry CHECK before the
+// constraint a test is actually probing (a fixed date made the FK tests fail after it passed).
+var t0 = time.Now().UTC().Truncate(time.Second)
 
 type world struct {
 	t    *testing.T

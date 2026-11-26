@@ -717,7 +717,7 @@ func TestMigration00002_TablesAreMutableAndHaveNoAppendOnlyTrigger(t *testing.T)
 	var n int
 	err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_trigger tg JOIN pg_class c ON c.oid = tg.tgrelid
 		WHERE NOT tg.tgisinternal AND c.relname IN ('scheduled_jobs','outbox_messages','quiet_hours','tick_runs')
-		AND tg.tgname <> 'outbox_erase_sensitive_payload'`).Scan(&n) // 00006 erase trigger is not append-only
+		AND NOT (c.relname = 'outbox_messages' AND tg.tgname = 'outbox_erase_sensitive_payload')`).Scan(&n)
 	if err != nil {
 		t.Fatalf("pg_trigger: %v", err)
 	}
@@ -732,6 +732,24 @@ func TestMigration00002_TablesAreMutableAndHaveNoAppendOnlyTrigger(t *testing.T)
 	}
 	if n != 0 {
 		t.Fatalf("%d triggers on the queue tables; they must not be append-only", n)
+	}
+
+	// The single exemption is the owner-approved erase trigger of migration 00006 (ADR 0003
+	// Amendment 2): BEFORE INSERT OR UPDATE OF status, FOR EACH ROW, running
+	// outbox_erase_sensitive_payload(). It must not fire on DELETE or TRUNCATE, so the queue
+	// stays deletable. Anything else on these tables fails the count above.
+	var erase, tgtype int
+	var fn string
+	if err := pool.QueryRow(ctx, `SELECT count(*) OVER (), tg.tgtype, tg.tgfoid::regproc::text
+		FROM pg_trigger tg JOIN pg_class c ON c.oid = tg.tgrelid
+		WHERE NOT tg.tgisinternal AND c.relname = 'outbox_messages' AND tg.tgname = 'outbox_erase_sensitive_payload'`).
+		Scan(&erase, &tgtype, &fn); err != nil {
+		t.Fatalf("erase trigger lookup (migration 00006 not applied?): %v", err)
+	}
+	const rowBeforeInsertUpdate = 1 | 2 | 4 | 16 // ROW | BEFORE | INSERT | UPDATE
+	if erase != 1 || tgtype != rowBeforeInsertUpdate || fn != "outbox_erase_sensitive_payload" {
+		t.Errorf("erase trigger: count=%d tgtype=%d func=%q, want 1 / %d / outbox_erase_sensitive_payload",
+			erase, tgtype, fn, rowBeforeInsertUpdate)
 	}
 
 	must := func(q string, args ...any) {
