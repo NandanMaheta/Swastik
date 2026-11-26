@@ -11,7 +11,8 @@
     "decisions": {
       "Q1": "OTP and reset emails bypass quiet hours",
       "Q2": "plain code encrypted with the PII keyring in the outbox payload and erased on send/withdraw/expiry",
-      "Q3": "no SMS fallback now; real-device delivery test on staging first"
+      "Q3": "no SMS fallback now; real-device delivery test on staging first",
+      "Q4_deliver_now": "2026-11-26: OTP emails sent immediately via outbox.DeliverNow during the request (outbox row kept as fallback); expired never sent; no admin retry (ADR 0003 Amendment 2)"
     }
   },
   "tasks": {
