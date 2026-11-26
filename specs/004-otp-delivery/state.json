@@ -42,7 +42,14 @@
       "expect": "red",
       "owner_gates": [],
       "est_lines": 520,
-      "protected_tests": []
+      "protected_tests": [
+        "apps/api/internal/otp/otptest/otptest.go",
+        "apps/api/internal/platform/config/otp_test.go",
+        "apps/api/internal/platform/email/resend_test.go",
+        "apps/api/internal/platform/firebaseauth/verify_test.go",
+        "apps/api/internal/platform/httpx/problem_retry_test.go"
+      ],
+      "tests_written": true
     },
     "S03": {
       "owner": "backend-dev",
