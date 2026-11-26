@@ -3,7 +3,7 @@
   "branch": "feat/004-otp-delivery",
   "worktree": "/home/user/divya-004",
   "tier": "A",
-  "phase": "plan",
+  "phase": "tasks",
   "owner_approval": {
     "date": "2026-11-26",
     "spec": "approved",
@@ -13,5 +13,338 @@
       "Q2": "plain code encrypted with the PII keyring in the outbox payload and erased on send/withdraw/expiry",
       "Q3": "no SMS fallback now; real-device delivery test on staging first"
     }
-  }
+  },
+  "tasks": {
+    "S01": {
+      "owner": "backend-dev",
+      "title": "Compile skeleton: internal/otp (all files of plan 'Module placement', exported names from contracts/go-module-api.md, bodies panic(errNotImplemented)), otp/otptest, otp/schema doc, platform/email, platform/firebaseauth; additive stubs outbox.Message.SensitivePayload + DeliverNow, auth.FindUser/DefaultOrg (+Accounts), httpx.ProblemRetry + ErrorModel.RetryAfterSeconds, config.OTPConfig. No wiring yet.",
+      "done_command": "cd apps/api && go build ./... && go vet ./internal/otp/... ./internal/platform/email/... ./internal/platform/firebaseauth/...",
+      "status": "todo",
+      "depends_on": [],
+      "rules": [],
+      "expect": "green",
+      "owner_gates": [],
+      "est_lines": 420,
+      "protected_tests": []
+    },
+    "S02": {
+      "owner": "test-engineer",
+      "title": "Platform tests: email Resend client (httptest: Bearer, Idempotency-Key, from, 429/5xx=>ErrUnavailable, 4xx=>ErrRejected, timeout, no recipient/body in errors), firebaseauth (minted RS256 tokens + local JWKS: iss/aud/alg/kid/exp/future iat/empty sub, claims parsed, Disabled), httpx.ProblemRetry (header + field), config OTP all-or-nothing, JWKS URL refused in staging/production, LogValue hides secrets.",
+      "done_command": "cd apps/api && go test -race ./internal/platform/email/... ./internal/platform/firebaseauth/... ./internal/platform/httpx/... ./internal/platform/config/...",
+      "status": "todo",
+      "depends_on": [
+        "S01"
+      ],
+      "rules": [
+        "BR-CLI-04"
+      ],
+      "expect": "red",
+      "owner_gates": [],
+      "est_lines": 520,
+      "protected_tests": []
+    },
+    "S03": {
+      "owner": "backend-dev",
+      "title": "Implement platform/email (Resend over net/http, Discard), platform/firebaseauth (go-oidc verifier like tickauth), httpx.ProblemRetry, config/otp.go.",
+      "done_command": "cd apps/api && go test -race ./internal/platform/email/... ./internal/platform/firebaseauth/... ./internal/platform/httpx/... ./internal/platform/config/...",
+      "status": "todo",
+      "depends_on": [
+        "S02"
+      ],
+      "rules": [
+        "BR-CLI-04"
+      ],
+      "expect": "green",
+      "owner_gates": [],
+      "est_lines": 380,
+      "protected_tests": []
+    },
+    "S04": {
+      "owner": "test-engineer",
+      "title": "Schema + outbox tests: otp/schema (every CHECK, one live code, one open flow per user+purpose, decoy shape, cascade) and outbox (erase trigger on sent/dead/withdrawn/expired/admin-cancel/withdraw-subject; CHECK; expired stale 'sending' never re-claimed; admin retry of sensitive => ErrConflict; DeliverNow: sends one, skips claimed/absent/expired/in-tx, failure recorded as attempt; non-sensitive unchanged).",
+      "done_command": "cd apps/api && go test -race ./internal/otp/schema/... ./internal/outbox/...",
+      "status": "todo",
+      "depends_on": [
+        "S01"
+      ],
+      "rules": [
+        "BR-CLI-04",
+        "BR-CLI-05"
+      ],
+      "expect": "red",
+      "owner_gates": [],
+      "est_lines": 560,
+      "protected_tests": []
+    },
+    "S05": {
+      "owner": "backend-dev",
+      "title": "OWNER GATES G-MIG, G-OUTBOX, G-PG17: migrations/00005_otp.sql (data-model 1-6, expand-only, down drops), queries/outbox.sql + outbox_admin.sql edits, ClaimMessageByKey, sqlc generate/vet, outbox SensitivePayload + DeliverNow.",
+      "done_command": "cd apps/api && sqlc generate && sqlc vet && go test -race ./internal/otp/schema/... ./internal/outbox/...",
+      "status": "todo",
+      "depends_on": [
+        "S04"
+      ],
+      "rules": [
+        "BR-CLI-04",
+        "BR-CLI-05"
+      ],
+      "expect": "green",
+      "owner_gates": [
+        "G-MIG",
+        "G-OUTBOX",
+        "G-PG17"
+      ],
+      "est_lines": 400,
+      "protected_tests": []
+    },
+    "S06": {
+      "owner": "test-engineer",
+      "title": "Pure otp tests: GenerateCode (6 digits, rapid uniformity buckets, reader errors), code digest binding, ApplyLimits unit table at boundaries (59/60 s, 1 h rolling, 00:00 IST) + rapid properties (never > N per window, exact retry_after, refusal adds no event), MaskEmail/MaskMobile, templates (no code in notice, expiry text), ProblemFor table (codes, statuses, Retry-After seconds rounded up).",
+      "done_command": "cd apps/api && go test -race -run 'TestGenerateCode|TestCodeDigest|TestApplyLimits|TestMask|TestTemplate|TestProblemFor' ./internal/otp/",
+      "status": "todo",
+      "depends_on": [
+        "S01"
+      ],
+      "rules": [
+        "BR-CLI-04"
+      ],
+      "expect": "red",
+      "owner_gates": [],
+      "est_lines": 520,
+      "protected_tests": []
+    },
+    "S07": {
+      "owner": "backend-dev",
+      "title": "Implement code.go, limits.go, model.go masks, templates.go, errors.go.",
+      "done_command": "cd apps/api && go test -race -run 'TestGenerateCode|TestCodeDigest|TestApplyLimits|TestMask|TestTemplate|TestProblemFor' ./internal/otp/",
+      "status": "todo",
+      "depends_on": [
+        "S06"
+      ],
+      "rules": [
+        "BR-CLI-04"
+      ],
+      "expect": "green",
+      "owner_gates": [],
+      "est_lines": 330,
+      "protected_tests": []
+    },
+    "S08": {
+      "owner": "test-engineer",
+      "title": "auth additions tests (FindUser by email/mobile/normalised, unknown, invalid; DefaultOrg) and otp Store tests through Store (insert/lock verification by handle hash, supersede, live code lock, wrong-attempt increment, proof insert conflict, limits lock order, counts upsert, purge batches, org isolation).",
+      "done_command": "cd apps/api && go test -race -run 'TestFindUser|TestDefaultOrg' ./internal/auth/ && go test -race -run 'TestStore_' ./internal/otp/",
+      "status": "todo",
+      "depends_on": [
+        "S01",
+        "S05"
+      ],
+      "rules": [
+        "BR-CLI-04",
+        "BR-CLI-05"
+      ],
+      "expect": "red",
+      "owner_gates": [],
+      "est_lines": 520,
+      "protected_tests": []
+    },
+    "S09": {
+      "owner": "backend-dev",
+      "title": "OWNER GATE G-AUTH: auth.FindUser/DefaultOrg; queries/otp.sql (all filter org_id) + sqlc; otp/store.go (only pgx file).",
+      "done_command": "cd apps/api && sqlc generate && sqlc vet && go test -race -run 'TestFindUser|TestDefaultOrg' ./internal/auth/ && go test -race -run 'TestStore_' ./internal/otp/",
+      "status": "todo",
+      "depends_on": [
+        "S08"
+      ],
+      "rules": [
+        "BR-CLI-04",
+        "BR-CLI-05"
+      ],
+      "expect": "green",
+      "owner_gates": [
+        "G-AUTH"
+      ],
+      "est_lines": 420,
+      "protected_tests": []
+    },
+    "S10": {
+      "owner": "test-engineer",
+      "title": "Service tests A (fake clock, fake mailer, real outbox): Start signup/change (US1.1, US5.1, not-allowed statuses, supersede withdraws old email, invalid contact), Resend (US2.1-2.3, per-user 10/day, unknown handle), quiet hours 23:00 IST exempt (US2.4), Deliver/DeliverNow path, sealed sensitive payload, Sender (opens box, skips expired, counts sent/failed, idempotency key), Cancel, NotifyOldContact (respects quiet hours, no code), DailyCounts, audit rows without contacts (US6).",
+      "done_command": "cd apps/api && go test -race -run 'TestStart_|TestResend_|TestDeliver_|TestSender_|TestCancel_|TestNotice_|TestDailyCounts_' ./internal/otp/",
+      "status": "todo",
+      "depends_on": [
+        "S01",
+        "S05"
+      ],
+      "rules": [
+        "BR-CLI-04",
+        "BR-CLI-05"
+      ],
+      "expect": "red",
+      "owner_gates": [],
+      "est_lines": 600,
+      "protected_tests": []
+    },
+    "S11": {
+      "owner": "backend-dev",
+      "title": "Implement service.go, start.go, send.go, sender.go, counts.go.",
+      "done_command": "cd apps/api && go test -race -run 'TestStart_|TestResend_|TestDeliver_|TestSender_|TestCancel_|TestNotice_|TestDailyCounts_' ./internal/otp/",
+      "status": "todo",
+      "depends_on": [
+        "S07",
+        "S09",
+        "S10"
+      ],
+      "rules": [
+        "BR-CLI-04",
+        "BR-CLI-05"
+      ],
+      "expect": "green",
+      "owner_gates": [],
+      "est_lines": 420,
+      "protected_tests": []
+    },
+    "S12": {
+      "owner": "test-engineer",
+      "title": "Service tests B: VerifyEmail (US1.2 10:09:59/10:10:00, US1.3 concurrent double entry, US1.4 5th => used_up, superseded code, check_ip 60/h, change proves without account change + contact_unavailable US5.3), VerifyMobile (US3.1-3.5: email first, mismatch without echo, 5 min boundary, other project/provider, replay, Android/iPhone tokens alike; US5.2 other user's session 404), US1.5 pending_approval after both.",
+      "done_command": "cd apps/api && go test -race -run 'TestVerifyEmail_|TestVerifyMobile_' ./internal/otp/",
+      "status": "todo",
+      "depends_on": [
+        "S01",
+        "S05"
+      ],
+      "rules": [
+        "BR-CLI-04",
+        "BR-CLI-05"
+      ],
+      "expect": "red",
+      "owner_gates": [],
+      "est_lines": 620,
+      "protected_tests": []
+    },
+    "S13": {
+      "owner": "backend-dev",
+      "title": "Implement verify_email.go, verify_mobile.go.",
+      "done_command": "cd apps/api && go test -race -run 'TestVerifyEmail_|TestVerifyMobile_' ./internal/otp/",
+      "status": "todo",
+      "depends_on": [
+        "S11",
+        "S12"
+      ],
+      "rules": [
+        "BR-CLI-04",
+        "BR-CLI-05"
+      ],
+      "expect": "green",
+      "owner_gates": [],
+      "est_lines": 380,
+      "protected_tests": []
+    },
+    "S14": {
+      "owner": "test-engineer",
+      "title": "Reset + housekeeping + leak tests: StartReset (US4.1 email/mobile identifier, US4.2 unknown/pending/disabled/admin => decoy, identical results, no audit, no email), CompleteReset (policy error keeps token, ends sessions, clears lock, reuse refused US4.3, expired token), housekeeping purge + audit + HousekeepingNext; SC-003 leak scan over logs/audit/outbox/problems.",
+      "done_command": "cd apps/api && go test -race -run 'TestStartReset_|TestCompleteReset_|TestHousekeeping|TestNoLeak_' ./internal/otp/",
+      "status": "todo",
+      "depends_on": [
+        "S01",
+        "S05"
+      ],
+      "rules": [
+        "BR-CLI-04"
+      ],
+      "expect": "red",
+      "owner_gates": [],
+      "est_lines": 560,
+      "protected_tests": []
+    },
+    "S15": {
+      "owner": "backend-dev",
+      "title": "Implement reset.go, housekeeping.go, RegisterJobs.",
+      "done_command": "cd apps/api && go test -race -run 'TestStartReset_|TestCompleteReset_|TestHousekeeping|TestNoLeak_' ./internal/otp/",
+      "status": "todo",
+      "depends_on": [
+        "S13",
+        "S14"
+      ],
+      "rules": [
+        "BR-CLI-04"
+      ],
+      "expect": "green",
+      "owner_gates": [],
+      "est_lines": 330,
+      "protected_tests": []
+    },
+    "S16": {
+      "owner": "test-engineer",
+      "title": "HTTP + contract tests: humatest handlers (shapes, statuses, Retry-After, handle never in URL, /v1/me/* auth + other-user 404, burst limiter, known vs unknown reset identical, timing median diff < 10% SC-004 with real floor), cmd/swastik/otp_contract_test.go (10 ops, security, public allowlist, schemas vs contracts/otp.openapi.yaml, wiring: senders for both topics, job registered), packages/domain otp-error-codes.test.ts, lint-boundary deliberate violations for otp/firebaseauth/email.",
+      "done_command": "cd apps/api && go test -race -run 'TestHandler_|TestOTPContract|TestWiring' ./internal/otp/ ./cmd/swastik/ && cd ../.. && pnpm --filter @swastik/domain test && bash scripts/check-lint-boundaries.sh",
+      "status": "todo",
+      "depends_on": [
+        "S01"
+      ],
+      "rules": [
+        "BR-CLI-04",
+        "BR-CLI-05"
+      ],
+      "expect": "red",
+      "owner_gates": [],
+      "est_lines": 600,
+      "protected_tests": []
+    },
+    "S17": {
+      "owner": "backend-dev",
+      "title": "Implement handler*.go + api_types.go, cmd/swastik wiring (OTP config, senders, jobs), .golangci.yml depguard rules, packages/domain otp-error-codes.ts + index export, regenerate api-client.",
+      "done_command": "cd apps/api && go test -race ./internal/otp/... ./cmd/swastik/... && make -C ../.. lint-go && cd ../.. && pnpm --filter @swastik/api-client generate && pnpm turbo run typecheck test --filter @swastik/domain --filter @swastik/api-client && bash scripts/check-lint-boundaries.sh",
+      "status": "todo",
+      "depends_on": [
+        "S15",
+        "S16"
+      ],
+      "rules": [
+        "BR-CLI-04",
+        "BR-CLI-05"
+      ],
+      "expect": "green",
+      "owner_gates": [],
+      "est_lines": 420,
+      "protected_tests": []
+    },
+    "S18": {
+      "owner": "test-engineer",
+      "title": "Infra tests: infra/bootstrap/test.sh cases for --with-otp (hidden prompt for Resend key, generated 32-byte HMAC key, dry run prints names only) and --rotate-otp-hmac; tofu tftest: otp_enabled adds RESEND_API_KEY/OTP_HMAC_KEY secret refs, OTP_EMAIL_FROM/FIREBASE_PROJECT_ID plain env, IAM accessor, nothing when disabled.",
+      "done_command": "bash infra/bootstrap/test.sh && cd infra/tofu/modules/env && tofu init -backend=false -input=false >/dev/null && tofu test",
+      "status": "todo",
+      "depends_on": [
+        "S01"
+      ],
+      "rules": [],
+      "expect": "red",
+      "owner_gates": [],
+      "est_lines": 300,
+      "protected_tests": []
+    },
+    "S19": {
+      "owner": "ops",
+      "title": "OWNER GATE G-SECRETS: infra/bootstrap/secrets.sh --with-otp/--rotate-otp-hmac, tofu variables/secrets/cloudrun + envs tfvars (otp_enabled false until the owner creates the secrets), runbook (Firebase console state, Resend cap, rotation, Q3 real-device SMS test), handover + modules.md status.",
+      "done_command": "bash infra/bootstrap/test.sh && cd infra/tofu/modules/env && tofu init -backend=false -input=false >/dev/null && tofu test",
+      "status": "todo",
+      "depends_on": [
+        "S18"
+      ],
+      "rules": [],
+      "expect": "green",
+      "owner_gates": [
+        "G-SECRETS"
+      ],
+      "est_lines": 260,
+      "protected_tests": []
+    }
+  },
+  "owner_gates": {
+    "G-MIG": "migration 00005_otp.sql (CODEOWNERS) - S05",
+    "G-OUTBOX": "outbox sensitive payload, expiry, DeliverNow + ADR 0003 Am. 2 (security-sensitive) - S05",
+    "G-PG17": "fix/postgres-17-compat (uuidv7) merged before 00005 reaches staging - S05",
+    "G-AUTH": "additive auth API FindUser/DefaultOrg (ADR 0004: auth PRs need owner approval) - S09",
+    "G-SECRETS": "owner creates resend-api-key-<env>, otp-hmac-key-<env> (secrets.sh --with-otp) and sets otp_enabled - S19"
+  },
+  "metrics": []
 }

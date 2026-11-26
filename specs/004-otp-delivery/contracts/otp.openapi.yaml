@@ -1,0 +1,231 @@
+openapi: 3.1.0
+# Contract for feature 004 (OTP delivery). The real document is generated from the Go code
+# (`swastik openapi`); this file is the target the generated diff must match (oasdiff: additive only).
+# Errors are RFC 9457 problems (`httpx.ErrorModel`) with a stable `code` (contracts/error-codes.md).
+# Handles, codes, tokens and passwords travel only in JSON bodies, never in paths or queries.
+info:
+  title: Swastik API - OTP delivery (004)
+  version: 0.4.0
+tags:
+  - name: Verification
+paths:
+  /v1/verifications/status:
+    post:
+      operationId: verification-status
+      tags: [Verification]
+      summary: Read a sign-up or password-reset verification by its handle
+      security: []   # authz.Public(); per-IP burst limiter
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/HandleRequest' } } } }
+      responses:
+        '200': { description: Status, content: { application/json: { schema: { $ref: '#/components/schemas/VerificationStatus' } } } }
+        '404': { $ref: '#/components/responses/Problem' }   # otp.verification_invalid
+        '429': { $ref: '#/components/responses/Problem' }   # rate_limited (burst)
+  /v1/verifications/resend:
+    post:
+      operationId: verification-resend
+      tags: [Verification]
+      summary: Send a new email code (cooldown and limits apply); the reply looks the same for every handle state that can send
+      security: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/HandleRequest' } } } }
+      responses:
+        '202': { description: Code queued, content: { application/json: { schema: { $ref: '#/components/schemas/ResendResult' } } } }
+        '404': { $ref: '#/components/responses/Problem' }   # otp.verification_invalid
+        '409': { $ref: '#/components/responses/Problem' }   # otp.nothing_to_send
+        '410': { $ref: '#/components/responses/Problem' }   # otp.verification_expired
+        '429': { $ref: '#/components/responses/RetryProblem' }   # otp.cooldown, otp.rate_limited
+  /v1/verifications/verify-email:
+    post:
+      operationId: verification-verify-email
+      tags: [Verification]
+      summary: Check the 6-digit email code; a password reset returns a one-time reset token
+      security: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/VerifyEmailRequest' } } } }
+      responses:
+        '200': { description: Verified, content: { application/json: { schema: { $ref: '#/components/schemas/VerifyEmailResult' } } } }
+        '404': { $ref: '#/components/responses/Problem' }
+        '410': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }   # otp.code_wrong, otp.code_expired, otp.code_used_up
+        '429': { $ref: '#/components/responses/RetryProblem' }
+  /v1/verifications/verify-mobile:
+    post:
+      operationId: verification-verify-mobile
+      tags: [Verification]
+      summary: Prove the sign-up mobile with a Firebase phone sign-in ID token
+      security: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/VerifyMobileRequest' } } } }
+      responses:
+        '200': { description: Verified, content: { application/json: { schema: { $ref: '#/components/schemas/VerificationStatus' } } } }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }   # otp.email_first
+        '410': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }   # otp.proof_invalid, otp.proof_stale, otp.proof_replayed, otp.number_mismatch
+        '429': { $ref: '#/components/responses/RetryProblem' }
+        '503': { $ref: '#/components/responses/Problem' }   # otp.not_configured
+  /v1/password-reset/start:
+    post:
+      operationId: password-reset-start
+      tags: [Verification]
+      summary: Start a password reset by email or mobile; always 202 with a handle (D-06, D-07)
+      security: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ResetStartRequest' } } } }
+      responses:
+        '202': { description: Accepted (whether or not an account matched), content: { application/json: { schema: { $ref: '#/components/schemas/ResetStarted' } } } }
+        '422': { $ref: '#/components/responses/Problem' }   # auth.identifier_invalid (format only)
+        '429': { $ref: '#/components/responses/RetryProblem' }
+  /v1/password-reset/complete:
+    post:
+      operationId: password-reset-complete
+      tags: [Verification]
+      summary: Set a new password with the one-time reset token; ends all sessions (003 D-13)
+      security: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ResetCompleteRequest' } } } }
+      responses:
+        '204': { description: Password changed }
+        '422': { $ref: '#/components/responses/Problem' }   # otp.reset_token_invalid, auth.password_*
+        '429': { $ref: '#/components/responses/RetryProblem' }
+        '503': { $ref: '#/components/responses/Problem' }   # auth.busy
+  /v1/me/verifications/status:
+    post:
+      operationId: my-verification-status
+      tags: [Verification]
+      summary: Read one of my contact-change verifications (007)
+      security: [ { bearer: [client] } ]   # authz.Require(RoleClient)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/HandleRequest' } } } }
+      responses:
+        '200': { description: Status, content: { application/json: { schema: { $ref: '#/components/schemas/VerificationStatus' } } } }
+        '404': { $ref: '#/components/responses/Problem' }   # unknown handle or another user's (no difference)
+  /v1/me/verifications/resend:
+    post:
+      operationId: my-verification-resend
+      tags: [Verification]
+      summary: Send a new code to my new email
+      security: [ { bearer: [client] } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/HandleRequest' } } } }
+      responses:
+        '202': { description: Code queued, content: { application/json: { schema: { $ref: '#/components/schemas/ResendResult' } } } }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '410': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/RetryProblem' }
+  /v1/me/verifications/verify-email:
+    post:
+      operationId: my-verification-verify-email
+      tags: [Verification]
+      summary: Prove my new email; the account is unchanged until 007 applies the approved change
+      security: [ { bearer: [client] } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/VerifyEmailRequest' } } } }
+      responses:
+        '200': { description: Proved, content: { application/json: { schema: { $ref: '#/components/schemas/VerifyEmailResult' } } } }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }   # otp.contact_unavailable
+        '410': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/RetryProblem' }
+  /v1/me/verifications/verify-mobile:
+    post:
+      operationId: my-verification-verify-mobile
+      tags: [Verification]
+      summary: Prove my new mobile with a Firebase ID token
+      security: [ { bearer: [client] } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/VerifyMobileRequest' } } } }
+      responses:
+        '200': { description: Proved, content: { application/json: { schema: { $ref: '#/components/schemas/VerificationStatus' } } } }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }   # otp.contact_unavailable
+        '410': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/RetryProblem' }
+        '503': { $ref: '#/components/responses/Problem' }
+components:
+  responses:
+    Problem:
+      description: RFC 9457 problem with `code`
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/ErrorModel' } } }
+    RetryProblem:
+      description: Refused by a cooldown or limit; `Retry-After` header and `retry_after_seconds` say when to try again
+      headers: { Retry-After: { schema: { type: integer, minimum: 1 } } }
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/ErrorModel' } } }
+  schemas:
+    ErrorModel:
+      description: httpx.ErrorModel; `retry_after_seconds` is a new optional, additive field (platform/httpx.ProblemRetry)
+      type: object
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        code: { type: string }
+        retry_after_seconds: { type: integer, minimum: 1 }
+    Handle:
+      type: string
+      pattern: '^ovh_[A-Za-z0-9_-]{43}$'
+      description: Opaque verification handle; stored only as SHA-256
+    HandleRequest:
+      type: object
+      required: [handle]
+      additionalProperties: false
+      properties: { handle: { $ref: '#/components/schemas/Handle' } }
+    VerifyEmailRequest:
+      type: object
+      required: [handle, code]
+      additionalProperties: false
+      properties:
+        handle: { $ref: '#/components/schemas/Handle' }
+        code: { type: string, pattern: '^[0-9]{6}$' }
+    VerifyMobileRequest:
+      type: object
+      required: [handle, firebase_id_token]
+      additionalProperties: false
+      properties:
+        handle: { $ref: '#/components/schemas/Handle' }
+        firebase_id_token: { type: string, minLength: 1, maxLength: 4096 }
+    ResetStartRequest:
+      type: object
+      required: [identifier]
+      additionalProperties: false
+      properties: { identifier: { type: string, minLength: 1, maxLength: 254, description: Email or Indian mobile; never echoed } }
+    ResetStarted:
+      type: object
+      required: [handle, expires_at, next_resend_at]
+      properties:
+        handle: { $ref: '#/components/schemas/Handle' }
+        expires_at: { type: string, format: date-time }
+        next_resend_at: { type: string, format: date-time }
+    ResetCompleteRequest:
+      type: object
+      required: [handle, reset_token, new_password]
+      additionalProperties: false
+      properties:
+        handle: { $ref: '#/components/schemas/Handle' }
+        reset_token: { type: string, pattern: '^prt_[A-Za-z0-9_-]{43}$' }
+        new_password: { type: string, minLength: 1, maxLength: 1024, format: password }
+    ResendResult:
+      type: object
+      required: [next_resend_at, code_expires_at]
+      properties:
+        next_resend_at: { type: string, format: date-time }
+        code_expires_at: { type: string, format: date-time }
+    ContactStatus:
+      type: object
+      required: [state]
+      properties:
+        state: { type: string, enum: [pending, verified, proved, expired] }
+        masked: { type: string, description: 'e.g. "r***@gmail.com" or "+91 ******5678"; omitted for password_reset', examples: ['r***@gmail.com'] }
+        next_resend_at: { type: string, format: date-time, description: email contacts with a live flow only }
+        code_expires_at: { type: string, format: date-time }
+    VerificationStatus:
+      type: object
+      required: [purpose, state, expires_at]
+      properties:
+        purpose: { type: string, enum: [signup, change_email, change_mobile, password_reset] }
+        state: { type: string, enum: [open, completed, expired, cancelled] }
+        expires_at: { type: string, format: date-time }
+        email: { $ref: '#/components/schemas/ContactStatus' }
+        mobile: { $ref: '#/components/schemas/ContactStatus' }
+    VerifyEmailResult:
+      type: object
+      required: [verification]
+      properties:
+        verification: { $ref: '#/components/schemas/VerificationStatus' }
+        reset_token: { type: string, description: password_reset only; shown once, valid 10 minutes }
+        reset_token_expires_at: { type: string, format: date-time }
