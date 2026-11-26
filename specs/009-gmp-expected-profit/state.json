@@ -418,7 +418,11 @@
     "packages/domain/src/ipo-market.test.ts",
     "apps/api/internal/ipomarket/perf_test.go"
    ],
-   "protected_tests": []
+   "protected_tests": [
+    "packages/domain/src/ipo-market.test.ts",
+    "apps/api/cmd/swastik/ipomarket_contract_test.go"
+   ],
+   "tests_written": true
   },
   "S19": {
    "owner": "admin-dev",
