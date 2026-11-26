@@ -277,7 +277,10 @@
    "files": [
     "apps/api/internal/ipomarket/service_subscription_test.go"
    ],
-   "protected_tests": []
+   "protected_tests": [
+    "apps/api/internal/ipomarket/service_subscription_test.go"
+   ],
+   "tests_written": true
   },
   "S13": {
    "owner": "backend-dev",
