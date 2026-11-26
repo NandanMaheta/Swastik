@@ -18,6 +18,7 @@ import (
 	"github.com/NandanMaheta/swastik/apps/api/internal/auth"
 	"github.com/NandanMaheta/swastik/apps/api/internal/health"
 	"github.com/NandanMaheta/swastik/apps/api/internal/ipos"
+	"github.com/NandanMaheta/swastik/apps/api/internal/otp"
 	"github.com/NandanMaheta/swastik/apps/api/internal/outbox"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/authz"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/clock"
@@ -105,7 +106,9 @@ type deps struct {
 	// command and the static contract walk). WebOrigins and TrustedProxyHops feed the handlers.
 	Auth *auth.Service
 	// IPOs is the IPO catalogue service; nil registers its operations without one.
-	IPOs             *ipos.Service
+	IPOs *ipos.Service
+	// OTP is the OTP delivery service (feature 004); nil registers its operations without one.
+	OTP              *otp.Service
 	WebOrigins       []string
 	TrustedProxyHops int
 	ProxySecrets     []string

@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/NandanMaheta/swastik/apps/api/internal/auth"
+	"github.com/NandanMaheta/swastik/apps/api/internal/otp"
+	"github.com/NandanMaheta/swastik/apps/api/internal/outbox"
 	"github.com/NandanMaheta/swastik/apps/api/internal/scheduler"
 )
 
@@ -16,3 +18,9 @@ func registerAuthJobs(sch *scheduler.Service, svc *auth.Service) {
 		return err
 	}, scheduler.KindOptions{Recurring: auth.HousekeepingNext})
 }
+
+// registerOTPJobs registers the otp.housekeeping job (feature 004, slice S17 implements it).
+func registerOTPJobs(_ *scheduler.Service, _ *otp.Service) {}
+
+// registerOTPSenders registers the otp Sender for both outbox topics with 3 attempts (S17).
+func registerOTPSenders(_ *outbox.Service, _ *otp.Service) {}
