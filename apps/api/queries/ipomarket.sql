@@ -46,11 +46,15 @@ SELECT * FROM (
 ORDER BY recorded_at, id;
 
 -- name: CurrentGMPBatch :many
-SELECT DISTINCT ON (e.ipo_id) e.*
-FROM ipo_gmp_entries e
-WHERE e.org_id = @org_id AND e.ipo_id = ANY(@ids::uuid[])
-  AND NOT EXISTS (SELECT 1 FROM ipo_gmp_entries c WHERE c.corrects_entry_id = e.id)
-ORDER BY e.ipo_id, e.recorded_at DESC, e.id DESC;
+SELECT g.*
+FROM unnest(@ids::uuid[]) AS i(id)
+CROSS JOIN LATERAL (
+    SELECT e.* FROM ipo_gmp_entries e
+    WHERE e.org_id = @org_id AND e.ipo_id = i.id
+      AND NOT EXISTS (SELECT 1 FROM ipo_gmp_entries c WHERE c.corrects_entry_id = e.id)
+    ORDER BY e.recorded_at DESC, e.id DESC
+    LIMIT 1
+) g;
 
 -- name: InsertSubscription :one
 INSERT INTO ipo_subscription_snapshots (org_id, ipo_id, as_of, total_x100, qib_x100, nii_x100, bnii_x100,
@@ -72,10 +76,14 @@ ORDER BY as_of DESC, recorded_at DESC, id DESC
 LIMIT 1;
 
 -- name: CurrentSubscriptionBatch :many
-SELECT DISTINCT ON (ipo_id) *
-FROM ipo_subscription_snapshots
-WHERE org_id = @org_id AND ipo_id = ANY(@ids::uuid[])
-ORDER BY ipo_id, as_of DESC, recorded_at DESC, id DESC;
+SELECT g.*
+FROM unnest(@ids::uuid[]) AS i(id)
+CROSS JOIN LATERAL (
+    SELECT s.* FROM ipo_subscription_snapshots s
+    WHERE s.org_id = @org_id AND s.ipo_id = i.id
+    ORDER BY s.as_of DESC, s.recorded_at DESC, s.id DESC
+    LIMIT 1
+) g;
 
 -- name: ListSubscriptionHistory :many
 SELECT * FROM ipo_subscription_snapshots

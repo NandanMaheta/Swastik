@@ -46,20 +46,24 @@ func (q *Queries) CurrentGMP(ctx context.Context, arg CurrentGMPParams) (IpoGmpE
 }
 
 const currentGMPBatch = `-- name: CurrentGMPBatch :many
-SELECT DISTINCT ON (e.ipo_id) e.id, e.org_id, e.ipo_id, e.gmp_paise, e.note, e.corrects_entry_id, e.source, e.actor_kind, e.actor_id, e.idempotency_key, e.request_hash, e.recorded_at
-FROM ipo_gmp_entries e
-WHERE e.org_id = $1 AND e.ipo_id = ANY($2::uuid[])
-  AND NOT EXISTS (SELECT 1 FROM ipo_gmp_entries c WHERE c.corrects_entry_id = e.id)
-ORDER BY e.ipo_id, e.recorded_at DESC, e.id DESC
+SELECT g.id, g.org_id, g.ipo_id, g.gmp_paise, g.note, g.corrects_entry_id, g.source, g.actor_kind, g.actor_id, g.idempotency_key, g.request_hash, g.recorded_at
+FROM unnest($1::uuid[]) AS i(id)
+CROSS JOIN LATERAL (
+    SELECT e.id, e.org_id, e.ipo_id, e.gmp_paise, e.note, e.corrects_entry_id, e.source, e.actor_kind, e.actor_id, e.idempotency_key, e.request_hash, e.recorded_at FROM ipo_gmp_entries e
+    WHERE e.org_id = $2 AND e.ipo_id = i.id
+      AND NOT EXISTS (SELECT 1 FROM ipo_gmp_entries c WHERE c.corrects_entry_id = e.id)
+    ORDER BY e.recorded_at DESC, e.id DESC
+    LIMIT 1
+) g
 `
 
 type CurrentGMPBatchParams struct {
-	OrgID uuid.UUID   `json:"org_id"`
 	Ids   []uuid.UUID `json:"ids"`
+	OrgID uuid.UUID   `json:"org_id"`
 }
 
 func (q *Queries) CurrentGMPBatch(ctx context.Context, arg CurrentGMPBatchParams) ([]IpoGmpEntry, error) {
-	rows, err := q.db.Query(ctx, currentGMPBatch, arg.OrgID, arg.Ids)
+	rows, err := q.db.Query(ctx, currentGMPBatch, arg.Ids, arg.OrgID)
 	if err != nil {
 		return nil, err
 	}
@@ -129,19 +133,23 @@ func (q *Queries) CurrentSubscription(ctx context.Context, arg CurrentSubscripti
 }
 
 const currentSubscriptionBatch = `-- name: CurrentSubscriptionBatch :many
-SELECT DISTINCT ON (ipo_id) id, org_id, ipo_id, as_of, total_x100, qib_x100, nii_x100, bnii_x100, snii_x100, retail_x100, employee_x100, source, actor_kind, actor_id, idempotency_key, request_hash, recorded_at
-FROM ipo_subscription_snapshots
-WHERE org_id = $1 AND ipo_id = ANY($2::uuid[])
-ORDER BY ipo_id, as_of DESC, recorded_at DESC, id DESC
+SELECT g.id, g.org_id, g.ipo_id, g.as_of, g.total_x100, g.qib_x100, g.nii_x100, g.bnii_x100, g.snii_x100, g.retail_x100, g.employee_x100, g.source, g.actor_kind, g.actor_id, g.idempotency_key, g.request_hash, g.recorded_at
+FROM unnest($1::uuid[]) AS i(id)
+CROSS JOIN LATERAL (
+    SELECT s.id, s.org_id, s.ipo_id, s.as_of, s.total_x100, s.qib_x100, s.nii_x100, s.bnii_x100, s.snii_x100, s.retail_x100, s.employee_x100, s.source, s.actor_kind, s.actor_id, s.idempotency_key, s.request_hash, s.recorded_at FROM ipo_subscription_snapshots s
+    WHERE s.org_id = $2 AND s.ipo_id = i.id
+    ORDER BY s.as_of DESC, s.recorded_at DESC, s.id DESC
+    LIMIT 1
+) g
 `
 
 type CurrentSubscriptionBatchParams struct {
-	OrgID uuid.UUID   `json:"org_id"`
 	Ids   []uuid.UUID `json:"ids"`
+	OrgID uuid.UUID   `json:"org_id"`
 }
 
 func (q *Queries) CurrentSubscriptionBatch(ctx context.Context, arg CurrentSubscriptionBatchParams) ([]IpoSubscriptionSnapshot, error) {
-	rows, err := q.db.Query(ctx, currentSubscriptionBatch, arg.OrgID, arg.Ids)
+	rows, err := q.db.Query(ctx, currentSubscriptionBatch, arg.Ids, arg.OrgID)
 	if err != nil {
 		return nil, err
 	}
