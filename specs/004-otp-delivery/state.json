@@ -174,7 +174,7 @@
       "owner": "backend-dev",
       "title": "OWNER GATE G-AUTH: auth.FindUser/DefaultOrg; queries/otp.sql (all filter org_id) + sqlc; otp/store.go (only pgx file).",
       "done_command": "cd apps/api && sqlc generate && sqlc vet && go test -race -run 'TestFindUser|TestDefaultOrg' ./internal/auth/ && go test -race -run 'TestStore_' ./internal/otp/",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "S08"
       ],

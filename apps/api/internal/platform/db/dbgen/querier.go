@@ -12,6 +12,8 @@ import (
 )
 
 type Querier interface {
+	// The counter never passes the limit of 5 (the row CHECK); a full or ended code is "no live code".
+	AddOtpWrongAttempt(ctx context.Context, arg AddOtpWrongAttemptParams) (int16, error)
 	AdminCancelJob(ctx context.Context, arg AdminCancelJobParams) (ScheduledJob, error)
 	// Cancel keeps the dedupe key reserved: the row stays, as withdrawn.
 	AdminCancelMessage(ctx context.Context, arg AdminCancelMessageParams) (OutboxMessage, error)
@@ -24,6 +26,7 @@ type Querier interface {
 	// Cancel: pending becomes cancelled; a running job is only flagged, its in-flight run decides.
 	CancelJobByKey(ctx context.Context, arg CancelJobByKeyParams) (int64, error)
 	CancelJobsBySubject(ctx context.Context, arg CancelJobsBySubjectParams) (int64, error)
+	CancelOtpVerification(ctx context.Context, arg CancelOtpVerificationParams) (int64, error)
 	// Claim one job (or one whose lease ran out) under a fresh lease and fencing token.
 	ClaimJob(ctx context.Context, arg ClaimJobParams) (ScheduledJob, error)
 	// Claim one available message (or one whose send lease ran out), oldest id first, so messages
@@ -45,10 +48,12 @@ type Querier interface {
 	CountUsableRecoveryCodes(ctx context.Context, userID uuid.UUID) (int32, error)
 	DeleteIPO(ctx context.Context, arg DeleteIPOParams) (int64, error)
 	DeleteThrottle(ctx context.Context, arg DeleteThrottleParams) error
+	EndLiveOtpCode(ctx context.Context, arg EndLiveOtpCodeParams) (OtpEmailCode, error)
 	// The first end stands: an already ended session is left alone (zero rows).
 	EndSession(ctx context.Context, arg EndSessionParams) (int64, error)
 	// An all-zero except id matches no session, so it ends every not-ended session of the user.
 	EndUserSessions(ctx context.Context, arg EndUserSessionsParams) ([]uuid.UUID, error)
+	EnsureOtpLimit(ctx context.Context, arg EnsureOtpLimitParams) error
 	// Recurring kinds always have one active row per org; this self-heals after a dead or lost row.
 	EnsureRecurringJob(ctx context.Context, arg EnsureRecurringJobParams) error
 	EnsureThrottle(ctx context.Context, arg EnsureThrottleParams) error
@@ -63,6 +68,7 @@ type Querier interface {
 	// Back to pending at available_at (already moved out of quiet hours), or dead when attempts are used up.
 	FailMessage(ctx context.Context, arg FailMessageParams) (FailMessageRow, error)
 	FindIPOAuditByIdempotencyKey(ctx context.Context, arg FindIPOAuditByIdempotencyKeyParams) (FindIPOAuditByIdempotencyKeyRow, error)
+	FinishOtpVerification(ctx context.Context, arg FinishOtpVerificationParams) (int64, error)
 	FinishTickRun(ctx context.Context, arg FinishTickRunParams) error
 	// tick_runs is global, not per org: the retention job purges it only for the first org.
 	FirstOrgID(ctx context.Context) (uuid.UUID, error)
@@ -78,6 +84,8 @@ type Querier interface {
 	GetJobForOrg(ctx context.Context, arg GetJobForOrgParams) (ScheduledJob, error)
 	// The row is locked so a retry or cancel decides on a state nobody changes meanwhile.
 	GetMessageForOrg(ctx context.Context, arg GetMessageForOrgParams) (OutboxMessage, error)
+	GetOtpCounts(ctx context.Context, arg GetOtpCountsParams) ([]GetOtpCountsRow, error)
+	GetOtpVerification(ctx context.Context, arg GetOtpVerificationParams) (OtpVerification, error)
 	GetPublishedIPO(ctx context.Context, arg GetPublishedIPOParams) (Ipo, error)
 	// No row means the default window (21:30-08:00 IST).
 	GetQuietHours(ctx context.Context, orgID uuid.UUID) (GetQuietHoursRow, error)
@@ -91,6 +99,7 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserByMobile(ctx context.Context, mobile pgtype.Text) (User, error)
+	IncrementOtpCount(ctx context.Context, arg IncrementOtpCountParams) error
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
 	// ---- MFA challenges ----
 	InsertChallenge(ctx context.Context, arg InsertChallengeParams) (MfaChallenge, error)
@@ -101,6 +110,12 @@ type Querier interface {
 	// Zero rows affected means duplicate.
 	InsertMessage(ctx context.Context, arg InsertMessageParams) (int64, error)
 	InsertOrg(ctx context.Context, arg InsertOrgParams) (uuid.UUID, error)
+	InsertOtpCode(ctx context.Context, arg InsertOtpCodeParams) (OtpEmailCode, error)
+	InsertOtpProof(ctx context.Context, arg InsertOtpProofParams) (int64, error)
+	// OTP delivery queries (feature 004). Every statement filters by org_id; every instant is a
+	// parameter taken from the injected clock (an empty limit row is created at the epoch, so the
+	// purge treats it as garbage until it is saved).
+	InsertOtpVerification(ctx context.Context, arg InsertOtpVerificationParams) (OtpVerification, error)
 	InsertRecoveryCodes(ctx context.Context, arg InsertRecoveryCodesParams) (int64, error)
 	// ---- refresh tokens ----
 	InsertRefreshToken(ctx context.Context, arg InsertRefreshTokenParams) (RefreshToken, error)
@@ -139,6 +154,11 @@ type Querier interface {
 	LockAdminsByOrg(ctx context.Context, orgID uuid.UUID) ([]User, error)
 	// The bootstrap lock (plan P-13): serialises `swastik admin create` across processes until commit.
 	LockBootstrap(ctx context.Context, key int64) error
+	LockLiveOtpCode(ctx context.Context, arg LockLiveOtpCodeParams) (OtpEmailCode, error)
+	LockOpenOtpVerification(ctx context.Context, arg LockOpenOtpVerificationParams) (OtpVerification, error)
+	LockOtpLimit(ctx context.Context, arg LockOtpLimitParams) (OtpLimit, error)
+	LockOtpVerification(ctx context.Context, arg LockOtpVerificationParams) (OtpVerification, error)
+	LockOtpVerificationByHandle(ctx context.Context, arg LockOtpVerificationByHandleParams) (OtpVerification, error)
 	LockRefreshTokenByID(ctx context.Context, id uuid.UUID) (RefreshToken, error)
 	LockSessionByID(ctx context.Context, id uuid.UUID) (DeviceSession, error)
 	LockThrottle(ctx context.Context, arg LockThrottleParams) (LockThrottleRow, error)
@@ -154,6 +174,9 @@ type Querier interface {
 	MarkMessageSent(ctx context.Context, arg MarkMessageSentParams) (int64, error)
 	MarkMessagesAlerted(ctx context.Context, arg MarkMessagesAlertedParams) error
 	MarkMobileVerified(ctx context.Context, arg MarkMobileVerifiedParams) (int64, error)
+	// The first instant is kept when the contact is already done.
+	MarkOtpEmailDone(ctx context.Context, arg MarkOtpEmailDoneParams) (int64, error)
+	MarkOtpMobileDone(ctx context.Context, arg MarkOtpMobileDoneParams) (int64, error)
 	// Rotation step 1: only an unused token can be marked used (no rows: unknown or already used).
 	MarkRefreshTokenUsed(ctx context.Context, arg MarkRefreshTokenUsedParams) (MarkRefreshTokenUsedRow, error)
 	OrgExists(ctx context.Context, id uuid.UUID) (bool, error)
@@ -167,6 +190,11 @@ type Querier interface {
 	PurgeFinishedJobs(ctx context.Context, arg PurgeFinishedJobsParams) (int64, error)
 	// Retention (FR-035): finished messages older than the cutoff; dead messages are kept until an admin acts.
 	PurgeFinishedMessages(ctx context.Context, arg PurgeFinishedMessagesParams) (int64, error)
+	PurgeOtpCounts(ctx context.Context, arg PurgeOtpCountsParams) (int64, error)
+	PurgeOtpLimits(ctx context.Context, arg PurgeOtpLimitsParams) (int64, error)
+	PurgeOtpProofs(ctx context.Context, arg PurgeOtpProofsParams) (int64, error)
+	// Purges: bounded batches, oldest first (FR-015).
+	PurgeOtpVerifications(ctx context.Context, arg PurgeOtpVerificationsParams) (int64, error)
 	// ---- housekeeping (plan P-20): one single-table DELETE at a time, bounded ----
 	PurgeStaleThrottles(ctx context.Context, arg PurgeStaleThrottlesParams) (int64, error)
 	PurgeTickRuns(ctx context.Context, cutoff pgtype.Timestamptz) (int64, error)
@@ -184,6 +212,7 @@ type Querier interface {
 	// ---- recovery codes ----
 	// Revokes every unrevoked code and reports how many of them were still usable.
 	RevokeRecoveryCodes(ctx context.Context, arg RevokeRecoveryCodesParams) (int32, error)
+	SaveOtpLimit(ctx context.Context, arg SaveOtpLimitParams) (int64, error)
 	// Dead jobs not yet included in an alert. Locked, so a concurrent sweep skips them.
 	SelectUnalertedDeadJobs(ctx context.Context) ([]SelectUnalertedDeadJobsRow, error)
 	// Dead messages not yet included in an alert. Locked, so a concurrent sweep skips them.
@@ -191,6 +220,7 @@ type Querier interface {
 	SetIPOFlag(ctx context.Context, arg SetIPOFlagParams) (Ipo, error)
 	SetIPOPublished(ctx context.Context, arg SetIPOPublishedParams) (Ipo, error)
 	SetIPOStatus(ctx context.Context, arg SetIPOStatusParams) (Ipo, error)
+	SetOtpResetGrant(ctx context.Context, arg SetOtpResetGrantParams) (int64, error)
 	// Rotation step 3: link the used token to its successor.
 	SetRefreshTokenReplacedBy(ctx context.Context, arg SetRefreshTokenReplacedByParams) (int64, error)
 	SetUserLastSignIn(ctx context.Context, arg SetUserLastSignInParams) (int64, error)

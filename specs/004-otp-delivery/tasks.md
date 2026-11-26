@@ -53,7 +53,7 @@
 - [ ] S08 [P] **test-engineer**: auth additions tests (FindUser by email/mobile/normalised, unknown, invalid; DefaultOrg) and otp Store tests through Store (insert/lock verification by handle hash, supersede, live code lock, wrong-attempt increment, proof insert conflict, limits lock order, counts upsert, purge batches, org isolation).
   - Depends on: S01, S05 | Rules: BR-CLI-04, BR-CLI-05 | Gates: none | ~520 lines | expect red
   - Done command: `cd apps/api && go test -race -run 'TestFindUser|TestDefaultOrg' ./internal/auth/ && go test -race -run 'TestStore_' ./internal/otp/`
-- [ ] S09 **backend-dev**: OWNER GATE G-AUTH: auth.FindUser/DefaultOrg; queries/otp.sql (all filter org_id) + sqlc; otp/store.go (only pgx file).
+- [x] S09 **backend-dev**: OWNER GATE G-AUTH: auth.FindUser/DefaultOrg; queries/otp.sql (all filter org_id) + sqlc; otp/store.go (only pgx file).
   - Depends on: S08 | Rules: BR-CLI-04, BR-CLI-05 | Gates: G-AUTH | ~420 lines | expect green
   - Done command: `cd apps/api && sqlc generate && sqlc vet && go test -race -run 'TestFindUser|TestDefaultOrg' ./internal/auth/ && go test -race -run 'TestStore_' ./internal/otp/`
 - [ ] S10 [P] **test-engineer**: Service tests A (fake clock, fake mailer, real outbox): Start signup/change (US1.1, US5.1, not-allowed statuses, supersede withdraws old email, invalid contact), Resend (US2.1-2.3, per-user 10/day, unknown handle), quiet hours 23:00 IST exempt (US2.4), Deliver/DeliverNow path, sealed sensitive payload, Sender (opens box, skips expired, counts sent/failed, idempotency key), Cancel, NotifyOldContact (respects quiet hours, no code), DailyCounts, audit rows without contacts (US6).
