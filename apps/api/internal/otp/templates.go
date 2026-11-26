@@ -19,6 +19,8 @@ func codeMail(to, code, purpose string) email.Mail {
 		what = "to confirm your new email address"
 	case PurposePasswordReset:
 		what = "to reset your password"
+	case PurposeChangeMobile:
+		what = "to confirm this request"
 	default:
 		what = "to confirm this request"
 	}

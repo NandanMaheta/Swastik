@@ -69,7 +69,7 @@ func loadOTP(appEnv string) (OTPConfig, error) {
 	var key []byte
 	if hmacRaw == "" {
 		var err error
-		if key, err = randomBytes(keyBytes); err != nil {
+		if key, err = randomKey(); err != nil {
 			return OTPConfig{}, err
 		}
 	} else {

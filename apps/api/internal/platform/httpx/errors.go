@@ -25,7 +25,9 @@ type ErrorModel struct {
 
 // Problem builds a problem with an explicit code. It is a huma.StatusError, so handlers can
 // return it directly. The type is derived from the code.
-func Problem(status int, code, detail string) error {
+func Problem(status int, code, detail string) error { return newProblem(status, code, detail) }
+
+func newProblem(status int, code, detail string) *ErrorModel {
 	return &ErrorModel{
 		ErrorModel: huma.ErrorModel{
 			Type:   problemTypePrefix + code,
@@ -44,7 +46,7 @@ func ProblemRetry(status int, code, detail string, after time.Duration) error {
 	if after <= 0 || secs < 1 {
 		secs = 1
 	}
-	m := Problem(status, code, detail).(*ErrorModel)
+	m := newProblem(status, code, detail)
 	m.RetryAfterSeconds = secs
 	h := http.Header{}
 	h.Set("Retry-After", strconv.Itoa(secs))

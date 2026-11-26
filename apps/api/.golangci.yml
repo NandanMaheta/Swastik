@@ -70,10 +70,10 @@ linters:
             - pkg: "github.com/jackc/pgx/v5"
               desc: pgx types stay in store.go (go-module-pattern)
         oidc-only-in-tickauth:
-          files: ["$all", "!**/internal/platform/tickauth/**"]
+          files: ["$all", "!**/internal/platform/tickauth/**", "!**/internal/platform/firebaseauth/**"]
           deny:
             - pkg: "github.com/coreos/go-oidc/v3"
-              desc: OIDC verification lives in platform/tickauth
+              desc: OIDC verification lives in platform/tickauth and platform/firebaseauth
         sentry-only-in-observe:
           files: ["$all", "!**/internal/platform/observe/**"]
           deny:
