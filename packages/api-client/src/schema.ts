@@ -769,10 +769,10 @@ export interface components {
              * @example https://example.com/schemas/ClientMarketView.json
              */
             readonly $schema?: string;
-            current_gmp: components["schemas"]["CurrentGMP"];
+            current_gmp: components["schemas"]["CurrentGMP"] | null;
             /** Format: uuid */
             ipo_id: string;
-            subscription: components["schemas"]["SubscriptionView"];
+            subscription: components["schemas"]["SubscriptionView"] | null;
             trend: components["schemas"]["TrendPointView"][] | null;
         };
         CurrentGMP: {
@@ -1045,7 +1045,7 @@ export interface components {
             items: components["schemas"]["MarketSummary"][] | null;
         };
         MarketSummary: {
-            current_gmp: components["schemas"]["CurrentGMP"];
+            current_gmp: components["schemas"]["CurrentGMP"] | null;
             /** Format: uuid */
             ipo_id: string;
             /** Format: date-time */

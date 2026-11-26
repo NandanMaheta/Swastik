@@ -551,12 +551,16 @@ components:
           readOnly: true
           type: string
         current_gmp:
-          $ref: "#/components/schemas/CurrentGMP"
+          anyOf:
+            - $ref: "#/components/schemas/CurrentGMP"
+            - type: "null"
         ipo_id:
           format: uuid
           type: string
         subscription:
-          $ref: "#/components/schemas/SubscriptionView"
+          anyOf:
+            - $ref: "#/components/schemas/SubscriptionView"
+            - type: "null"
         trend:
           items:
             $ref: "#/components/schemas/TrendPointView"
@@ -1185,7 +1189,9 @@ components:
       additionalProperties: false
       properties:
         current_gmp:
-          $ref: "#/components/schemas/CurrentGMP"
+          anyOf:
+            - $ref: "#/components/schemas/CurrentGMP"
+            - type: "null"
         ipo_id:
           format: uuid
           type: string

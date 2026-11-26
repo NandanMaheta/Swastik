@@ -250,3 +250,26 @@ func summariesOut(ss []Summary) MarketSummaries {
 	}
 	return out
 }
+
+// nullableRef makes the property a "$ref or null" union (Huma refuses nullable on pointer-to-struct
+// fields), so the generated TS client types it `| null`.
+func nullableRef(s *huma.Schema, names ...string) *huma.Schema {
+	for _, n := range names {
+		p, ok := s.Properties[n]
+		if !ok || p.Ref == "" {
+			continue
+		}
+		s.Properties[n] = &huma.Schema{AnyOf: []*huma.Schema{{Ref: p.Ref}, {Type: "null"}}}
+	}
+	return s
+}
+
+// TransformSchema marks current_gmp and subscription nullable in OpenAPI.
+func (ClientMarketView) TransformSchema(_ huma.Registry, s *huma.Schema) *huma.Schema {
+	return nullableRef(s, "current_gmp", "subscription")
+}
+
+// TransformSchema marks current_gmp nullable in OpenAPI.
+func (MarketSummary) TransformSchema(_ huma.Registry, s *huma.Schema) *huma.Schema {
+	return nullableRef(s, "current_gmp")
+}
