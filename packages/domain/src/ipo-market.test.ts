@@ -16,8 +16,9 @@ const ipoMarketCodes = [
 describe("BR_IPO_04 ipoMarketErrorMessages", () => {
   it.each(ipoMarketCodes)("has a non-empty message for %s", (code) => {
     const m = (ipoMarketErrorMessages as Record<string, string>)[code];
+    expect(m).toBeDefined();
     expect(typeof m).toBe("string");
-    expect(m.trim().length).toBeGreaterThan(0);
+    expect((m ?? "").trim().length).toBeGreaterThan(0);
   });
 
   it("is re-exported from the package index", () => {
