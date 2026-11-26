@@ -164,7 +164,11 @@
       "expect": "red",
       "owner_gates": [],
       "est_lines": 520,
-      "protected_tests": []
+      "protected_tests": [
+        "apps/api/internal/auth/accounts_find_test.go",
+        "apps/api/internal/otp/store_test.go"
+      ],
+      "tests_written": true
     },
     "S09": {
       "owner": "backend-dev",
