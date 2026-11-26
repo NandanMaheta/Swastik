@@ -162,6 +162,7 @@ func (s *Service) Delete(ctx, by, org, id, version, idemKey) (replayed bool, err
 func (s *Service) List(ctx, org, f AdminFilter) (Page[IPO], error)
 func (s *Service) ListPublished(ctx, org, f ClientFilter) (Page[IPO], error)
 func (s *Service) GetPublished(ctx, org, id) (IPO, error)       // ErrNotFound for drafts and unknown ids alike
+func (s *Service) GetMany(ctx, org uuid.UUID, ids []uuid.UUID) (map[uuid.UUID]IPO, error) // additive (009): org-scoped, drafts included, unknown ids absent, len(ids) <= 200
 func SuggestDates(close istdate.Date) DateSuggestion              // pure; no I/O (FR-043)
 ```
 

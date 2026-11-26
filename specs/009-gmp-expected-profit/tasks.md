@@ -1,0 +1,114 @@
+# Slices: GMP and expected profit (009, Tier B, pipeline v2)
+
+**Feature**: 009-gmp-expected-profit | **Branch**: `feat/009-gmp-expected-profit` | **Brief**: `brief.md` | **Rules**: BR-IPO-04 (GS-01..04 must keep passing; none is driven by 009)
+
+## Format
+
+`- [ ] S## [P] owner: title`, then Depends on, Rules, Files, Done command. 20 slices (limit 8-20). **[P]** = parallel-safe once dependencies are met. **red** = done command must fail for the right reason (assertion or errNotImplemented, never a compile error); **green** = must pass. Done commands run from `/home/user/divya-009`. Integration tests need Docker. Generated code (dbgen, openapi.yaml, schema.ts) is not counted in sizes.
+
+- **Gate `uuidv7-fix-merged`**: the database is PostgreSQL 17 (no native `uuidv7()`); the in-flight fix adds our own `uuidv7()`. Slices touching the schema depend on it. Plan text saying PostgreSQL 18 is superseded.
+- **Migration number is 00006** (004 holds 00005); S03 renames the 00005 references in brief, plan and data-model. Migration needs owner approval on the PR (CODEOWNERS). No new dependency, no ledger or auth schema change.
+- **Batching**: one test pass writes S02, S04, S06, S08, S10, S12, S14, S16 (all depend only on S01 plus S03 where a DB is needed); then one code pass implements in order S03, S05, S07, S09, S11, S13, S15, S17. Q1-Q3 are answered (spec approval), so no slice is open on them.
+
+## Slices
+
+- [x] S01 **backend-dev**: Compile skeleton: package ipomarket (doc, model, errors, profit, service, service_record, service_read, validate, idem, store, handler_admin, handler_client, problems, api_types, ipomarkettest) with exported names from contracts/go-module-api.md; bodies return errNotImplemented; ipos.(*Service).GetMany stub; NewService/Register wired in cmd/swastik after ipos.
+  - Depends on: none
+  - Rules: none (mechanism)
+  - Files (~380 lines): `apps/api/internal/ipomarket/{doc,model,errors,profit,service,service_record,service_read,validate,idem,store,handler_admin,handler_client,problems,api_types}.go`, `apps/api/internal/ipomarket/ipomarkettest/ipomarkettest.go`, `apps/api/internal/ipos/service_read.go`, `apps/api/cmd/swastik/main.go`
+  - Done command (green): `cd apps/api && go build ./... && go vet ./internal/ipomarket/... ./internal/ipos/... ./cmd/...`
+- [ ] S02 [P] **test-engineer**: Schema tests (dbtest.New): UPDATE/DELETE raise on both tables, correction unique and cross-IPO composite FK, CHECK bounds, actor and idempotency pair CHECKs, source pattern, draft delete still works with no rows.
+  - Depends on: S01, uuidv7-fix-merged
+  - Rules: BR-IPO-04
+  - Files (~300 lines): `apps/api/internal/ipomarket/schema_test.go`
+  - Done command (red): `cd apps/api && go test -race -run 'TestSchema_' ./internal/ipomarket/`
+- [x] S03 **data-dev**: Migration migrations/00005_ipo_market.sql (two tables, indexes, forbid_mutation triggers; owner approval on PR; 004 holds 00005, rename 00005 to 00006 in brief, plan, data-model) plus depguard rules in .golangci.yml (platform-is-a-leaf, ipomarket-boundaries, ipomarket-pgx-only-in-store).
+  - Depends on: S02, uuidv7-fix-merged
+  - Rules: BR-IPO-04
+  - Files (~260 lines): `apps/api/migrations/00005_ipo_market.sql`, `apps/api/.golangci.yml`, `specs/009-gmp-expected-profit/{brief,plan,data-model}.md`
+  - Done command (green): `cd apps/api && go test -race -run 'TestSchema_' ./internal/ipomarket/`
+- [ ] S04 [P] **test-engineer**: Pure unit and property tests: TestExpectedProfitPerLot_BR_IPO_04_Property (rapid, 10k) and value table (US1.1, 1.2, 1.4); validate tests (note trim, as-of window IST open date and +5 min, x100 ranges, typo-guard warning by issue price, band cap, none).
+  - Depends on: S01
+  - Rules: BR-IPO-04
+  - Files (~300 lines): `apps/api/internal/ipomarket/profit_test.go`, `apps/api/internal/ipomarket/validate_test.go`
+  - Done command (red): `cd apps/api && go test -race -run 'TestExpectedProfitPerLot_BR_IPO_04|TestValidate_' ./internal/ipomarket/`
+- [x] S05 **backend-dev**: Implement profit.go (ExpectedProfitPerLot, int64 only) and validate.go (inputs, as-of window, typo-guard Warning, ValidationError).
+  - Depends on: S04
+  - Rules: BR-IPO-04
+  - Files (~220 lines): `apps/api/internal/ipomarket/profit.go`, `apps/api/internal/ipomarket/validate.go`
+  - Done command (green): `cd apps/api && go test -race -run 'TestExpectedProfitPerLot_BR_IPO_04|TestValidate_' ./internal/ipomarket/`
+- [ ] S06 [P] **test-engineer**: Store and 008 read tests: TestQueries_* through Store (insert, idem lookup, current/effective, is-corrected, history keyset, trend cap 500, batch LATERAL, org isolation, subscription ordering by as_of, recorded_at, id); ipos TestGetMany_* (org scoping, drafts included, unknown ids absent, ≤200).
+  - Depends on: S01, S03
+  - Rules: BR-IPO-04
+  - Files (~420 lines): `apps/api/internal/ipomarket/store_test.go`, `apps/api/internal/ipos/service_read_test.go`
+  - Done command (red): `cd apps/api && go test -race -run 'TestQueries_|TestGetMany_' ./internal/ipomarket/ ./internal/ipos/`
+- [x] S07 **backend-dev**: queries/ipomarket.sql (13 queries per data-model 5) and GetIPOsByIDs in queries/ipos.sql; sqlc generate and vet; store.go over dbgen; ipos.(*Service).GetMany; add GetMany line to 008 go-module-api.md.
+  - Depends on: S06, S05
+  - Rules: BR-IPO-04
+  - Files (~380 lines): `apps/api/queries/ipomarket.sql`, `apps/api/queries/ipos.sql`, `apps/api/internal/ipomarket/store.go`, `apps/api/internal/ipos/service_read.go`, `specs/008-ipo-catalogue/contracts/go-module-api.md`
+  - Done command (green): `cd apps/api && sqlc generate && sqlc vet && go test -race -run 'TestQueries_|TestGetMany_' ./internal/ipomarket/ ./internal/ipos/`
+- [ ] S08 [P] **test-engineer**: RecordGMP service tests plus ipomarkettest fixtures (published IPO with lot size, recorder helpers): AuthorAndTime (US1.1-1.3, repeat value, negative, unknown lot null), FR010 idempotent replay and key reuse incl. two goroutines one row, FR006 frozen at LISTED/SETTLED and never published, typo-guard warning, one audit per write and none on replay/reject.
+  - Depends on: S01, S03
+  - Rules: BR-IPO-04
+  - Files (~420 lines): `apps/api/internal/ipomarket/service_record_test.go`, `apps/api/internal/ipomarket/ipomarkettest/ipomarkettest.go`
+  - Done command (red): `cd apps/api && go test -race -run 'TestRecordGMP_|TestRecord_FR011' ./internal/ipomarket/`
+- [x] S09 **backend-dev**: RecordGMP: ipos.Get checks, advisory lock per IPO (D-06), idempotency lookup and request hash (idem.go), insert, audit.Write ipo.gmp_recorded, GMPResult with warnings.
+  - Depends on: S08, S07
+  - Rules: BR-IPO-04
+  - Files (~380 lines): `apps/api/internal/ipomarket/service_record.go`, `apps/api/internal/ipomarket/idem.go`, `apps/api/internal/ipomarket/service.go`
+  - Done command (green): `cd apps/api && go test -race -run 'TestRecordGMP_|TestRecord_FR011' ./internal/ipomarket/`
+- [ ] S10 [P] **test-engineer**: Correction tests (US3): TestRecordGMP_FR005_Correction* (current entry only, once, not-latest 409, cross-IPO rejected, corrected hidden from client view but kept in admin history) and concurrent correction vs new entry serialised (D-06).
+  - Depends on: S01, S03
+  - Rules: BR-IPO-04
+  - Files (~300 lines): `apps/api/internal/ipomarket/service_correction_test.go`
+  - Done command (red): `cd apps/api && go test -race -run 'TestRecordGMP_FR005_Correction|TestCorrection_Concurrent' ./internal/ipomarket/`
+- [x] S11 **backend-dev**: Corrections in RecordGMP: validate CorrectsEntryID is the current effective entry of the same IPO, ErrCorrectionNotLatest, effective filtering.
+  - Depends on: S10, S09
+  - Rules: BR-IPO-04
+  - Files (~160 lines): `apps/api/internal/ipomarket/service_record.go`, `apps/api/internal/ipomarket/validate.go`
+  - Done command (green): `cd apps/api && go test -race -run 'TestRecordGMP_FR005_Correction|TestCorrection_Concurrent' ./internal/ipomarket/`
+- [ ] S12 [P] **test-engineer**: RecordSubscription tests (US4): total required, optional categories, x100 ranges, latest as-of wins then recording order, as-of window, idempotent replay and reuse, frozen/not published, audit ipo.subscription_recorded.
+  - Depends on: S01, S03
+  - Rules: BR-IPO-04
+  - Files (~340 lines): `apps/api/internal/ipomarket/service_subscription_test.go`
+  - Done command (red): `cd apps/api && go test -race -run 'TestRecordSubscription_' ./internal/ipomarket/`
+- [x] S13 **backend-dev**: RecordSubscription: shared lock/idempotency/audit path, insert snapshot, Current snapshot result.
+  - Depends on: S12, S09
+  - Rules: BR-IPO-04
+  - Files (~200 lines): `apps/api/internal/ipomarket/service_record.go`
+  - Done command (green): `cd apps/api && go test -race -run 'TestRecordSubscription_' ./internal/ipomarket/`
+- [ ] S14 [P] **test-engineer**: Read tests: CurrentGMP none/ok (US5), ordering ties, lot-size edit changes views, MarketView publishedOnly (unpublished = ErrNotFound), trend ascending effective only, ListGMP/ListSubscriptions paging, Summaries batch omits unpublished and caps at 200, client types carry no author/note.
+  - Depends on: S01, S03
+  - Rules: BR-IPO-04
+  - Files (~400 lines): `apps/api/internal/ipomarket/service_read_test.go`
+  - Done command (red): `cd apps/api && go test -race -run 'TestCurrentGMP_|TestMarketView_|TestSummaries_|TestList' ./internal/ipomarket/`
+- [x] S15 **backend-dev**: service_read.go: CurrentGMP, ListGMP, ListSubscriptions, MarketView, Summaries (via ipos.GetMany and batch queries), view assembly with ExpectedProfitPerLot.
+  - Depends on: S14, S11, S13
+  - Rules: BR-IPO-04
+  - Files (~380 lines): `apps/api/internal/ipomarket/service_read.go`, `apps/api/internal/ipomarket/model.go`
+  - Done command (green): `cd apps/api && go test -race -run 'TestCurrentGMP_|TestMarketView_|TestSummaries_|TestList' ./internal/ipomarket/`
+- [ ] S16 [P] **test-engineer**: HTTP contract tests (humatest) for the 7 operations: status and problem codes per contracts/http-api.md, 403 for clients on admin ops, client 404 identical for draft/unknown/other org, TestClient_BR_IPO_04_LatestWithUpdatedAt, TestClient_FR014_NoAdminFields, batch ≤200 and omission, optional Idempotency-Key.
+  - Depends on: S01, S03
+  - Rules: BR-IPO-04
+  - Files (~420 lines): `apps/api/internal/ipomarket/handler_admin_test.go`, `apps/api/internal/ipomarket/handler_client_test.go`
+  - Done command (red): `cd apps/api && go test -race -run 'TestAdmin_|TestClient_' ./internal/ipomarket/`
+- [x] S17 **backend-dev**: Handlers, api_types, problems.go (RFC 9457 codes ipomarket.*), Register with authz.Require(admin) on admin ops; regenerate openapi.yaml; main.go wiring verified.
+  - Depends on: S16, S15
+  - Rules: BR-IPO-04
+  - Files (~400 lines): `apps/api/internal/ipomarket/handler_admin.go`, `apps/api/internal/ipomarket/handler_client.go`, `apps/api/internal/ipomarket/api_types.go`, `apps/api/internal/ipomarket/problems.go`, `apps/api/cmd/swastik/main.go`, `apps/api/openapi.yaml`
+  - Done command (green): `cd apps/api && go test -race -run 'TestAdmin_|TestClient_' ./internal/ipomarket/`
+- [ ] S18 [P] **test-engineer**: Boundary, TS and perf tests: scripts/check-lint-boundaries.sh cases (platform to ipomarket, ipos to ipomarket), packages/domain ipo-market.test.ts (every problem code has a message, formatTimesSubscribed 1234 -> 12.34×, 0, 10,000,000), perf_test.go (short-skipped, 200 IPOs x 500 entries, summaries p95 < 200 ms).
+  - Depends on: S01, S17
+  - Rules: BR-IPO-04
+  - Files (~300 lines): `scripts/check-lint-boundaries.sh`, `packages/domain/src/ipo-market.test.ts`, `apps/api/internal/ipomarket/perf_test.go`
+  - Done command (red): `pnpm --filter @swastik/domain test -- ipo-market`
+- [ ] S19 **admin-dev**: packages/domain/src/ipo-market.ts (problem-code messages, formatTimesSubscribed from int hundredths, export), regenerate packages/api-client, confirm oasdiff shows additions only.
+  - Depends on: S18
+  - Rules: BR-IPO-04
+  - Files (~200 lines): `packages/domain/src/ipo-market.ts`, `packages/domain/src/index.ts`, `packages/api-client`
+  - Done command (green): `pnpm --filter @swastik/api-client generate && pnpm --filter @swastik/domain test -- ipo-market`
+- [ ] S20 **backend-dev**: Gate: go mod tidy clean, full Go suite with golden scenarios GS-01..04, make lint-go, check-lint-boundaries, perf test, BR-IPO-04 traceability (every named test mentions BR_IPO_04), codemap regenerated, modules.md status for 009, state.json phase.
+  - Depends on: S19, S03
+  - Rules: BR-IPO-04
+  - Files (~60 lines): `docs/product/modules.md`, `docs/engineering/codemap.md`, `apps/api/go.mod`
+  - Done command (green): `cd apps/api && go mod tidy -diff && go test -race ./... && cd ../.. && make lint-go && bash scripts/check-lint-boundaries.sh`

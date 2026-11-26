@@ -204,6 +204,59 @@ else
 	skip_case ipos-boundaries "internal/ipos does not exist yet"
 fi
 
+# --- depguard: feature 009 (internal/ipomarket) boundaries --------------------------------------
+# platform-is-a-leaf denies internal/ipomarket; ipos (008) must not import ipomarket (ipomarket
+# depends on the 008 reader); ipomarket-boundaries is a strict allow-list; pgx only in store.go.
+if has_pkg internal/ipomarket; then
+	add_case platform-imports-ipomarket violation depguard "internal/platform/zzviol_ipomarket/v.go" <<EOF
+package zzviol
+
+import _ "$MOD/internal/ipomarket"
+EOF
+	add_case ipos-imports-ipomarket violation depguard "internal/ipos/zzviol_market/v.go" <<EOF
+package zzviol
+
+import _ "$MOD/internal/ipomarket"
+EOF
+	add_case ipomarket-imports-health violation depguard "internal/ipomarket/zzviol_health/v.go" <<EOF
+package zzviol
+
+import _ "$MOD/internal/health"
+EOF
+	add_case ipomarket-imports-thirdparty violation depguard "internal/ipomarket/zzviol_third/v.go" <<EOF
+package zzviol
+
+import _ "pgregory.net/rapid"
+EOF
+	add_case ipomarket-pgx-outside-store violation depguard "internal/ipomarket/zzviol_pgx/v.go" <<EOF
+package zzviol
+
+import _ "github.com/jackc/pgx/v5"
+EOF
+	add_case ipomarket-imports-ipos control depguard "internal/ipomarket/zzctl_ipos/v.go" <<EOF
+package zzctl
+
+import _ "$MOD/internal/ipos"
+EOF
+	add_case ipomarket-imports-audit-uuid control depguard "internal/ipomarket/zzctl_audit/v.go" <<EOF
+package zzctl
+
+import (
+	_ "github.com/google/uuid"
+	_ "$MOD/internal/platform/audit"
+)
+EOF
+	add_case ipomarket-time-now violation forbidigo "internal/ipomarket/zzviol_now/v.go" <<'EOF'
+package zzviol
+
+import "time"
+
+func Now() time.Time { return time.Now() }
+EOF
+else
+	skip_case ipomarket-boundaries "internal/ipomarket does not exist yet"
+fi
+
 # --- forbidigo: machine clock and host time zone ---------------------------------------------
 add_case time-now violation forbidigo "internal/zzviol_now/v.go" <<'EOF'
 package zzviol
