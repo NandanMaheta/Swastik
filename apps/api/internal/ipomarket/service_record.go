@@ -3,6 +3,7 @@ package ipomarket
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -139,5 +140,71 @@ func (s *Service) checkCorrection(ctx context.Context, org, ipoID uuid.UUID, tar
 
 // RecordSubscription appends a subscription snapshot.
 func (s *Service) RecordSubscription(ctx context.Context, by audit.Actor, org, ipoID uuid.UUID, in SubscriptionInput, idemKey string) (SubscriptionResult, error) {
-	return SubscriptionResult{}, errNotImplemented
+	var out SubscriptionResult
+	err := s.d.Tx.InTx(ctx, func(ctx context.Context) error {
+		ipo, err := s.loadIPO(ctx, org, ipoID)
+		if err != nil {
+			return err
+		}
+		if err := validateSubscription(in, ipo, s.d.Now()); err != nil {
+			return err
+		}
+		if err := s.store.lockIPO(ctx, ipoID); err != nil {
+			return err
+		}
+		hash := requestHash(actSubscriptionRecorded, ipoID, in.AsOf.UTC().Format(time.RFC3339Nano), in.TotalX100,
+			derefInt32(in.QIBX100), derefInt32(in.NIIX100), derefInt32(in.BNIIX100), derefInt32(in.SNIIX100),
+			derefInt32(in.RetailX100), derefInt32(in.EmployeeX100), in.Source)
+		if idemKey != "" {
+			stored, storedHash, err := s.store.findSnapshotByIdemKey(ctx, org, ipoID, idemKey)
+			switch {
+			case err == nil:
+				if storedHash != hash {
+					return ErrKeyReused
+				}
+				cur, err := s.store.currentSnapshot(ctx, org, ipoID)
+				if err != nil {
+					return err
+				}
+				out = SubscriptionResult{Snapshot: stored, Current: cur, Replayed: true}
+				return nil
+			case !errors.Is(err, ErrNotFound):
+				return err
+			}
+		}
+		if err := checkWritable(ipo); err != nil {
+			return err
+		}
+		var key, h *string
+		if idemKey != "" {
+			key, h = optKey(idemKey), &hash
+		}
+		snap, err := s.store.insertSnapshot(ctx, org, ipoID, newSnapshot{SubscriptionInput: in, Actor: by, IdemKey: key, RequestHash: h}, s.d.Now())
+		if err != nil {
+			return err
+		}
+		after := map[string]any{
+			"snapshot_id": snap.ID.String(), "as_of": snap.AsOf.UTC().Format(time.RFC3339Nano), "total_x100": snap.TotalX100,
+			"qib_x100": derefInt32(snap.QIBX100), "nii_x100": derefInt32(snap.NIIX100), "bnii_x100": derefInt32(snap.BNIIX100),
+			"snii_x100": derefInt32(snap.SNIIX100), "retail_x100": derefInt32(snap.RetailX100),
+			"employee_x100": derefInt32(snap.EmployeeX100), "source": snap.Source,
+			"idempotency_key": nil, "request_hash": nil,
+		}
+		if key != nil {
+			after["idempotency_key"], after["request_hash"] = *key, hash
+		}
+		if err := audit.Write(ctx, audit.Entry{OrgID: org, Actor: by, Entity: "ipo", EntityID: ipoID, Action: actSubscriptionRecorded, After: after}); err != nil {
+			return err
+		}
+		cur, err := s.store.currentSnapshot(ctx, org, ipoID)
+		if err != nil {
+			return err
+		}
+		out = SubscriptionResult{Snapshot: snap, Current: cur}
+		return nil
+	})
+	if err != nil {
+		return SubscriptionResult{}, err
+	}
+	return out, nil
 }
