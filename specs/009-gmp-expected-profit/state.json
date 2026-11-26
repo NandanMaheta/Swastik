@@ -366,7 +366,12 @@
     "apps/api/internal/ipomarket/handler_admin_test.go",
     "apps/api/internal/ipomarket/handler_client_test.go"
    ],
-   "protected_tests": []
+   "protected_tests": [
+    "apps/api/internal/ipomarket/handler_helpers_test.go",
+    "apps/api/internal/ipomarket/handler_admin_test.go",
+    "apps/api/internal/ipomarket/handler_client_test.go"
+   ],
+   "tests_written": true
   },
   "S17": {
    "owner": "backend-dev",
