@@ -233,7 +233,10 @@
    "files": [
     "apps/api/internal/ipomarket/service_correction_test.go"
    ],
-   "protected_tests": []
+   "protected_tests": [
+    "apps/api/internal/ipomarket/service_correction_test.go"
+   ],
+   "tests_written": true
   },
   "S11": {
    "owner": "backend-dev",
