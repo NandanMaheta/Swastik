@@ -1,9 +1,11 @@
 package httpx
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 )
@@ -17,6 +19,8 @@ const problemTypePrefix = "urn:swastik:problem:"
 type ErrorModel struct {
 	huma.ErrorModel
 	Code string `json:"code" doc:"Stable, language-neutral problem code; UIs translate it." example:"validation_failed"`
+	// RetryAfterSeconds is set by ProblemRetry together with the Retry-After header.
+	RetryAfterSeconds int `json:"retry_after_seconds,omitempty" minimum:"1" doc:"Seconds to wait before retrying; same value as the Retry-After header." example:"60"`
 }
 
 // Problem builds a problem with an explicit code. It is a huma.StatusError, so handlers can
@@ -32,6 +36,12 @@ func Problem(status int, code, detail string) error {
 		Code: code,
 	}
 }
+
+// ProblemRetry is Problem for a refusal that clears with time: the response carries Retry-After
+// (whole seconds, rounded up) and retry_after_seconds. It implements huma.HeadersError.
+func ProblemRetry(_ int, _, _ string, _ time.Duration) error { return errNotImplemented }
+
+var errNotImplemented = errors.New("httpx: not implemented")
 
 var installOnce sync.Once
 

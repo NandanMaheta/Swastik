@@ -20,6 +20,7 @@ type Config struct {
 	ShutdownTimeout   time.Duration
 	Tick              Tick
 	Auth              AuthConfig
+	OTP               OTPConfig
 }
 
 // LogValue implements slog.LogValuer so logging a Config never reveals the database password,

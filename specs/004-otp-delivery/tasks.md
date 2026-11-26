@@ -29,7 +29,7 @@
 
 ## Slices
 
-- [ ] S01 **backend-dev**: Compile skeleton: internal/otp (all files of plan 'Module placement', exported names from contracts/go-module-api.md, bodies panic(errNotImplemented)), otp/otptest, otp/schema doc, platform/email, platform/firebaseauth; additive stubs outbox.Message.SensitivePayload + DeliverNow, auth.FindUser/DefaultOrg (+Accounts), httpx.ProblemRetry + ErrorModel.RetryAfterSeconds, config.OTPConfig. No wiring yet.
+- [x] S01 **backend-dev**: Compile skeleton: internal/otp (all files of plan 'Module placement', exported names from contracts/go-module-api.md, bodies panic(errNotImplemented)), otp/otptest, otp/schema doc, platform/email, platform/firebaseauth; additive stubs outbox.Message.SensitivePayload + DeliverNow, auth.FindUser/DefaultOrg (+Accounts), httpx.ProblemRetry + ErrorModel.RetryAfterSeconds, config.OTPConfig. No wiring yet.
   - Depends on: none | Rules: none (mechanism) | Gates: none | ~420 lines | expect green
   - Done command: `cd apps/api && go build ./... && go vet ./internal/otp/... ./internal/platform/email/... ./internal/platform/firebaseauth/...`
 - [ ] S02 [P] **test-engineer**: Platform tests: email Resend client (httptest: Bearer, Idempotency-Key, from, 429/5xx=>ErrUnavailable, 4xx=>ErrRejected, timeout, no recipient/body in errors), firebaseauth (minted RS256 tokens + local JWKS: iss/aud/alg/kid/exp/future iat/empty sub, claims parsed, Disabled), httpx.ProblemRetry (header + field), config OTP all-or-nothing, JWKS URL refused in staging/production, LogValue hides secrets.

@@ -40,6 +40,9 @@ type Message struct {
 	ExemptFromQuietHours bool // zero value respects quiet hours (FR-031)
 	ExpiresAt            *time.Time
 	MaxAttempts          int // 0 = the topic default, else the global default
+	// SensitivePayload marks a payload that carries a secret (an OTP code, sealed): it is erased
+	// when the message reaches sent, dead, withdrawn or expired, and admin retry is refused.
+	SensitivePayload bool
 }
 
 // Envelope is what a Sender receives.
@@ -116,6 +119,16 @@ func (s *Service) registrationFor(topic string) (registration, bool) {
 	r, ok := s.senders[topic]
 	return r, ok
 }
+
+// DeliverNow sends the one pending, available, unexpired message (org, topic, key) during the
+// caller's request, with the same fenced claim as the relay. It returns false when the message is
+// absent, claimed elsewhere, expired or the send failed (a failure is recorded as a normal failed
+// attempt). It refuses to run inside a transaction.
+func (s *Service) DeliverNow(_ context.Context, _ uuid.UUID, _, _ string) (sent bool, err error) {
+	return false, errNotImplemented
+}
+
+var errNotImplemented = errors.New("outbox: not implemented")
 
 // Add records m in the caller's transaction, so it commits or vanishes with the business change.
 // A message whose (org, topic, dedupe key) was already recorded, in any state, is ignored and

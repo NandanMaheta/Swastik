@@ -20,7 +20,7 @@
       "owner": "backend-dev",
       "title": "Compile skeleton: internal/otp (all files of plan 'Module placement', exported names from contracts/go-module-api.md, bodies panic(errNotImplemented)), otp/otptest, otp/schema doc, platform/email, platform/firebaseauth; additive stubs outbox.Message.SensitivePayload + DeliverNow, auth.FindUser/DefaultOrg (+Accounts), httpx.ProblemRetry + ErrorModel.RetryAfterSeconds, config.OTPConfig. No wiring yet.",
       "done_command": "cd apps/api && go build ./... && go vet ./internal/otp/... ./internal/platform/email/... ./internal/platform/firebaseauth/...",
-      "status": "todo",
+      "status": "done",
       "depends_on": [],
       "rules": [],
       "expect": "green",

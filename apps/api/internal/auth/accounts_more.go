@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -115,3 +116,15 @@ func (s *Service) replaceContact(ctx context.Context, id uuid.UUID, kind Identif
 		return s.writeAudit(ctx, u.OrgID, by, id, ActionUserContactReplaced, before, after)
 	})
 }
+
+// FindUser returns the user whose email or mobile equals identifier after normalisation.
+func (*Service) FindUser(_ context.Context, _ string) (UserView, error) {
+	return UserView{}, errNotImplemented
+}
+
+// DefaultOrg returns the id of the one organisation of the deployment.
+func (*Service) DefaultOrg(_ context.Context) (uuid.UUID, error) {
+	return uuid.Nil, errNotImplemented
+}
+
+var errNotImplemented = errors.New("auth: not implemented")
