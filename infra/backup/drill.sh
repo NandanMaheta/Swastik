@@ -7,7 +7,7 @@
 # shellcheck disable=SC2016  # single quotes are intentional: variables expand inside the container
 set -euo pipefail
 
-IMAGE=${DRILL_PG_IMAGE:-postgres:18-alpine}
+IMAGE=${DRILL_PG_IMAGE:-postgres:17-alpine}
 name=""
 work=""
 

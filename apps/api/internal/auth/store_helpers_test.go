@@ -1,5 +1,5 @@
 // Shared helpers of the S08 Store integration tests (specs/003-auth-core/data-model.md, plan P-03,
-// contracts in store.go). Everything runs against a real PostgreSQL 18 through authtest.New.
+// contracts in store.go). Everything runs against a real PostgreSQL 17 through authtest.New.
 package auth_test
 
 import (

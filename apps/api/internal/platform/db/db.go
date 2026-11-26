@@ -12,6 +12,9 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
+//go:embed bootstrap.sql
+var bootstrapSQL string
+
 // Open creates a connection pool and verifies connectivity.
 func Open(ctx context.Context, url string) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(url)
@@ -36,6 +39,11 @@ func Open(ctx context.Context, url string) (*pgxpool.Pool, error) {
 
 // Migrate applies migrations from the embedded filesystem. Direction is "up", "down" or "status".
 func Migrate(ctx context.Context, pool *pgxpool.Pool, migrations embed.FS, direction string) (err error) {
+	if direction == "up" || direction == "down" {
+		if _, err := pool.Exec(ctx, bootstrapSQL); err != nil {
+			return fmt.Errorf("db: bootstrap uuidv7: %w", err)
+		}
+	}
 	goose.SetBaseFS(migrations)
 	if err := goose.SetDialect("postgres"); err != nil {
 		return fmt.Errorf("db: goose dialect: %w", err)
