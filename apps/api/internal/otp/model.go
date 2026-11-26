@@ -1,7 +1,10 @@
 package otp
 
 import (
+	"regexp"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 )
@@ -114,8 +117,33 @@ type DailyCounts struct {
 	EmailSent, EmailFailed, LimitRefused, ProofAccepted, ProofRefused int
 }
 
-// MaskEmail hides most of an email: "r***@gmail.com".
-func MaskEmail(_ string) string { panic(errNotImplemented) }
+// MaskEmail hides most of an email: "r***@gmail.com". Malformed input is masked as well, never
+// returned as it is.
+func MaskEmail(s string) string {
+	if s == "" {
+		return ""
+	}
+	local, domain, hasAt := strings.Cut(s, "@")
+	first, _ := utf8.DecodeRuneInString(local)
+	head := ""
+	if local != "" {
+		head = string(first)
+	}
+	if !hasAt {
+		return head + "***"
+	}
+	return head + "***@" + domain
+}
 
-// MaskMobile hides most of a mobile: "+91 ******5678".
-func MaskMobile(_ string) string { panic(errNotImplemented) }
+// MaskMobile hides most of a mobile: "+91 ******5678". Malformed input shows no digits at all.
+func MaskMobile(s string) string {
+	if s == "" {
+		return ""
+	}
+	if !mobileRE.MatchString(s) {
+		return "+91 ******"
+	}
+	return "+91 ******" + s[len(s)-4:]
+}
+
+var mobileRE = regexp.MustCompile(`^\+91[6-9][0-9]{9}$`)

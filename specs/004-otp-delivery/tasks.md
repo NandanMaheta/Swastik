@@ -41,13 +41,13 @@
 - [ ] S04 [P] **test-engineer**: Schema + outbox tests: otp/schema (every CHECK, one live code, one open flow per user+purpose, decoy shape, cascade) and outbox (erase trigger on sent/dead/withdrawn/expired/admin-cancel/withdraw-subject; CHECK; expired stale 'sending' never re-claimed; admin retry of sensitive => ErrConflict; DeliverNow: sends one, skips claimed/absent/expired/in-tx, failure recorded as attempt; non-sensitive unchanged).
   - Depends on: S01 | Rules: BR-CLI-04, BR-CLI-05 | Gates: none | ~560 lines | expect red
   - Done command: `cd apps/api && go test -race ./internal/otp/schema/... ./internal/outbox/...`
-- [ ] S05 **backend-dev**: OWNER GATES G-MIG, G-OUTBOX, G-PG17: migrations/00005_otp.sql (data-model 1-6, expand-only, down drops), queries/outbox.sql + outbox_admin.sql edits, ClaimMessageByKey, sqlc generate/vet, outbox SensitivePayload + DeliverNow.
+- [x] S05 **backend-dev**: OWNER GATES G-MIG, G-OUTBOX, G-PG17: migrations/00005_otp.sql (data-model 1-6, expand-only, down drops), queries/outbox.sql + outbox_admin.sql edits, ClaimMessageByKey, sqlc generate/vet, outbox SensitivePayload + DeliverNow.
   - Depends on: S04 | Rules: BR-CLI-04, BR-CLI-05 | Gates: G-MIG, G-OUTBOX, G-PG17 | ~400 lines | expect green
   - Done command: `cd apps/api && sqlc generate && sqlc vet && go test -race ./internal/otp/schema/... ./internal/outbox/...`
 - [ ] S06 [P] **test-engineer**: Pure otp tests: GenerateCode (6 digits, rapid uniformity buckets, reader errors), code digest binding, ApplyLimits unit table at boundaries (59/60 s, 1 h rolling, 00:00 IST) + rapid properties (never > N per window, exact retry_after, refusal adds no event), MaskEmail/MaskMobile, templates (no code in notice, expiry text), ProblemFor table (codes, statuses, Retry-After seconds rounded up).
   - Depends on: S01 | Rules: BR-CLI-04 | Gates: none | ~520 lines | expect red
   - Done command: `cd apps/api && go test -race -run 'TestGenerateCode|TestCodeDigest|TestApplyLimits|TestMask|TestTemplate|TestProblemFor' ./internal/otp/`
-- [ ] S07 **backend-dev**: Implement code.go, limits.go, model.go masks, templates.go, errors.go.
+- [x] S07 **backend-dev**: Implement code.go, limits.go, model.go masks, templates.go, errors.go.
   - Depends on: S06 | Rules: BR-CLI-04 | Gates: none | ~330 lines | expect green
   - Done command: `cd apps/api && go test -race -run 'TestGenerateCode|TestCodeDigest|TestApplyLimits|TestMask|TestTemplate|TestProblemFor' ./internal/otp/`
 - [ ] S08 [P] **test-engineer**: auth additions tests (FindUser by email/mobile/normalised, unknown, invalid; DefaultOrg) and otp Store tests through Store (insert/lock verification by handle hash, supersede, live code lock, wrong-attempt increment, proof insert conflict, limits lock order, counts upsert, purge batches, org isolation).
