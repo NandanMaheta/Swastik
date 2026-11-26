@@ -32,7 +32,7 @@
   - Rules: BR-IPO-04
   - Files (~300 lines): `apps/api/internal/ipomarket/profit_test.go`, `apps/api/internal/ipomarket/validate_test.go`
   - Done command (red): `cd apps/api && go test -race -run 'TestExpectedProfitPerLot_BR_IPO_04|TestValidate_' ./internal/ipomarket/`
-- [ ] S05 **backend-dev**: Implement profit.go (ExpectedProfitPerLot, int64 only) and validate.go (inputs, as-of window, typo-guard Warning, ValidationError).
+- [x] S05 **backend-dev**: Implement profit.go (ExpectedProfitPerLot, int64 only) and validate.go (inputs, as-of window, typo-guard Warning, ValidationError).
   - Depends on: S04
   - Rules: BR-IPO-04
   - Files (~220 lines): `apps/api/internal/ipomarket/profit.go`, `apps/api/internal/ipomarket/validate.go`
