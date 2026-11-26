@@ -92,7 +92,11 @@
         "apps/api/internal/ipomarket/profit_test.go",
         "apps/api/internal/ipomarket/validate_test.go"
       ],
-      "protected_tests": []
+      "protected_tests": [
+        "apps/api/internal/ipomarket/profit_test.go",
+        "apps/api/internal/ipomarket/validate_test.go"
+      ],
+      "tests_written": true
     },
     "S05": {
       "owner": "backend-dev",
