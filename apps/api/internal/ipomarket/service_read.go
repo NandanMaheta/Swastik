@@ -41,7 +41,7 @@ func decodeCursor(c string) (pageAfter, error) {
 	if err := json.Unmarshal(raw, &j); err != nil || j.ID == uuid.Nil {
 		return pageAfter{}, ErrBadCursor
 	}
-	return pageAfter{At: j.At, RecordedAt: j.RecordedAt, ID: j.ID}, nil
+	return pageAfter(j), nil
 }
 
 func pageSize(limit int) int {

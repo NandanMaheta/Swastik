@@ -52,7 +52,7 @@
   - Rules: BR-IPO-04
   - Files (~420 lines): `apps/api/internal/ipomarket/service_record_test.go`, `apps/api/internal/ipomarket/ipomarkettest/ipomarkettest.go`
   - Done command (red): `cd apps/api && go test -race -run 'TestRecordGMP_|TestRecord_FR011' ./internal/ipomarket/`
-- [ ] S09 **backend-dev**: RecordGMP: ipos.Get checks, advisory lock per IPO (D-06), idempotency lookup and request hash (idem.go), insert, audit.Write ipo.gmp_recorded, GMPResult with warnings.
+- [x] S09 **backend-dev**: RecordGMP: ipos.Get checks, advisory lock per IPO (D-06), idempotency lookup and request hash (idem.go), insert, audit.Write ipo.gmp_recorded, GMPResult with warnings.
   - Depends on: S08, S07
   - Rules: BR-IPO-04
   - Files (~380 lines): `apps/api/internal/ipomarket/service_record.go`, `apps/api/internal/ipomarket/idem.go`, `apps/api/internal/ipomarket/service.go`
@@ -62,7 +62,7 @@
   - Rules: BR-IPO-04
   - Files (~300 lines): `apps/api/internal/ipomarket/service_correction_test.go`
   - Done command (red): `cd apps/api && go test -race -run 'TestRecordGMP_FR005_Correction|TestCorrection_Concurrent' ./internal/ipomarket/`
-- [ ] S11 **backend-dev**: Corrections in RecordGMP: validate CorrectsEntryID is the current effective entry of the same IPO, ErrCorrectionNotLatest, effective filtering.
+- [x] S11 **backend-dev**: Corrections in RecordGMP: validate CorrectsEntryID is the current effective entry of the same IPO, ErrCorrectionNotLatest, effective filtering.
   - Depends on: S10, S09
   - Rules: BR-IPO-04
   - Files (~160 lines): `apps/api/internal/ipomarket/service_record.go`, `apps/api/internal/ipomarket/validate.go`
@@ -72,7 +72,7 @@
   - Rules: BR-IPO-04
   - Files (~340 lines): `apps/api/internal/ipomarket/service_subscription_test.go`
   - Done command (red): `cd apps/api && go test -race -run 'TestRecordSubscription_' ./internal/ipomarket/`
-- [ ] S13 **backend-dev**: RecordSubscription: shared lock/idempotency/audit path, insert snapshot, Current snapshot result.
+- [x] S13 **backend-dev**: RecordSubscription: shared lock/idempotency/audit path, insert snapshot, Current snapshot result.
   - Depends on: S12, S09
   - Rules: BR-IPO-04
   - Files (~200 lines): `apps/api/internal/ipomarket/service_record.go`
@@ -82,7 +82,7 @@
   - Rules: BR-IPO-04
   - Files (~400 lines): `apps/api/internal/ipomarket/service_read_test.go`
   - Done command (red): `cd apps/api && go test -race -run 'TestCurrentGMP_|TestMarketView_|TestSummaries_|TestList' ./internal/ipomarket/`
-- [ ] S15 **backend-dev**: service_read.go: CurrentGMP, ListGMP, ListSubscriptions, MarketView, Summaries (via ipos.GetMany and batch queries), view assembly with ExpectedProfitPerLot.
+- [x] S15 **backend-dev**: service_read.go: CurrentGMP, ListGMP, ListSubscriptions, MarketView, Summaries (via ipos.GetMany and batch queries), view assembly with ExpectedProfitPerLot.
   - Depends on: S14, S11, S13
   - Rules: BR-IPO-04
   - Files (~380 lines): `apps/api/internal/ipomarket/service_read.go`, `apps/api/internal/ipomarket/model.go`
@@ -92,7 +92,7 @@
   - Rules: BR-IPO-04
   - Files (~420 lines): `apps/api/internal/ipomarket/handler_admin_test.go`, `apps/api/internal/ipomarket/handler_client_test.go`
   - Done command (red): `cd apps/api && go test -race -run 'TestAdmin_|TestClient_' ./internal/ipomarket/`
-- [ ] S17 **backend-dev**: Handlers, api_types, problems.go (RFC 9457 codes ipomarket.*), Register with authz.Require(admin) on admin ops; regenerate openapi.yaml; main.go wiring verified.
+- [x] S17 **backend-dev**: Handlers, api_types, problems.go (RFC 9457 codes ipomarket.*), Register with authz.Require(admin) on admin ops; regenerate openapi.yaml; main.go wiring verified.
   - Depends on: S16, S15
   - Rules: BR-IPO-04
   - Files (~400 lines): `apps/api/internal/ipomarket/handler_admin.go`, `apps/api/internal/ipomarket/handler_client.go`, `apps/api/internal/ipomarket/api_types.go`, `apps/api/internal/ipomarket/problems.go`, `apps/api/cmd/swastik/main.go`, `apps/api/openapi.yaml`

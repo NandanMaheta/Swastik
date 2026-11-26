@@ -9,8 +9,6 @@ var (
 	ErrFrozen              = errors.New("ipomarket: IPO listed or settled")
 	ErrCorrectionNotLatest = errors.New("ipomarket: correction target is not the current entry")
 	ErrKeyReused           = errors.New("ipomarket: idempotency key reused")
-
-	errNotImplemented = errors.New("ipomarket: not implemented")
 )
 
 // FieldIssue is one field-level validation problem.

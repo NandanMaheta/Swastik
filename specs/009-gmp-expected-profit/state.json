@@ -120,7 +120,7 @@
   },
   "S06": {
    "owner": "test-engineer",
-   "title": "Store and 008 read tests: TestQueries_* through Store (insert, idem lookup, current/effective, is-corrected, history keyset, trend cap 500, batch DISTINCT ON, org isolation, subscription ordering by as_of, recorded_at, id); ipos TestGetMany_* (org scoping, drafts included, unknown ids absent, \u2264200).",
+   "title": "Store and 008 read tests: TestQueries_* through Store (insert, idem lookup, current/effective, is-corrected, history keyset, trend cap 500, batch DISTINCT ON, org isolation, subscription ordering by as_of, recorded_at, id); ipos TestGetMany_* (org scoping, drafts included, unknown ids absent, ≤200).",
    "done_command": "cd apps/api && go test -race -run 'TestQueries_|TestGetMany_' ./internal/ipomarket/ ./internal/ipos/",
    "status": "todo",
    "depends_on": [
@@ -197,7 +197,7 @@
    "owner": "backend-dev",
    "title": "RecordGMP: ipos.Get checks, advisory lock per IPO (D-06), idempotency lookup and request hash (idem.go), insert, audit.Write ipo.gmp_recorded, GMPResult with warnings.",
    "done_command": "cd apps/api && go test -race -run 'TestRecordGMP_|TestRecord_FR011' ./internal/ipomarket/",
-   "status": "todo",
+   "status": "done",
    "depends_on": [
     "S08",
     "S07"
@@ -242,7 +242,7 @@
    "owner": "backend-dev",
    "title": "Corrections in RecordGMP: validate CorrectsEntryID is the current effective entry of the same IPO, ErrCorrectionNotLatest, effective filtering.",
    "done_command": "cd apps/api && go test -race -run 'TestRecordGMP_FR005_Correction|TestCorrection_Concurrent' ./internal/ipomarket/",
-   "status": "todo",
+   "status": "done",
    "depends_on": [
     "S10",
     "S09"
@@ -286,7 +286,7 @@
    "owner": "backend-dev",
    "title": "RecordSubscription: shared lock/idempotency/audit path, insert snapshot, Current snapshot result.",
    "done_command": "cd apps/api && go test -race -run 'TestRecordSubscription_' ./internal/ipomarket/",
-   "status": "todo",
+   "status": "done",
    "depends_on": [
     "S12",
     "S09"
@@ -329,7 +329,7 @@
    "owner": "backend-dev",
    "title": "service_read.go: CurrentGMP, ListGMP, ListSubscriptions, MarketView, Summaries (via ipos.GetMany and batch queries), view assembly with ExpectedProfitPerLot.",
    "done_command": "cd apps/api && go test -race -run 'TestCurrentGMP_|TestMarketView_|TestSummaries_|TestList' ./internal/ipomarket/",
-   "status": "todo",
+   "status": "done",
    "depends_on": [
     "S14",
     "S11",
@@ -349,7 +349,7 @@
   },
   "S16": {
    "owner": "test-engineer",
-   "title": "HTTP contract tests (humatest) for the 7 operations: status and problem codes per contracts/http-api.md, 403 for clients on admin ops, client 404 identical for draft/unknown/other org, TestClient_BR_IPO_04_LatestWithUpdatedAt, TestClient_FR014_NoAdminFields, batch \u2264200 and omission, optional Idempotency-Key.",
+   "title": "HTTP contract tests (humatest) for the 7 operations: status and problem codes per contracts/http-api.md, 403 for clients on admin ops, client 404 identical for draft/unknown/other org, TestClient_BR_IPO_04_LatestWithUpdatedAt, TestClient_FR014_NoAdminFields, batch ≤200 and omission, optional Idempotency-Key.",
    "done_command": "cd apps/api && go test -race -run 'TestAdmin_|TestClient_' ./internal/ipomarket/",
    "status": "todo",
    "depends_on": [
@@ -377,7 +377,7 @@
    "owner": "backend-dev",
    "title": "Handlers, api_types, problems.go (RFC 9457 codes ipomarket.*), Register with authz.Require(admin) on admin ops; regenerate openapi.yaml; main.go wiring verified.",
    "done_command": "cd apps/api && go test -race -run 'TestAdmin_|TestClient_' ./internal/ipomarket/",
-   "status": "todo",
+   "status": "done",
    "depends_on": [
     "S16",
     "S15"
@@ -400,7 +400,7 @@
   },
   "S18": {
    "owner": "test-engineer",
-   "title": "Boundary, TS and perf tests: scripts/check-lint-boundaries.sh cases (platform to ipomarket, ipos to ipomarket), packages/domain ipo-market.test.ts (every problem code has a message, formatTimesSubscribed 1234 -> 12.34\u00d7, 0, 10,000,000), perf_test.go (short-skipped, 200 IPOs x 500 entries, summaries p95 < 200 ms).",
+   "title": "Boundary, TS and perf tests: scripts/check-lint-boundaries.sh cases (platform to ipomarket, ipos to ipomarket), packages/domain ipo-market.test.ts (every problem code has a message, formatTimesSubscribed 1234 -> 12.34×, 0, 10,000,000), perf_test.go (short-skipped, 200 IPOs x 500 entries, summaries p95 < 200 ms).",
    "done_command": "pnpm --filter @swastik/domain test -- ipo-market",
    "status": "todo",
    "depends_on": [

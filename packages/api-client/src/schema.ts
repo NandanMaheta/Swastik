@@ -73,6 +73,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/ipos/market": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Market summaries of up to 200 IPOs (drafts included) */
+        get: operations["ipomarket-admin-summaries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/ipos/{ipoId}": {
         parameters: {
             query?: never;
@@ -109,6 +126,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/ipos/{ipoId}/gmp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GMP history of an IPO, newest first (corrected entries included) */
+        get: operations["ipomarket-list-gmp"];
+        put?: never;
+        /** Record a GMP entry (or correct the current one) */
+        post: operations["ipomarket-record-gmp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/ipos/{ipoId}/publish": {
         parameters: {
             query?: never;
@@ -137,6 +172,24 @@ export interface paths {
         put?: never;
         /** Manually set the lifecycle status (forward or backward) with a reason */
         post: operations["ipos-override-status"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/ipos/{ipoId}/subscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Subscription history of an IPO, latest as-of first */
+        get: operations["ipomarket-list-subscription"];
+        put?: never;
+        /** Record a subscription snapshot */
+        post: operations["ipomarket-record-subscription"];
         delete?: never;
         options?: never;
         head?: never;
@@ -449,6 +502,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/ipos/market": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Market summaries of up to 200 published IPOs (others omitted) */
+        get: operations["ipomarket-summaries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ipos/{ipoId}": {
         parameters: {
             query?: never;
@@ -466,10 +536,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/ipos/{ipoId}/market": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Current GMP, trend and latest subscription of a published IPO */
+        get: operations["ipomarket-get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ActorView: {
+            /** Format: uuid */
+            id: string | null;
+            /** @enum {string} */
+            kind: "admin" | "client" | "system";
+        };
+        AdminGMPEntry: {
+            actor: components["schemas"]["ActorView"];
+            /** Format: uuid */
+            corrected_by_entry_id: string | null;
+            /** Format: uuid */
+            corrects_entry_id: string | null;
+            /** Format: int64 */
+            expected_profit_per_lot_paise: number | null;
+            /** Format: int64 */
+            gmp_paise: number;
+            /** Format: uuid */
+            id: string;
+            note: string | null;
+            /** Format: date-time */
+            recorded_at: string;
+            /** @example manual */
+            source: string;
+        };
+        AdminGMPPage: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/AdminGMPPage.json
+             */
+            readonly $schema?: string;
+            items: components["schemas"]["AdminGMPEntry"][] | null;
+            next_cursor: string | null;
+        };
         AdminIPO: {
             /**
              * Format: uri
@@ -534,6 +655,41 @@ export interface components {
              */
             readonly $schema?: string;
             items: components["schemas"]["AdminIPO"][] | null;
+            next_cursor: string | null;
+        };
+        AdminSubscription: {
+            actor: components["schemas"]["ActorView"];
+            /** Format: date-time */
+            as_of: string;
+            /** Format: int32 */
+            bnii_x100: number | null;
+            /** Format: int32 */
+            employee_x100: number | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: int32 */
+            nii_x100: number | null;
+            /** Format: int32 */
+            qib_x100: number | null;
+            /** Format: date-time */
+            recorded_at: string;
+            /** Format: int32 */
+            retail_x100: number | null;
+            /** Format: int32 */
+            snii_x100: number | null;
+            /** @example manual */
+            source: string;
+            /** Format: int32 */
+            total_x100: number;
+        };
+        AdminSubscriptionPage: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/AdminSubscriptionPage.json
+             */
+            readonly $schema?: string;
+            items: components["schemas"]["AdminSubscription"][] | null;
             next_cursor: string | null;
         };
         ChallengeResponse: {
@@ -605,6 +761,29 @@ export interface components {
             readonly $schema?: string;
             items: components["schemas"]["ClientIPO"][] | null;
             next_cursor: string | null;
+        };
+        ClientMarketView: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/ClientMarketView.json
+             */
+            readonly $schema?: string;
+            current_gmp: components["schemas"]["CurrentGMP"];
+            /** Format: uuid */
+            ipo_id: string;
+            subscription: components["schemas"]["SubscriptionView"];
+            trend: components["schemas"]["TrendPointView"][] | null;
+        };
+        CurrentGMP: {
+            /** Format: int64 */
+            expected_profit_per_lot_paise: number | null;
+            /** Format: int64 */
+            gmp_paise: number;
+            /** Format: int32 */
+            lot_size: number | null;
+            /** Format: date-time */
+            updated_at: string;
         };
         DateSuggestion: {
             /**
@@ -737,6 +916,36 @@ export interface components {
             /** Format: int32 */
             version: number;
         };
+        GMPEntryInput: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/GMPEntryInput.json
+             */
+            readonly $schema?: string;
+            /**
+             * Format: uuid
+             * @description The current entry this one corrects
+             */
+            corrects_entry_id?: string;
+            /**
+             * Format: int64
+             * @description GMP per share in paise; negative allowed
+             */
+            gmp_paise: number;
+            note?: string;
+        };
+        GMPRecordResult: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/GMPRecordResult.json
+             */
+            readonly $schema?: string;
+            current: components["schemas"]["CurrentGMP"];
+            entry: components["schemas"]["AdminGMPEntry"];
+            warnings: components["schemas"]["Warning"][] | null;
+        };
         IPODates: {
             /** Format: date */
             allotment_date: string | null;
@@ -825,6 +1034,24 @@ export interface components {
             readonly $schema?: string;
             /** @example ok */
             status: string;
+        };
+        MarketSummaries: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/MarketSummaries.json
+             */
+            readonly $schema?: string;
+            items: components["schemas"]["MarketSummary"][] | null;
+        };
+        MarketSummary: {
+            current_gmp: components["schemas"]["CurrentGMP"];
+            /** Format: uuid */
+            ipo_id: string;
+            /** Format: date-time */
+            subscription_as_of: string | null;
+            /** Format: int32 */
+            subscription_total_x100: number | null;
         };
         MfaVerifyRequest: {
             /**
@@ -983,6 +1210,58 @@ export interface components {
             /** Format: int32 */
             version: number;
         };
+        SubscriptionBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SubscriptionBody.json
+             */
+            readonly $schema?: string;
+            /** Format: date-time */
+            as_of: string;
+            /** Format: int32 */
+            bnii_x100?: number;
+            /** Format: int32 */
+            employee_x100?: number;
+            /** Format: int32 */
+            nii_x100?: number;
+            /** Format: int32 */
+            qib_x100?: number;
+            /** Format: int32 */
+            retail_x100?: number;
+            /** Format: int32 */
+            snii_x100?: number;
+            /** Format: int32 */
+            total_x100: number;
+        };
+        SubscriptionRecordResult: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SubscriptionRecordResult.json
+             */
+            readonly $schema?: string;
+            current: components["schemas"]["SubscriptionView"];
+            snapshot: components["schemas"]["AdminSubscription"];
+        };
+        SubscriptionView: {
+            /** Format: date-time */
+            as_of: string;
+            /** Format: int32 */
+            bnii_x100: number | null;
+            /** Format: int32 */
+            employee_x100: number | null;
+            /** Format: int32 */
+            nii_x100: number | null;
+            /** Format: int32 */
+            qib_x100: number | null;
+            /** Format: int32 */
+            retail_x100: number | null;
+            /** Format: int32 */
+            snii_x100: number | null;
+            /** Format: int32 */
+            total_x100: number;
+        };
         TotpCodeRequest: {
             /**
              * Format: uri
@@ -1003,6 +1282,14 @@ export interface components {
             otpauth_uri: string;
             /** @description Base32, shown once. */
             secret: string;
+        };
+        TrendPointView: {
+            /** Format: date-time */
+            at: string;
+            /** Format: int64 */
+            expected_profit_per_lot_paise: number | null;
+            /** Format: int64 */
+            gmp_paise: number;
         };
         VersionBody: {
             /**
@@ -1192,6 +1479,38 @@ export interface operations {
             };
         };
     };
+    "ipomarket-admin-summaries": {
+        parameters: {
+            query: {
+                /** @description Comma-separated IPO ids, 1 to 200 */
+                ipo_ids: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarketSummaries"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "ipos-admin-get": {
         parameters: {
             query?: never;
@@ -1333,6 +1652,76 @@ export interface operations {
             };
         };
     };
+    "ipomarket-list-gmp": {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                ipoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminGMPPage"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "ipomarket-record-gmp": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Repeats with the same key return the first result. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                ipoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GMPEntryInput"];
+            };
+        };
+        responses: {
+            /** @description Idempotent replay (original entry, current state) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GMPRecordResult"];
+                };
+            };
+        };
+    };
     "ipos-publish": {
         parameters: {
             query?: never;
@@ -1405,6 +1794,76 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "ipomarket-list-subscription": {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                ipoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSubscriptionPage"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "ipomarket-record-subscription": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Repeats with the same key return the first result. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                ipoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubscriptionBody"];
+            };
+        };
+        responses: {
+            /** @description Idempotent replay (original snapshot, current state) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionRecordResult"];
                 };
             };
         };
@@ -2001,6 +2460,38 @@ export interface operations {
             };
         };
     };
+    "ipomarket-summaries": {
+        parameters: {
+            query: {
+                /** @description Comma-separated IPO ids, 1 to 200 */
+                ipo_ids: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarketSummaries"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "ipos-get": {
         parameters: {
             query?: never;
@@ -2019,6 +2510,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClientIPO"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "ipomarket-get": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ipoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientMarketView"];
                 };
             };
             /** @description Error */
