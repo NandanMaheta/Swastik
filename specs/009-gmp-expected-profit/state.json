@@ -135,9 +135,14 @@
       "est_lines": 420,
       "files": [
         "apps/api/internal/ipomarket/store_test.go",
-        "apps/api/internal/ipos/service_read_test.go"
+        "apps/api/internal/ipos/service_getmany_test.go"
       ],
-      "protected_tests": []
+      "protected_tests": [
+        "apps/api/internal/ipomarket/store_test.go",
+        "apps/api/internal/ipomarket/testenv_test.go",
+        "apps/api/internal/ipos/service_getmany_test.go"
+      ],
+      "tests_written": true
     },
     "S07": {
       "owner": "backend-dev",
