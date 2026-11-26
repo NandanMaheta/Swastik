@@ -1,6 +1,6 @@
 # Feature Specification: 009 GMP, expected profit and subscription snapshots
 
-**Feature Branch**: `feat/009-gmp-expected-profit` · **Created**: 2026-11-26 · **Status**: Draft (Tier B, awaiting owner approval) · **Rules**: BR-IPO-04 · **Depends on**: 008 (merged)
+**Feature Branch**: `feat/009-gmp-expected-profit` · **Created**: 2026-11-26 · **Status**: Approved by owner 2026-11-26 · **Rules**: BR-IPO-04 · **Depends on**: 008 (merged)
 
 ## Open questions for the owner (defaults apply if you approve as is)
 

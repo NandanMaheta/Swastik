@@ -3,8 +3,22 @@
   "branch": "feat/009-gmp-expected-profit",
   "worktree": "/home/user/divya-009",
   "tier": "B",
-  "phase": "spec",
-  "open_questions": ["Q1 negative GMP", "Q2 client trend", "Q3 GMP on never-published drafts"],
+  "phase": "tasks",
+  "open_questions": [
+    "Q1 negative GMP",
+    "Q2 client trend",
+    "Q3 GMP on never-published drafts"
+  ],
   "tasks": {},
-  "metrics": []
+  "metrics": [],
+  "owner_approval": {
+    "date": "2026-11-26",
+    "spec": "approved",
+    "answers": "all conductor recommendations accepted",
+    "decisions": {
+      "Q1": "negative GMP allowed (expected loss shown)",
+      "Q2": "clients see the GMP trend, without author or note",
+      "Q3": "no GMP/subscription entries on never-published drafts"
+    }
+  }
 }
