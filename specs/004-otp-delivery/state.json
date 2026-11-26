@@ -123,7 +123,14 @@
       "expect": "red",
       "owner_gates": [],
       "est_lines": 520,
-      "protected_tests": []
+      "protected_tests": [
+        "apps/api/internal/otp/code_test.go",
+        "apps/api/internal/otp/errors_test.go",
+        "apps/api/internal/otp/limits_test.go",
+        "apps/api/internal/otp/mask_test.go",
+        "apps/api/internal/otp/templates_internal_test.go"
+      ],
+      "tests_written": true
     },
     "S07": {
       "owner": "backend-dev",
