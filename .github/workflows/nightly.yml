@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: backups
     env:
-      DRILL_PG_IMAGE: postgres:18-alpine # keep equal to the Supabase Postgres major (owner to confirm)
+      DRILL_PG_IMAGE: postgres:17-alpine # equals the Supabase Postgres major (ADR 0010)
     steps:
       - uses: actions/checkout@v5
       - name: Dump production

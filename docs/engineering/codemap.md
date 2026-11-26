@@ -344,7 +344,7 @@ type TxRunner struct{ ... }
 ### `internal/platform/dbtest`
 
 ```go
-const Image = "postgres:18-alpine"
+const Image = "postgres:17-alpine"
 func New(t *testing.T) *pgxpool.Pool
 func NewSized(t *testing.T, maxConns int32) *pgxpool.Pool
 ```
@@ -383,6 +383,13 @@ type Date struct{ ... }
     func ParseDate(s string) (Date, error)
 type QuietHours struct{ ... }
 type WallClock struct{ ... }
+```
+
+### `internal/platform/observe`
+
+```go
+func Init(dsn, environment, version string) (func(), error)
+func NewHandler(next slog.Handler) slog.Handler
 ```
 
 ### `internal/platform/ratelimit`

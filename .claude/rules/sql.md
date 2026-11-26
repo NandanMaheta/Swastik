@@ -9,7 +9,7 @@ paths:
 
 # SQL rules
 
-- PostgreSQL 18: `uuidv7()` primary keys, `timestamptz`, `bigint` paise, CHECK constraints for enums/states, FKs everywhere, `org_id` on every business table.
+- PostgreSQL 17 (Supabase): `uuidv7()` primary keys (our own bootstrap function, ADR 0010; native on 18), `timestamptz`, `bigint` paise, CHECK constraints for enums/states, FKs everywhere, `org_id` on every business table.
 - Append-only tables (`audit_log`, `ledger_entries`, history tables) get the `forbid_mutation()` trigger.
 - PAN and similar identifiers: store `*_enc bytea` + `*_hash bytea` (blind index); never plaintext.
 - Migrations must be backward compatible with the previous app version (expand → migrate → contract).

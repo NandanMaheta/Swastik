@@ -16,7 +16,7 @@
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 drill="$here/drill.sh"
-image=${DRILL_PG_IMAGE:-postgres:18-alpine}
+image=${DRILL_PG_IMAGE:-postgres:17-alpine}
 export DRILL_PG_IMAGE=$image
 pw="drillpw-9f3k2"
 work=$(mktemp -d)

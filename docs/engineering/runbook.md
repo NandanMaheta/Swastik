@@ -35,4 +35,4 @@ Follow 003's quickstart; secret names carry the environment suffix. Add a new se
 
 ## Checks that run without cloud access
 
-`bash scripts/check-deploy-workflow.sh --pages --infra --nightly`, `bash infra/bootstrap/test.sh`, `node --test infra/cloudflare/api-proxy/worker.test.js`, `bash infra/backup/drill_test.sh` and the tofu tests in `infra/tofu/tests` (see `.github/workflows/infra.yml`). The Postgres image used for backups (`DRILL_PG_IMAGE`, default `postgres:18-alpine`) must match the Supabase major; confirm it once and change it in `infra/backup/drill.sh` and `nightly.yml` if different.
+`bash scripts/check-deploy-workflow.sh --pages --infra --nightly`, `bash infra/bootstrap/test.sh`, `node --test infra/cloudflare/api-proxy/worker.test.js`, `bash infra/backup/drill_test.sh` and the tofu tests in `infra/tofu/tests` (see `.github/workflows/infra.yml`). The Postgres image used for backups (`DRILL_PG_IMAGE`, default `postgres:17-alpine`) must match the Supabase major (17, ADR 0010); change it in `infra/backup/drill.sh` and `nightly.yml` when Supabase moves.

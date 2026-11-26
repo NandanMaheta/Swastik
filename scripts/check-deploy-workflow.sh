@@ -203,7 +203,7 @@ if [ "$want_nightly" -eq 1 ]; then
   need "$n" 'infra/backup/drill\.sh' "nightly uses infra/backup/drill.sh"
   need "$n" 'secrets\.BACKUP_DATABASE_URL' "backup login URL from environment secret"
   need "$n" 'secrets\.R2_ACCESS_KEY_ID' "R2 key from environment secret"
-  forbid "$n" 'postgres:18-alpine.*pg_dump|apt-get install.*postgresql-client' "dump must use the server-major image (D-12), not the runner's client"
+  forbid "$n" 'postgres:17-alpine.*pg_dump|apt-get install.*postgresql-client' "dump must use the server-major image (D-12), not the runner's client"
   need "$n" 'postgres:[0-9]+' "pinned postgres major image"
   forbid "$n" 'Backups not configured|exit 0' "an unconfigured backup must fail loudly, not skip"
   pinned "$n" "nightly.yml"
