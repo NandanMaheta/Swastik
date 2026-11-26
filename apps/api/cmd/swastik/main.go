@@ -17,6 +17,7 @@ import (
 
 	"github.com/NandanMaheta/swastik/apps/api/internal/auth"
 	"github.com/NandanMaheta/swastik/apps/api/internal/health"
+	"github.com/NandanMaheta/swastik/apps/api/internal/ipos"
 	"github.com/NandanMaheta/swastik/apps/api/internal/outbox"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/authz"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/clock"
@@ -102,7 +103,9 @@ type deps struct {
 	TickAuth tickauth.Authenticator
 	// Auth is the auth module's service; nil registers the operations without one (the openapi
 	// command and the static contract walk). WebOrigins and TrustedProxyHops feed the handlers.
-	Auth             *auth.Service
+	Auth *auth.Service
+	// IPOs is the IPO catalogue service; nil registers its operations without one.
+	IPOs             *ipos.Service
 	WebOrigins       []string
 	TrustedProxyHops int
 	ProxySecrets     []string
@@ -121,6 +124,7 @@ func buildAPI(d deps) huma.API {
 		scheduler.RegisterTick(api, d.Tick, d.TickAuth)
 	}
 	auth.Register(api, d.Auth, auth.HandlerConfig{WebOrigins: d.WebOrigins, TrustedProxyHops: d.TrustedProxyHops, ProxySecrets: d.ProxySecrets})
+	ipos.Register(api, d.IPOs)
 	authz.AssertDeclared(api)
 	return api
 }
@@ -182,6 +186,8 @@ func serve(ctx context.Context, log *slog.Logger, cfg config.Config, pool *pgxpo
 	}
 	sched := scheduler.New(txr, ob, clock.Real, log, host, scheduler.DefaultOptions())
 	sched.Register(scheduler.RetentionKind, sched.RetentionHandler(), scheduler.RetentionOptions())
+	iposSvc := ipos.NewService(ipos.Deps{Tx: txr, Scheduler: sched, Now: clock.Real, Log: log})
+	ipos.RegisterJobs(sched, iposSvc)
 
 	authSvc, err := newAuthService(cfg, txr, log)
 	if err != nil {
@@ -191,7 +197,7 @@ func serve(ctx context.Context, log *slog.Logger, cfg config.Config, pool *pgxpo
 
 	api := buildAPI(deps{ //nolint:contextcheck // the tick middleware takes its context from each request
 		Env: cfg.Env, Pool: pool, Tick: sched, TickAuth: selectTickAuth(ctx, log, cfg),
-		Auth: authSvc, WebOrigins: cfg.Auth.WebOrigins, TrustedProxyHops: cfg.Auth.TrustedProxyHops,
+		Auth: authSvc, IPOs: iposSvc, WebOrigins: cfg.Auth.WebOrigins, TrustedProxyHops: cfg.Auth.TrustedProxyHops,
 		ProxySecrets: cfg.Auth.ProxySharedSecrets,
 	})
 	// CORS wraps the whole API: an exact-origin allowlist with credentials, never a wildcard.

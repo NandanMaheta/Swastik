@@ -1,5 +1,189 @@
 components:
   schemas:
+    AdminIPO:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/AdminIPO.json
+          format: uri
+          readOnly: true
+          type: string
+        apply_flag:
+          enum:
+            - APPLY
+            - DO_NOT_APPLY
+          type:
+            - string
+            - "null"
+        created_at:
+          format: date-time
+          type: string
+        dates:
+          $ref: "#/components/schemas/IPODates"
+        eligible:
+          description: published and APPLY
+          type: boolean
+        ever_published:
+          type: boolean
+        flag_note:
+          type:
+            - string
+            - "null"
+        id:
+          format: uuid
+          type: string
+        issue_price_paise:
+          format: int64
+          type:
+            - integer
+            - "null"
+        issue_size_paise:
+          format: int64
+          type:
+            - integer
+            - "null"
+        last_synced_at:
+          format: date-time
+          type:
+            - string
+            - "null"
+        lead_managers:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        lot_size:
+          format: int32
+          type:
+            - integer
+            - "null"
+        min_application_paise:
+          description: lot x final price, else lot x band cap
+          format: int64
+          type:
+            - integer
+            - "null"
+        name:
+          type: string
+        nse_symbol:
+          type:
+            - string
+            - "null"
+        offer_document_url:
+          type:
+            - string
+            - "null"
+        price_band_cap_paise:
+          format: int64
+          type:
+            - integer
+            - "null"
+        price_band_floor_paise:
+          format: int64
+          type:
+            - integer
+            - "null"
+        published:
+          type: boolean
+        registrar:
+          type:
+            - string
+            - "null"
+        segments:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        source:
+          examples:
+            - manual
+          type: string
+        source_ref:
+          type:
+            - string
+            - "null"
+        status:
+          enum:
+            - UPCOMING
+            - OPEN
+            - CLOSED
+            - ALLOTMENT_OUT
+            - LISTED
+            - SETTLED
+          type: string
+        status_changed_at:
+          format: date-time
+          type: string
+        status_source:
+          enum:
+            - schedule
+            - admin
+            - settlement
+          type: string
+        updated_at:
+          format: date-time
+          type: string
+        version:
+          format: int32
+          type: integer
+      required:
+        - apply_flag
+        - flag_note
+        - eligible
+        - published
+        - ever_published
+        - status_source
+        - status_changed_at
+        - source
+        - source_ref
+        - last_synced_at
+        - version
+        - created_at
+        - id
+        - name
+        - segments
+        - nse_symbol
+        - issue_size_paise
+        - price_band_floor_paise
+        - price_band_cap_paise
+        - issue_price_paise
+        - lot_size
+        - min_application_paise
+        - dates
+        - registrar
+        - lead_managers
+        - offer_document_url
+        - status
+        - updated_at
+      type: object
+    AdminIPOPage:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/AdminIPOPage.json
+          format: uri
+          readOnly: true
+          type: string
+        items:
+          items:
+            $ref: "#/components/schemas/AdminIPO"
+          type:
+            - array
+            - "null"
+        next_cursor:
+          type:
+            - string
+            - "null"
+      required:
+        - items
+        - next_cursor
+      type: object
     ChallengeResponse:
       additionalProperties: false
       properties:
@@ -37,6 +221,187 @@ components:
       required:
         - current_password
         - new_password
+      type: object
+    ClientIPO:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/ClientIPO.json
+          format: uri
+          readOnly: true
+          type: string
+        apply_flag:
+          enum:
+            - APPLY
+            - DO_NOT_APPLY
+          type:
+            - string
+            - "null"
+        dates:
+          $ref: "#/components/schemas/IPODates"
+        flag_note:
+          type:
+            - string
+            - "null"
+        id:
+          format: uuid
+          type: string
+        issue_price_paise:
+          format: int64
+          type:
+            - integer
+            - "null"
+        issue_size_paise:
+          format: int64
+          type:
+            - integer
+            - "null"
+        lead_managers:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        lot_size:
+          format: int32
+          type:
+            - integer
+            - "null"
+        min_application_paise:
+          description: lot x final price, else lot x band cap
+          format: int64
+          type:
+            - integer
+            - "null"
+        name:
+          type: string
+        nse_symbol:
+          type:
+            - string
+            - "null"
+        offer_document_url:
+          type:
+            - string
+            - "null"
+        price_band_cap_paise:
+          format: int64
+          type:
+            - integer
+            - "null"
+        price_band_floor_paise:
+          format: int64
+          type:
+            - integer
+            - "null"
+        registrar:
+          type:
+            - string
+            - "null"
+        segments:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        status:
+          enum:
+            - UPCOMING
+            - OPEN
+            - CLOSED
+            - ALLOTMENT_OUT
+            - LISTED
+            - SETTLED
+          type: string
+        updated_at:
+          format: date-time
+          type: string
+      required:
+        - apply_flag
+        - flag_note
+        - id
+        - name
+        - segments
+        - nse_symbol
+        - issue_size_paise
+        - price_band_floor_paise
+        - price_band_cap_paise
+        - issue_price_paise
+        - lot_size
+        - min_application_paise
+        - dates
+        - registrar
+        - lead_managers
+        - offer_document_url
+        - status
+        - updated_at
+      type: object
+    ClientIPOPage:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/ClientIPOPage.json
+          format: uri
+          readOnly: true
+          type: string
+        items:
+          items:
+            $ref: "#/components/schemas/ClientIPO"
+          type:
+            - array
+            - "null"
+        next_cursor:
+          type:
+            - string
+            - "null"
+      required:
+        - items
+        - next_cursor
+      type: object
+    DateSuggestion:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/DateSuggestion.json
+          format: uri
+          readOnly: true
+          type: string
+        allotment_date:
+          format: date
+          type: string
+        close_date:
+          format: date
+          type: string
+        demat_credit_date:
+          format: date
+          type: string
+        listing_date:
+          format: date
+          type: string
+        notice:
+          examples:
+            - weekdays only; check exchange holidays
+          type: string
+        notice_code:
+          examples:
+            - ipo.weekdays_only
+          type: string
+        refund_date:
+          format: date
+          type: string
+      required:
+        - close_date
+        - allotment_date
+        - refund_date
+        - demat_credit_date
+        - listing_date
+        - notice_code
+        - notice
       type: object
     DeviceInfoRequest:
       additionalProperties: false
@@ -200,6 +565,300 @@ components:
           type: string
       required:
         - code
+      type: object
+    FlagBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/FlagBody.json
+          format: uri
+          readOnly: true
+          type: string
+        apply_flag:
+          enum:
+            - APPLY
+            - DO_NOT_APPLY
+          type:
+            - string
+            - "null"
+        flag_note:
+          description: Shown to clients.
+          maxLength: 500
+          minLength: 1
+          type:
+            - string
+            - "null"
+        version:
+          format: int32
+          minimum: 1
+          type: integer
+      required:
+        - version
+        - apply_flag
+        - flag_note
+      type: object
+    IPODates:
+      additionalProperties: false
+      properties:
+        allotment_date:
+          format: date
+          type:
+            - string
+            - "null"
+        close_date:
+          format: date
+          type:
+            - string
+            - "null"
+        demat_credit_date:
+          format: date
+          type:
+            - string
+            - "null"
+        listing_date:
+          format: date
+          type:
+            - string
+            - "null"
+        open_date:
+          format: date
+          type:
+            - string
+            - "null"
+        refund_date:
+          format: date
+          type:
+            - string
+            - "null"
+      required:
+        - open_date
+        - close_date
+        - allotment_date
+        - refund_date
+        - demat_credit_date
+        - listing_date
+      type: object
+    IPODraft:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/IPODraft.json
+          format: uri
+          readOnly: true
+          type: string
+        dates:
+          $ref: "#/components/schemas/IPODates"
+        issue_price_paise:
+          format: int64
+          maximum: 1000000000
+          minimum: 1
+          type:
+            - integer
+            - "null"
+        issue_size_paise:
+          format: int64
+          maximum: 1000000000000000
+          minimum: 1
+          type:
+            - integer
+            - "null"
+        lead_managers:
+          items:
+            maxLength: 200
+            minLength: 1
+            type: string
+          maxItems: 20
+          type:
+            - array
+            - "null"
+        lot_size:
+          format: int32
+          maximum: 1000000
+          minimum: 1
+          type:
+            - integer
+            - "null"
+        name:
+          maxLength: 200
+          minLength: 1
+          type: string
+        nse_symbol:
+          pattern: ^[A-Z0-9&-]{1,20}$
+          type:
+            - string
+            - "null"
+        offer_document_url:
+          format: uri
+          maxLength: 2000
+          pattern: ^https://
+          type:
+            - string
+            - "null"
+        price_band_cap_paise:
+          format: int64
+          maximum: 1000000000
+          minimum: 1
+          type:
+            - integer
+            - "null"
+        price_band_floor_paise:
+          format: int64
+          maximum: 1000000000
+          minimum: 1
+          type:
+            - integer
+            - "null"
+        registrar:
+          maxLength: 200
+          minLength: 1
+          type:
+            - string
+            - "null"
+        segments:
+          description: NSE_MAINBOARD and/or BSE_MAINBOARD. NSE_EMERGE and BSE_SME give ipo.sme_not_allowed; other values or repeats give ipo.invalid_segment.
+          items:
+            maxLength: 32
+            type: string
+          maxItems: 4
+          minItems: 1
+          type:
+            - array
+            - "null"
+      required:
+        - name
+        - segments
+      type: object
+    IPOMutationResult:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/IPOMutationResult.json
+          format: uri
+          readOnly: true
+          type: string
+        ipo:
+          $ref: "#/components/schemas/AdminIPO"
+        warnings:
+          items:
+            $ref: "#/components/schemas/Warning"
+          type:
+            - array
+            - "null"
+      required:
+        - ipo
+        - warnings
+      type: object
+    IPOReplace:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/IPOReplace.json
+          format: uri
+          readOnly: true
+          type: string
+        dates:
+          $ref: "#/components/schemas/IPODates"
+        issue_price_paise:
+          format: int64
+          maximum: 1000000000
+          minimum: 1
+          type:
+            - integer
+            - "null"
+        issue_size_paise:
+          format: int64
+          maximum: 1000000000000000
+          minimum: 1
+          type:
+            - integer
+            - "null"
+        lead_managers:
+          items:
+            maxLength: 200
+            minLength: 1
+            type: string
+          maxItems: 20
+          type:
+            - array
+            - "null"
+        lot_size:
+          format: int32
+          maximum: 1000000
+          minimum: 1
+          type:
+            - integer
+            - "null"
+        name:
+          maxLength: 200
+          minLength: 1
+          type: string
+        nse_symbol:
+          pattern: ^[A-Z0-9&-]{1,20}$
+          type:
+            - string
+            - "null"
+        offer_document_url:
+          format: uri
+          maxLength: 2000
+          pattern: ^https://
+          type:
+            - string
+            - "null"
+        price_band_cap_paise:
+          format: int64
+          maximum: 1000000000
+          minimum: 1
+          type:
+            - integer
+            - "null"
+        price_band_floor_paise:
+          format: int64
+          maximum: 1000000000
+          minimum: 1
+          type:
+            - integer
+            - "null"
+        registrar:
+          maxLength: 200
+          minLength: 1
+          type:
+            - string
+            - "null"
+        segments:
+          items:
+            maxLength: 32
+            type: string
+          maxItems: 4
+          minItems: 1
+          type:
+            - array
+            - "null"
+        version:
+          format: int32
+          minimum: 1
+          type: integer
+      required:
+        - version
+        - name
+        - segments
+        - nse_symbol
+        - issue_size_paise
+        - price_band_floor_paise
+        - price_band_cap_paise
+        - issue_price_paise
+        - lot_size
+        - dates
+        - registrar
+        - lead_managers
+        - offer_document_url
       type: object
     LiveOutputBody:
       additionalProperties: false
@@ -482,6 +1141,38 @@ components:
         - version
         - time
       type: object
+    StatusBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/StatusBody.json
+          format: uri
+          readOnly: true
+          type: string
+        reason:
+          maxLength: 500
+          minLength: 1
+          type: string
+        status:
+          enum:
+            - UPCOMING
+            - OPEN
+            - CLOSED
+            - ALLOTMENT_OUT
+            - LISTED
+            - SETTLED
+          type: string
+        version:
+          format: int32
+          minimum: 1
+          type: integer
+      required:
+        - version
+        - status
+        - reason
+      type: object
     TotpCodeRequest:
       additionalProperties: false
       properties:
@@ -517,6 +1208,49 @@ components:
       required:
         - secret
         - otpauth_uri
+      type: object
+    VersionBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/VersionBody.json
+          format: uri
+          readOnly: true
+          type: string
+        version:
+          format: int32
+          minimum: 1
+          type: integer
+      required:
+        - version
+      type: object
+    Warning:
+      additionalProperties: false
+      properties:
+        code:
+          examples:
+            - ipo.min_application_out_of_range
+          type: string
+        detail:
+          type: string
+        fields:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        params:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
+      required:
+        - code
+        - fields
+        - detail
+        - params
       type: object
   securitySchemes:
     bearer:
@@ -573,6 +1307,433 @@ paths:
       summary: Readiness probe (checks the database)
       tags:
         - Health
+  /v1/admin/ipos:
+    get:
+      operationId: ipos-admin-list
+      parameters:
+        - explode: false
+          in: query
+          name: status
+          schema:
+            enum:
+              - UPCOMING
+              - OPEN
+              - CLOSED
+              - ALLOTMENT_OUT
+              - LISTED
+              - SETTLED
+            type: string
+        - explode: false
+          in: query
+          name: published
+          schema:
+            enum:
+              - "true"
+              - "false"
+            type: string
+        - explode: false
+          in: query
+          name: flag
+          schema:
+            enum:
+              - APPLY
+              - DO_NOT_APPLY
+              - NONE
+            type: string
+        - description: Open-date month (IST civil), YYYY-MM
+          explode: false
+          in: query
+          name: month
+          schema:
+            description: Open-date month (IST civil), YYYY-MM
+            pattern: ^[0-9]{4}-(0[1-9]|1[0-2])$
+            type: string
+        - explode: false
+          in: query
+          name: limit
+          schema:
+            default: 50
+            format: int64
+            maximum: 200
+            minimum: 1
+            type: integer
+        - explode: false
+          in: query
+          name: cursor
+          schema:
+            maxLength: 200
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminIPOPage"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer:
+            - admin
+      summary: List all IPOs of the org (drafts and published)
+      tags:
+        - IPOs
+    post:
+      operationId: ipos-create
+      parameters:
+        - description: Repeats with the same key return the first result.
+          in: header
+          name: Idempotency-Key
+          schema:
+            description: Repeats with the same key return the first result.
+            maxLength: 200
+            minLength: 8
+            pattern: ^[A-Za-z0-9._:-]+$
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IPODraft"
+        required: true
+      responses:
+        "200":
+          description: Idempotent replay (current state)
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IPOMutationResult"
+          description: Created
+      security:
+        - bearer:
+            - admin
+      summary: Create an IPO draft (mainboard only)
+      tags:
+        - IPOs
+  /v1/admin/ipos/date-suggestions:
+    get:
+      operationId: ipos-suggest-dates
+      parameters:
+        - explode: false
+          in: query
+          name: close_date
+          required: true
+          schema:
+            format: date
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DateSuggestion"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer:
+            - admin
+      summary: Suggest allotment, refund, credit and listing dates from a close date (weekdays only; nothing is saved)
+      tags:
+        - IPOs
+  /v1/admin/ipos/{ipoId}:
+    delete:
+      operationId: ipos-delete
+      parameters:
+        - description: Repeats with the same key return the first result.
+          in: header
+          name: Idempotency-Key
+          schema:
+            description: Repeats with the same key return the first result.
+            maxLength: 200
+            minLength: 8
+            pattern: ^[A-Za-z0-9._:-]+$
+            type: string
+        - in: path
+          name: ipoId
+          required: true
+          schema:
+            format: uuid
+            type: string
+        - explode: false
+          in: query
+          name: version
+          required: true
+          schema:
+            format: int32
+            minimum: 1
+            type: integer
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer:
+            - admin
+      summary: Delete a never-published draft
+      tags:
+        - IPOs
+    get:
+      operationId: ipos-admin-get
+      parameters:
+        - in: path
+          name: ipoId
+          required: true
+          schema:
+            format: uuid
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminIPO"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer:
+            - admin
+      summary: Fetch any IPO of the org
+      tags:
+        - IPOs
+    put:
+      operationId: ipos-update
+      parameters:
+        - description: Repeats with the same key return the first result.
+          in: header
+          name: Idempotency-Key
+          schema:
+            description: Repeats with the same key return the first result.
+            maxLength: 200
+            minLength: 8
+            pattern: ^[A-Za-z0-9._:-]+$
+            type: string
+        - in: path
+          name: ipoId
+          required: true
+          schema:
+            format: uuid
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IPOReplace"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IPOMutationResult"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer:
+            - admin
+      summary: Replace the catalogue facts of an IPO (all keys required, null clears)
+      tags:
+        - IPOs
+  /v1/admin/ipos/{ipoId}/flag:
+    put:
+      operationId: ipos-set-flag
+      parameters:
+        - description: Repeats with the same key return the first result.
+          in: header
+          name: Idempotency-Key
+          schema:
+            description: Repeats with the same key return the first result.
+            maxLength: 200
+            minLength: 8
+            pattern: ^[A-Za-z0-9._:-]+$
+            type: string
+        - in: path
+          name: ipoId
+          required: true
+          schema:
+            format: uuid
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FlagBody"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IPOMutationResult"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer:
+            - admin
+      summary: Set or change APPLY / DO NOT APPLY and the client-visible note
+      tags:
+        - IPOs
+  /v1/admin/ipos/{ipoId}/publish:
+    post:
+      operationId: ipos-publish
+      parameters:
+        - description: Repeats with the same key return the first result.
+          in: header
+          name: Idempotency-Key
+          schema:
+            description: Repeats with the same key return the first result.
+            maxLength: 200
+            minLength: 8
+            pattern: ^[A-Za-z0-9._:-]+$
+            type: string
+        - in: path
+          name: ipoId
+          required: true
+          schema:
+            format: uuid
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VersionBody"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IPOMutationResult"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer:
+            - admin
+      summary: Publish an IPO to clients
+      tags:
+        - IPOs
+  /v1/admin/ipos/{ipoId}/status:
+    post:
+      operationId: ipos-override-status
+      parameters:
+        - description: Repeats with the same key return the first result.
+          in: header
+          name: Idempotency-Key
+          schema:
+            description: Repeats with the same key return the first result.
+            maxLength: 200
+            minLength: 8
+            pattern: ^[A-Za-z0-9._:-]+$
+            type: string
+        - in: path
+          name: ipoId
+          required: true
+          schema:
+            format: uuid
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusBody"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IPOMutationResult"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer:
+            - admin
+      summary: Manually set the lifecycle status (forward or backward) with a reason
+      tags:
+        - IPOs
+  /v1/admin/ipos/{ipoId}/unpublish:
+    post:
+      operationId: ipos-unpublish
+      parameters:
+        - description: Repeats with the same key return the first result.
+          in: header
+          name: Idempotency-Key
+          schema:
+            description: Repeats with the same key return the first result.
+            maxLength: 200
+            minLength: 8
+            pattern: ^[A-Za-z0-9._:-]+$
+            type: string
+        - in: path
+          name: ipoId
+          required: true
+          schema:
+            format: uuid
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VersionBody"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IPOMutationResult"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer:
+            - admin
+      summary: Hide an IPO from clients
+      tags:
+        - IPOs
   /v1/admin/users/{userId}/devices:
     get:
       operationId: auth-admin-user-devices-list
@@ -1053,3 +2214,80 @@ paths:
       summary: End every session of the caller, this one included
       tags:
         - Auth
+  /v1/ipos:
+    get:
+      operationId: ipos-list
+      parameters:
+        - explode: false
+          in: query
+          name: status
+          schema:
+            enum:
+              - UPCOMING
+              - OPEN
+              - CLOSED
+              - ALLOTMENT_OUT
+              - LISTED
+              - SETTLED
+            type: string
+        - explode: false
+          in: query
+          name: limit
+          schema:
+            default: 50
+            format: int64
+            maximum: 200
+            minimum: 1
+            type: integer
+        - explode: false
+          in: query
+          name: cursor
+          schema:
+            maxLength: 200
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientIPOPage"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer: []
+      summary: List published IPOs
+      tags:
+        - IPOs
+  /v1/ipos/{ipoId}:
+    get:
+      operationId: ipos-get
+      parameters:
+        - in: path
+          name: ipoId
+          required: true
+          schema:
+            format: uuid
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientIPO"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer: []
+      summary: Fetch a published IPO (drafts and unknown ids are both 404)
+      tags:
+        - IPOs

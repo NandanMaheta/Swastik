@@ -174,6 +174,74 @@ type Service struct{ ... }
 type Status struct{ ... }
 ```
 
+### `internal/ipos`
+
+```go
+var ErrNotFound = errors.New("ipos: not found") ...
+var ErrBadCursor = errors.New("ipos: invalid cursor")
+func Register(api huma.API, s *Service)
+func RegisterJobs(r JobRegistrar, s *Service)
+type AdminFilter struct{ ... }
+type AdminIPO struct{ ... }
+type AdminIPOPage struct{ ... }
+type ApplyFlag string
+    const FlagApply ApplyFlag = "APPLY" ...
+type ClientFilter struct{ ... }
+type ClientIPO struct{ ... }
+type ClientIPOPage struct{ ... }
+type DateSuggestion struct{ ... }
+    func SuggestDates(close istdate.Date) DateSuggestion
+type Dates struct{ ... }
+type DatesChanged struct{ ... }
+type DatesChangedListener interface{ ... }
+type Deps struct{ ... }
+type Draft struct{ ... }
+type EligibilityChanged struct{ ... }
+type EligibilityChangedListener interface{ ... }
+type Exchange string
+    const ExchangeNSE Exchange = "NSE" ...
+type FactsUpdate struct{ ... }
+type FieldIssue struct{ ... }
+type FlagBody struct{ ... }
+type IDPath struct{ ... }
+type IPO struct{ ... }
+type IPODates struct{ ... }
+type IPODraft struct{ ... }
+type IPOFacts struct{ ... }
+type IPOMutationResult struct{ ... }
+type IPOReplace struct{ ... }
+type IdemInput struct{ ... }
+type JobRegistrar interface{ ... }
+type NotListedError struct{ ... }
+type Page[T any] struct{ ... }
+type RejectedError struct{ ... }
+type Result struct{ ... }
+type Scheduler interface{ ... }
+type Service struct{ ... }
+    func NewService(d Deps) *Service
+type Status string
+    const StatusUpcoming Status = "UPCOMING" ...
+type StatusBody struct{ ... }
+type StatusChanged struct{ ... }
+type StatusChangedListener interface{ ... }
+type StatusSource string
+    const SourceSchedule StatusSource = "schedule" ...
+type StatusUpdate struct{ ... }
+type Store struct{}
+type ValidationError struct{ ... }
+type VersionBody struct{ ... }
+type Warning struct{ ... }
+```
+
+### `internal/ipos/ipostest`
+
+```go
+func ExampleIPO(_ uuid.UUID, _ time.Time) ipos.Draft
+func NewService(h *schedulertest.Harness) *ipos.Service
+type FailingListener struct{ ... }
+type RecordingListener struct{ ... }
+```
+
 ### `internal/outbox`
 
 ```go
@@ -296,6 +364,12 @@ func Problem(status int, code, detail string) error
 type ErrorModel struct{ ... }
 ```
 
+### `internal/platform/inr`
+
+```go
+func Format(paise int64) string
+```
+
 ### `internal/platform/istdate`
 
 ```go
@@ -395,8 +469,20 @@ export const authErrorCodes = Object.keys(authErrorMessages) as readonly AuthErr
 export function isAuthErrorCode(code: unknown): code is AuthErrorCode
 export function authErrorMessage(code: string | null | undefined): string
 export * from "./auth-error-codes";
+export * from "./ipo";
 export * from "./money";
 export * from "./status";
+export const ipoStatuses = [
+export type IpoStatus = (typeof ipoStatuses)[number];
+export const ipoApplyFlags = ["APPLY", "DO_NOT_APPLY"] as const;
+export type IpoApplyFlag = (typeof ipoApplyFlags)[number];
+export const ipoSegments = ["NSE_MAINBOARD", "BSE_MAINBOARD"] as const;
+export type IpoSegment = (typeof ipoSegments)[number];
+export const ipoErrorMessages =
+export type IpoErrorCode = keyof typeof ipoErrorMessages;
+export const ipoErrorCodes = Object.keys(ipoErrorMessages) as IpoErrorCode[];
+export function isIpoErrorCode(code: string | undefined): code is IpoErrorCode
+export function ipoErrorMessage(code: string | undefined): string
 export type Paise = number & { readonly __brand: "Paise" };
 export function paise(value: number): Paise
 export function formatRupees(amount: Paise, opts: { showPaise?: boolean } = {}): string

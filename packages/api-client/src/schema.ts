@@ -38,6 +38,128 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/ipos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all IPOs of the org (drafts and published) */
+        get: operations["ipos-admin-list"];
+        put?: never;
+        /** Create an IPO draft (mainboard only) */
+        post: operations["ipos-create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/ipos/date-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Suggest allotment, refund, credit and listing dates from a close date (weekdays only; nothing is saved) */
+        get: operations["ipos-suggest-dates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/ipos/{ipoId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch any IPO of the org */
+        get: operations["ipos-admin-get"];
+        /** Replace the catalogue facts of an IPO (all keys required, null clears) */
+        put: operations["ipos-update"];
+        post?: never;
+        /** Delete a never-published draft */
+        delete: operations["ipos-delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/ipos/{ipoId}/flag": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set or change APPLY / DO NOT APPLY and the client-visible note */
+        put: operations["ipos-set-flag"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/ipos/{ipoId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish an IPO to clients */
+        post: operations["ipos-publish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/ipos/{ipoId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Manually set the lifecycle status (forward or backward) with a reason */
+        post: operations["ipos-override-status"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/ipos/{ipoId}/unpublish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hide an IPO from clients */
+        post: operations["ipos-unpublish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/users/{userId}/devices": {
         parameters: {
             query?: never;
@@ -310,10 +432,110 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/ipos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List published IPOs */
+        get: operations["ipos-list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ipos/{ipoId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch a published IPO (drafts and unknown ids are both 404) */
+        get: operations["ipos-get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AdminIPO: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/AdminIPO.json
+             */
+            readonly $schema?: string;
+            /** @enum {string|null} */
+            apply_flag: "APPLY" | "DO_NOT_APPLY" | null;
+            /** Format: date-time */
+            created_at: string;
+            dates: components["schemas"]["IPODates"];
+            /** @description published and APPLY */
+            eligible: boolean;
+            ever_published: boolean;
+            flag_note: string | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: int64 */
+            issue_price_paise: number | null;
+            /** Format: int64 */
+            issue_size_paise: number | null;
+            /** Format: date-time */
+            last_synced_at: string | null;
+            lead_managers: string[] | null;
+            /** Format: int32 */
+            lot_size: number | null;
+            /**
+             * Format: int64
+             * @description lot x final price, else lot x band cap
+             */
+            min_application_paise: number | null;
+            name: string;
+            nse_symbol: string | null;
+            offer_document_url: string | null;
+            /** Format: int64 */
+            price_band_cap_paise: number | null;
+            /** Format: int64 */
+            price_band_floor_paise: number | null;
+            published: boolean;
+            registrar: string | null;
+            segments: string[] | null;
+            /** @example manual */
+            source: string;
+            source_ref: string | null;
+            /** @enum {string} */
+            status: "UPCOMING" | "OPEN" | "CLOSED" | "ALLOTMENT_OUT" | "LISTED" | "SETTLED";
+            /** Format: date-time */
+            status_changed_at: string;
+            /** @enum {string} */
+            status_source: "schedule" | "admin" | "settlement";
+            /** Format: date-time */
+            updated_at: string;
+            /** Format: int32 */
+            version: number;
+        };
+        AdminIPOPage: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/AdminIPOPage.json
+             */
+            readonly $schema?: string;
+            items: components["schemas"]["AdminIPO"][] | null;
+            next_cursor: string | null;
+        };
         ChallengeResponse: {
             /** @description dmc_...; send as Authorization: Bearer to the second-factor operations only. */
             challenge_token: string;
@@ -334,6 +556,77 @@ export interface components {
              * @description The password policy is enforced with specific codes.
              */
             new_password: string;
+        };
+        ClientIPO: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/ClientIPO.json
+             */
+            readonly $schema?: string;
+            /** @enum {string|null} */
+            apply_flag: "APPLY" | "DO_NOT_APPLY" | null;
+            dates: components["schemas"]["IPODates"];
+            flag_note: string | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: int64 */
+            issue_price_paise: number | null;
+            /** Format: int64 */
+            issue_size_paise: number | null;
+            lead_managers: string[] | null;
+            /** Format: int32 */
+            lot_size: number | null;
+            /**
+             * Format: int64
+             * @description lot x final price, else lot x band cap
+             */
+            min_application_paise: number | null;
+            name: string;
+            nse_symbol: string | null;
+            offer_document_url: string | null;
+            /** Format: int64 */
+            price_band_cap_paise: number | null;
+            /** Format: int64 */
+            price_band_floor_paise: number | null;
+            registrar: string | null;
+            segments: string[] | null;
+            /** @enum {string} */
+            status: "UPCOMING" | "OPEN" | "CLOSED" | "ALLOTMENT_OUT" | "LISTED" | "SETTLED";
+            /** Format: date-time */
+            updated_at: string;
+        };
+        ClientIPOPage: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/ClientIPOPage.json
+             */
+            readonly $schema?: string;
+            items: components["schemas"]["ClientIPO"][] | null;
+            next_cursor: string | null;
+        };
+        DateSuggestion: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/DateSuggestion.json
+             */
+            readonly $schema?: string;
+            /** Format: date */
+            allotment_date: string;
+            /** Format: date */
+            close_date: string;
+            /** Format: date */
+            demat_credit_date: string;
+            /** Format: date */
+            listing_date: string;
+            /** @example weekdays only; check exchange holidays */
+            notice: string;
+            /** @example ipo.weekdays_only */
+            notice_code: string;
+            /** Format: date */
+            refund_date: string;
         };
         DeviceInfoRequest: {
             /**
@@ -429,6 +722,99 @@ export interface components {
              * @example https://example.com/errors/example
              */
             type: string;
+        };
+        FlagBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/FlagBody.json
+             */
+            readonly $schema?: string;
+            /** @enum {string|null} */
+            apply_flag: "APPLY" | "DO_NOT_APPLY" | null;
+            /** @description Shown to clients. */
+            flag_note: string | null;
+            /** Format: int32 */
+            version: number;
+        };
+        IPODates: {
+            /** Format: date */
+            allotment_date: string | null;
+            /** Format: date */
+            close_date: string | null;
+            /** Format: date */
+            demat_credit_date: string | null;
+            /** Format: date */
+            listing_date: string | null;
+            /** Format: date */
+            open_date: string | null;
+            /** Format: date */
+            refund_date: string | null;
+        };
+        IPODraft: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/IPODraft.json
+             */
+            readonly $schema?: string;
+            dates?: components["schemas"]["IPODates"];
+            /** Format: int64 */
+            issue_price_paise?: number | null;
+            /** Format: int64 */
+            issue_size_paise?: number | null;
+            lead_managers?: string[] | null;
+            /** Format: int32 */
+            lot_size?: number | null;
+            name: string;
+            nse_symbol?: string | null;
+            /** Format: uri */
+            offer_document_url?: string | null;
+            /** Format: int64 */
+            price_band_cap_paise?: number | null;
+            /** Format: int64 */
+            price_band_floor_paise?: number | null;
+            registrar?: string | null;
+            /** @description NSE_MAINBOARD and/or BSE_MAINBOARD. NSE_EMERGE and BSE_SME give ipo.sme_not_allowed; other values or repeats give ipo.invalid_segment. */
+            segments: string[] | null;
+        };
+        IPOMutationResult: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/IPOMutationResult.json
+             */
+            readonly $schema?: string;
+            ipo: components["schemas"]["AdminIPO"];
+            warnings: components["schemas"]["Warning"][] | null;
+        };
+        IPOReplace: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/IPOReplace.json
+             */
+            readonly $schema?: string;
+            dates: components["schemas"]["IPODates"];
+            /** Format: int64 */
+            issue_price_paise: number | null;
+            /** Format: int64 */
+            issue_size_paise: number | null;
+            lead_managers: string[] | null;
+            /** Format: int32 */
+            lot_size: number | null;
+            name: string;
+            nse_symbol: string | null;
+            /** Format: uri */
+            offer_document_url: string | null;
+            /** Format: int64 */
+            price_band_cap_paise: number | null;
+            /** Format: int64 */
+            price_band_floor_paise: number | null;
+            registrar: string | null;
+            segments: string[] | null;
+            /** Format: int32 */
+            version: number;
         };
         LiveOutputBody: {
             /**
@@ -584,6 +970,19 @@ export interface components {
             /** @description Build version */
             version: string;
         };
+        StatusBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/StatusBody.json
+             */
+            readonly $schema?: string;
+            reason: string;
+            /** @enum {string} */
+            status: "UPCOMING" | "OPEN" | "CLOSED" | "ALLOTMENT_OUT" | "LISTED" | "SETTLED";
+            /** Format: int32 */
+            version: number;
+        };
         TotpCodeRequest: {
             /**
              * Format: uri
@@ -604,6 +1003,25 @@ export interface components {
             otpauth_uri: string;
             /** @description Base32, shown once. */
             secret: string;
+        };
+        VersionBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/VersionBody.json
+             */
+            readonly $schema?: string;
+            /** Format: int32 */
+            version: number;
+        };
+        Warning: {
+            /** @example ipo.min_application_out_of_range */
+            code: string;
+            detail: string;
+            fields: string[] | null;
+            params: {
+                [key: string]: number;
+            };
         };
     };
     responses: never;
@@ -659,6 +1077,363 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Status"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "ipos-admin-list": {
+        parameters: {
+            query?: {
+                status?: "UPCOMING" | "OPEN" | "CLOSED" | "ALLOTMENT_OUT" | "LISTED" | "SETTLED";
+                published?: "true" | "false";
+                flag?: "APPLY" | "DO_NOT_APPLY" | "NONE";
+                /** @description Open-date month (IST civil), YYYY-MM */
+                month?: string;
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminIPOPage"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "ipos-create": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Repeats with the same key return the first result. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IPODraft"];
+            };
+        };
+        responses: {
+            /** @description Idempotent replay (current state) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IPOMutationResult"];
+                };
+            };
+        };
+    };
+    "ipos-suggest-dates": {
+        parameters: {
+            query: {
+                close_date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DateSuggestion"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "ipos-admin-get": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ipoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminIPO"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "ipos-update": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Repeats with the same key return the first result. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                ipoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IPOReplace"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IPOMutationResult"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "ipos-delete": {
+        parameters: {
+            query: {
+                version: number;
+            };
+            header?: {
+                /** @description Repeats with the same key return the first result. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                ipoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "ipos-set-flag": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Repeats with the same key return the first result. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                ipoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FlagBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IPOMutationResult"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "ipos-publish": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Repeats with the same key return the first result. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                ipoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VersionBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IPOMutationResult"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "ipos-override-status": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Repeats with the same key return the first result. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                ipoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StatusBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IPOMutationResult"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "ipos-unpublish": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Repeats with the same key return the first result. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                ipoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VersionBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IPOMutationResult"];
                 };
             };
             /** @description Error */
@@ -1181,6 +1956,70 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "ipos-list": {
+        parameters: {
+            query?: {
+                status?: "UPCOMING" | "OPEN" | "CLOSED" | "ALLOTMENT_OUT" | "LISTED" | "SETTLED";
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientIPOPage"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "ipos-get": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ipoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientIPO"];
+                };
             };
             /** @description Error */
             default: {

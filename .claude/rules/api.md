@@ -16,3 +16,4 @@ paths:
 - Money: `int64` paise only; rounding only in `internal/settlement`. Time: inject `func() time.Time`; store UTC; business dates in Asia/Kolkata.
 - Every mutation writes an `audit_log` row in the same transaction.
 - Test names include the business-rule ID they cover, e.g. `TestSettle_BR_SET_05_FixedAllottedProfit`.
+- Idempotent mutations: store a request hash with the key; a replay with a different request is 422 `<module>.idempotency_key_reused`. Shared wire types (`IDPath`, `IdemInput`, `IPOFacts` in `internal/ipos`) are exported for reuse by other handlers.
