@@ -46,7 +46,11 @@
       "files": [
         "apps/api/internal/ipomarket/schema_test.go"
       ],
-      "protected_tests": []
+      "protected_tests": [
+        "apps/api/internal/ipomarket/testenv_test.go",
+        "apps/api/internal/ipomarket/schema_test.go"
+      ],
+      "tests_written": true
     },
     "S03": {
       "owner": "data-dev",
