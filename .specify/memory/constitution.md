@@ -27,7 +27,7 @@ Prefer the boring, standard solution; every new dependency needs a reason in the
 
 ## Technology Constraints
 
-- Go 1.27 (Huma v2, pgx v5, sqlc, goose), PostgreSQL 18, Python 3.13 (FastAPI, uv, Ruff, pyright strict).
+- Go 1.27 (Huma v2, pgx v5, sqlc, goose), PostgreSQL 17 (Supabase's major; integration tests run on the same major, and we ship our own `uuidv7()` until PostgreSQL 18 is available, ADR 0010), Python 3.13 (FastAPI, uv, Ruff, pyright strict).
 - Expo SDK 58 / React Native 0.88 with Expo Router (client); Vite + React 19 + TanStack Router/Query (admin); Tailwind v4 tokens from `@swastik/tokens`.
 - pnpm + Turborepo; TypeScript 7 for type-checking (TypeScript 6 only where a tool needs the JS compiler API); Biome 2; golangci-lint v2.
 - Hosting: Cloud Run (Mumbai) + Supabase Postgres + Cloudflare (Pages, Access, R2). Scheduled work runs through the single `/internal/tick` endpoint and the `scheduled_jobs` / outbox tables.
@@ -47,4 +47,4 @@ Prefer the boring, standard solution; every new dependency needs a reason in the
 
 This constitution supersedes conflicting guidance in any other document. Amendments require an ADR in `docs/adr/`, owner approval, and a version bump below. Reviewers verify compliance on every PR; violations are blocking findings.
 
-**Version**: 1.2.0 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-13 (git flow: stage/main; pipeline v2: tiers, slices, briefs)
+**Version**: 1.3.0 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-26 (PostgreSQL 17, tests use production's major; ADR 0010, owner approval at PR)

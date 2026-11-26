@@ -40,7 +40,7 @@ Both tiers keep: tests written **first, by a different agent from the coder**; a
 
 ## 4. Fast machinery (time)
 
-1. **Shared Postgres per test package:** `dbtest.New(t)` starts one PostgreSQL 18 container per package, migrates a template database once, and gives each test its own fresh database cloned from the template (`CREATE DATABASE … TEMPLATE …`). Same isolation, seconds instead of minutes.
+1. **Shared Postgres per test package:** `dbtest.New(t)` starts one PostgreSQL 17 container per package, migrates a template database once, and gives each test its own fresh database cloned from the template (`CREATE DATABASE … TEMPLATE …`). Same isolation, seconds instead of minutes.
 2. **Ready environment at session start:** the SessionStart hook runs `scripts/dev-env.sh` (starts Docker if available, checks tool versions). Linting always uses the pinned version via `make lint-go` (`go run …golangci-lint@v2.15.0`), never whatever binary is on PATH.
 3. **Targeted runs while working:** the slice's done command and `-run` filters only; the full affected suite once per pass; the full repository suite in CI.
 4. **No self-validation scaffolding:** test writers do not build throwaway reference implementations or stubs to "prove" tests. RED for the right reason is the bar; review, CI and nightly mutation tests catch the rest.

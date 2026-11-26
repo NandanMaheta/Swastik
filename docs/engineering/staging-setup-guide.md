@@ -17,8 +17,8 @@ This guide makes staging live: `api-staging`, `admin-staging` and `app-staging` 
 
 Project: **staging** (ref `hddzoasgsdtvdzauxfbo`).
 
-1. **Postgres version.** Go to Project Settings → Infrastructure and note the Postgres version (17 or 18). If it is 17, tell me and I'll change the backup image. That only matters for production.
-2. **Switch off the Data API.** Go to Project Settings → Data API and turn off **Enable Data API**. The app talks to Postgres directly, so nothing else should be reachable.
+1. **Postgres version.** Nothing to do: Supabase runs Postgres 17 and Swastik is built for 17 (ADR 0010). Upgrading to the 17.12 minor release (Project Settings → Infrastructure) is optional.
+2. **Switch off the Data API.** Go to Integrations → Data API (or Project Settings → Data API) and turn off **Enable Data API**. If the project is paused, Restore it first. The app talks to Postgres directly, so nothing else should be reachable.
 3. **Get the two connection strings.** Click **Connect** at the top of the project, then **Session pooler**, and copy the URI. It looks like `postgresql://postgres.hddzoasgsdtvdzauxfbo:[YOUR-PASSWORD]@aws-…pooler.supabase.com:5432/postgres`.
    - **Migration URL:** that URI with your database password in place of `[YOUR-PASSWORD]`. If you don't know the password, reset it under Project Settings → Database → Reset database password. This becomes the GitHub secret `MIGRATE_DATABASE_URL` in Part 5.
    - **App URL:** the same URI with the user `postgres.hddzoasgsdtvdzauxfbo` replaced by `swastik_app.hddzoasgsdtvdzauxfbo`, and the password you create in Part 2, step 4. You'll paste it once into `secrets.sh`.

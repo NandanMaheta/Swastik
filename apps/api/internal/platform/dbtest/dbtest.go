@@ -1,4 +1,4 @@
-// Package dbtest gives integration tests a fresh, fully migrated PostgreSQL 18 database.
+// Package dbtest gives integration tests a fresh, fully migrated PostgreSQL 17 database.
 //
 // One container is started per test binary (package) and migrations run once into a template
 // database. Each call to New clones that template into a brand-new database (CREATE DATABASE …
@@ -25,8 +25,9 @@ import (
 	"github.com/NandanMaheta/swastik/apps/api/migrations"
 )
 
-// Image is the PostgreSQL version used in tests; keep it equal to production.
-const Image = "postgres:18-alpine"
+// Image is the PostgreSQL major used in tests; keep it equal to production (Supabase runs 17;
+// PG18 is not offered, so migrations must not rely on PG18-only features such as uuidv7()).
+const Image = "postgres:17-alpine"
 
 const templateDB = "swastik_template"
 

@@ -1,6 +1,6 @@
 // Shared helpers for the migration 00003 schema tests (S06; specs/003-auth-core/data-model.md).
 //
-// The tests run against a real PostgreSQL 18 through dbtest.New. They assert exact SQLSTATE codes
+// The tests run against a real PostgreSQL 17 through dbtest.New. They assert exact SQLSTATE codes
 // (23502 not_null, 23503 foreign_key, 23505 unique, 23514 check). Constraint names are asserted
 // only where data-model.md names the index (the unique indexes); CHECK names are the migration's choice.
 package auth_test
