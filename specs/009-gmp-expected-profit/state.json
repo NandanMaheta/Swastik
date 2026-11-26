@@ -1,0 +1,10 @@
+{
+  "feature": "009-gmp-expected-profit",
+  "branch": "feat/009-gmp-expected-profit",
+  "worktree": "/home/user/divya-009",
+  "tier": "B",
+  "phase": "spec",
+  "open_questions": ["Q1 negative GMP", "Q2 client trend", "Q3 GMP on never-published drafts"],
+  "tasks": {},
+  "metrics": []
+}
