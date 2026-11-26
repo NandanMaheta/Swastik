@@ -1,6 +1,6 @@
 # Data model: 009 GMP, expected profit and subscription snapshots
 
-Migration `apps/api/migrations/00005_ipo_market.sql` (expand-only: two new tables, two triggers using the existing `forbid_mutation()` from `00001_platform.sql`). Rules: `.claude/rules/sql.md`. Instants come from the injected app clock, never `now()` in business logic.
+Migration `apps/api/migrations/00006_ipo_market.sql` (expand-only: two new tables, two triggers using the existing `forbid_mutation()` from `00001_platform.sql`). Rules: `.claude/rules/sql.md`. Instants come from the injected app clock, never `now()` in business logic.
 
 ## 1. `ipo_gmp_entries` (append-only)
 

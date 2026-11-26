@@ -43,6 +43,8 @@ linters:
               desc: platform packages must not import business modules
             - pkg: "github.com/NandanMaheta/swastik/apps/api/internal/auth"
               desc: platform packages must not import business modules
+            - pkg: "github.com/NandanMaheta/swastik/apps/api/internal/ipomarket"
+              desc: platform packages must not import business modules
         outbox-does-not-know-scheduler:
           files: ["**/internal/outbox/**"]
           deny:
@@ -66,6 +68,22 @@ linters:
             - github.com/NandanMaheta/swastik/apps/api/internal/scheduler
         ipos-pgx-only-in-store:
           files: ["**/internal/ipos/**", "!**/internal/ipos/store.go", "!$test"]
+          deny:
+            - pkg: "github.com/jackc/pgx/v5"
+              desc: pgx types stay in store.go (go-module-pattern)
+        ipomarket-boundaries:
+          list-mode: strict
+          files: ["**/internal/ipomarket/**", "!$test"]
+          allow:
+            - $gostd
+            - github.com/danielgtaylor/huma/v2
+            - github.com/google/uuid
+            - github.com/jackc/pgx/v5
+            - github.com/NandanMaheta/swastik/apps/api/internal/ipomarket
+            - github.com/NandanMaheta/swastik/apps/api/internal/ipos
+            - github.com/NandanMaheta/swastik/apps/api/internal/platform
+        ipomarket-pgx-only-in-store:
+          files: ["**/internal/ipomarket/**", "!**/internal/ipomarket/store.go", "!$test"]
           deny:
             - pkg: "github.com/jackc/pgx/v5"
               desc: pgx types stay in store.go (go-module-pattern)

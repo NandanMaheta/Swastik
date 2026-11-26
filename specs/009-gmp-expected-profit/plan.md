@@ -11,7 +11,7 @@ A new Go module `internal/ipomarket` owns two append-only history tables: GMP en
 ## Technical Context
 
 - **Language**: Go 1.27 (Huma v2, pgx v5, sqlc, goose); TS only for `packages/domain` codes/formatters and the regenerated `packages/api-client`.
-- **Storage**: PostgreSQL 18, migration `00005_ipo_market.sql` (expand-only).
+- **Storage**: PostgreSQL 18, migration `00006_ipo_market.sql` (expand-only).
 - **Testing**: `go test -race`, `pgregory.net/rapid` (approved in 002), `dbtest.New` (testcontainers), humatest, Vitest for `packages/domain`.
 - **Scale**: ~100 clients, tens of IPOs a year, a few GMP entries per IPO per day (< 500 per IPO). Budget: API p95 < 200 ms.
 - **New dependencies**: none.
@@ -72,7 +72,7 @@ apps/api/internal/ipomarket/
   store.go                                // only file importing pgx / dbgen
   handler_admin.go handler_client.go problems.go api_types.go
   ipomarkettest/                          // fixtures: published IPO with lot size, recorder helpers
-apps/api/queries/ipomarket.sql            apps/api/migrations/00005_ipo_market.sql
+apps/api/queries/ipomarket.sql            apps/api/migrations/00006_ipo_market.sql
 apps/api/internal/ipos/service_read.go    // + GetMany (additive)   apps/api/queries/ipos.sql (+ GetIPOsByIDs)
 apps/api/cmd/swastik/main.go              // NewService + Register after ipos
 apps/api/.golangci.yml                    // depguard rules below

@@ -22,7 +22,7 @@
   - Rules: BR-IPO-04
   - Files (~300 lines): `apps/api/internal/ipomarket/schema_test.go`
   - Done command (red): `cd apps/api && go test -race -run 'TestSchema_' ./internal/ipomarket/`
-- [ ] S03 **data-dev**: Migration migrations/00006_ipo_market.sql (two tables, indexes, forbid_mutation triggers; owner approval on PR; 004 holds 00005, rename 00005 to 00006 in brief, plan, data-model) plus depguard rules in .golangci.yml (platform-is-a-leaf, ipomarket-boundaries, ipomarket-pgx-only-in-store).
+- [x] S03 **data-dev**: Migration migrations/00006_ipo_market.sql (two tables, indexes, forbid_mutation triggers; owner approval on PR; 004 holds 00005, rename 00005 to 00006 in brief, plan, data-model) plus depguard rules in .golangci.yml (platform-is-a-leaf, ipomarket-boundaries, ipomarket-pgx-only-in-store).
   - Depends on: S02, uuidv7-fix-merged
   - Rules: BR-IPO-04
   - Files (~260 lines): `apps/api/migrations/00006_ipo_market.sql`, `apps/api/.golangci.yml`, `specs/009-gmp-expected-profit/{brief,plan,data-model}.md`
