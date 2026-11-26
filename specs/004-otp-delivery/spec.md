@@ -1,6 +1,6 @@
 # Feature Specification: 004 OTP delivery (email OTP, mobile verification, rate limits)
 
-**Feature Branch**: `feat/004-otp-delivery` · **Created**: 2026-11-26 · **Status**: Draft (awaiting owner approval) · **Tier**: A (auth, PII)
+**Feature Branch**: `feat/004-otp-delivery` · **Created**: 2026-11-26 · **Status**: Approved by owner 2026-11-26 · **Tier**: A (auth, PII)
 **Module**: M1 Auth, row 004 in `docs/product/modules.md`; depends on 003; consumed by 005 (registration), 007 (contact changes), 024 (client auth screens)
 **Rules**: BR-CLI-04, BR-CLI-05 (`docs/product/business-rules.md`). **Golden scenarios**: none affected (no money); GS-01…04 must keep passing.
 **Sources**: `research.md` (this folder), ADR 0004, ADR 0007, product blueprint "Sign up / Forgot password / Change email or mobile" rows and "OTP delivery at ₹0", `specs/003-auth-core/spec.md` (D-02, D-09, D-13, FR-050…055, FR-091), `specs/002-scheduler-tick/spec.md` (FR-031 quiet hours).
