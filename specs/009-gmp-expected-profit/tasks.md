@@ -12,7 +12,7 @@
 
 ## Slices
 
-- [ ] S01 **backend-dev**: Compile skeleton: package ipomarket (doc, model, errors, profit, service, service_record, service_read, validate, idem, store, handler_admin, handler_client, problems, api_types, ipomarkettest) with exported names from contracts/go-module-api.md; bodies return errNotImplemented; ipos.(*Service).GetMany stub; NewService/Register wired in cmd/swastik after ipos.
+- [x] S01 **backend-dev**: Compile skeleton: package ipomarket (doc, model, errors, profit, service, service_record, service_read, validate, idem, store, handler_admin, handler_client, problems, api_types, ipomarkettest) with exported names from contracts/go-module-api.md; bodies return errNotImplemented; ipos.(*Service).GetMany stub; NewService/Register wired in cmd/swastik after ipos.
   - Depends on: none
   - Rules: none (mechanism)
   - Files (~380 lines): `apps/api/internal/ipomarket/{doc,model,errors,profit,service,service_record,service_read,validate,idem,store,handler_admin,handler_client,problems,api_types}.go`, `apps/api/internal/ipomarket/ipomarkettest/ipomarkettest.go`, `apps/api/internal/ipos/service_read.go`, `apps/api/cmd/swastik/main.go`

@@ -14,7 +14,7 @@
       "owner": "backend-dev",
       "title": "Compile skeleton: package ipomarket (doc, model, errors, profit, service, service_record, service_read, validate, idem, store, handler_admin, handler_client, problems, api_types, ipomarkettest) with exported names from contracts/go-module-api.md; bodies return errNotImplemented; ipos.(*Service).GetMany stub; NewService/Register wired in cmd/swastik after ipos.",
       "done_command": "cd apps/api && go build ./... && go vet ./internal/ipomarket/... ./internal/ipos/... ./cmd/...",
-      "status": "todo",
+      "status": "done",
       "depends_on": [],
       "rules": [],
       "expect": "green",

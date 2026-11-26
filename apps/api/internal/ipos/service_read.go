@@ -2,6 +2,7 @@ package ipos
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 )
@@ -60,4 +61,10 @@ func pageOf(rows []IPO, limit int) Page[IPO] {
 	}
 	rows = rows[:n]
 	return Page[IPO]{Items: rows, NextCursor: encodeCursor(rows[n-1])}
+}
+
+// GetMany returns the org's IPOs among ids (drafts included), keyed by id; unknown ids are absent.
+// len(ids) ≤ 200.
+func (s *Service) GetMany(ctx context.Context, org uuid.UUID, ids []uuid.UUID) (map[uuid.UUID]IPO, error) {
+	return nil, errors.New("ipos: GetMany not implemented")
 }
