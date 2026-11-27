@@ -1,5 +1,5 @@
 locals {
-  plain_env = { for k, v in {
+  plain_env = { for k, v in merge({
     APP_ENV              = var.env
     TICK_AUTH            = "oidc"
     TICK_AUDIENCE        = local.tick_audience
@@ -10,7 +10,11 @@ locals {
     PII_ACTIVE_KEY_ID    = var.pii_active_key_id
     SENTRY_DSN           = var.sentry_dsn
     SENTRY_ENVIRONMENT   = var.sentry_dsn == "" ? "" : var.env
-  } : k => v if v != "" }
+    }, var.otp_enabled ? {
+    OTP_EMAIL_FROM      = var.otp_email_from
+    FIREBASE_PROJECT_ID = var.firebase_project_id
+    } : {}) : k => v if v != ""
+  }
 
   secret_env = merge(
     { DATABASE_URL = "database_url" },
@@ -18,6 +22,10 @@ locals {
       JWT_SIGNING_KEYS    = "jwt_signing_keys"
       PII_ENCRYPTION_KEYS = "pii_encryption_keys"
       BLIND_INDEX_KEY     = "blind_index_key"
+    } : {},
+    var.otp_enabled ? {
+      RESEND_API_KEY = "resend_api_key"
+      OTP_HMAC_KEY   = "otp_hmac_key"
     } : {}
   )
 }

@@ -45,6 +45,24 @@ variable "auth_keys_enabled" {
   default     = false
 }
 
+variable "otp_enabled" {
+  description = "Wire the 004 OTP delivery secrets (Resend key, HMAC key) and settings once the owner has created them (secrets.sh --with-otp)."
+  type        = bool
+  default     = false
+}
+
+variable "otp_email_from" {
+  description = "OTP_EMAIL_FROM: the sender address of code emails (a domain verified on Resend)."
+  type        = string
+  default     = "no-reply@mail.swastikapp.co.in"
+}
+
+variable "firebase_project_id" {
+  description = "FIREBASE_PROJECT_ID: the Firebase project whose phone sign-in ID tokens the API accepts."
+  type        = string
+  default     = "swastik-4fcc9"
+}
+
 variable "max_instances" {
   type    = number
   default = 2

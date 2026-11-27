@@ -6,6 +6,11 @@ locals {
       jwt_signing_keys    = "jwt-signing-keys-${var.env}"
       pii_encryption_keys = "pii-encryption-keys-${var.env}"
       blind_index_key     = "blind-index-key-${var.env}"
+    } : {},
+    # 004 OTP delivery: created by secrets.sh --with-otp (the Resend key is pasted by the owner).
+    var.otp_enabled ? {
+      resend_api_key = "resend-api-key-${var.env}"
+      otp_hmac_key   = "otp-hmac-key-${var.env}"
     } : {}
   )
 }

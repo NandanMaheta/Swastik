@@ -24,6 +24,8 @@
 | `jwt-signing-keys-<env>` | `JWT_SIGNING_KEYS` | 003 (`auth_keys_enabled = true`) |
 | `pii-encryption-keys-<env>` | `PII_ENCRYPTION_KEYS` | 003 |
 | `blind-index-key-<env>` | `BLIND_INDEX_KEY` | 003 |
+| `resend-api-key-<env>` | `RESEND_API_KEY` | 004 (`otp_enabled = true`) |
+| `otp-hmac-key-<env>` | `OTP_HMAC_KEY` | 004 |
 | `proxy-shared-secrets-<env>` | `PROXY_SHARED_SECRETS` (API) and the Worker secret binding `PROXY_KEY` | 003 (created in the default run) |
 
 `secrets.sh <env>` always creates `database-url-<env>` and `proxy-shared-secrets-<env>` (the Worker returns 500 without its key); it re-sends a stored proxy key to the Worker when `wrangler secret list` shows it missing, or with `--push-proxy`. Formats written by `secrets.sh <env>` (proxy) and `--with-auth` (the rest) (random 32 bytes each, standard base64, distinct values; never printed): `JWT_SIGNING_KEYS=k1:<b64>`, `PII_ENCRYPTION_KEYS=1:<b64>`, `BLIND_INDEX_KEY=<b64>`, `PROXY_SHARED_SECRETS=<b64>`. Without `--with-auth` only the database URL and proxy secrets are created. Existing secrets are never recreated or changed unless a rotate flag is given:
@@ -31,12 +33,14 @@
 - `--rotate`: reads the current JWT and PII versions and appends the new key (`k1:<old>,k2:<new>`, `1:<old>,2:<new>`); ids from `ROTATE_JWT_KID` (default `k2`) and `ROTATE_PII_KEY_ID` (default `2`); an id already in the ring is refused. Afterwards change `jwt_active_kid` / `pii_active_key_id` in tfvars through the infra workflow; remove old keys only once sessions and data are migrated. Never touches the blind-index key.
 - `--rotate-blind-index`: new `BLIND_INDEX_KEY` version; existing blind indexes stop matching, so a reindex is required.
 - `--rotate-proxy`: appends a new proxy key (`old,new`) and pushes the new one to the Worker.
+- `--with-otp` (004): creates `otp-hmac-key-<env>` (`OTP_HMAC_KEY`, bare standard base64 of 32 random bytes from openssl, never printed) and `resend-api-key-<env>` (`RESEND_API_KEY`). The Resend key is read with a second hidden prompt, after the database URL, and only when the secret does not exist; it is piped unchanged to `gcloud secrets versions add --data-file=-`. Existing OTP secrets are never recreated or versioned. It does not touch the auth secrets.
+- `--rotate-otp-hmac` (004): adds one new random `OTP_HMAC_KEY` version (a single key, not a ring). Open email codes stop working and the send/check limit counters start from zero, so people simply ask for a new code; nothing else is rotated and the Resend key is never touched.
 
 The Worker secret `PROXY_KEY` is NOT managed by tofu (no secret value ever enters state): `secrets.sh` pushes the same generated value with `$WRANGLER_CMD secret put PROXY_KEY --name swastik-api-proxy-<env>` (default `npx wrangler`, value on stdin; needs Cloudflare login or token in the environment). The Worker sets `X-Swastik-Client-IP` from `CF-Connecting-IP` and `X-Swastik-Proxy-Key` from `PROXY_KEY`, removes incoming copies of both, and answers 500 without forwarding when `PROXY_KEY` is missing. Tofu keeps the secret binding when it updates the script (`keep_bindings`).
 
 ## API settings set by tofu (`infra/tofu/envs/<env>/terraform.tfvars`, not secret)
 
-`APP_ENV=<env>`, `TICK_AUTH=oidc`, `TICK_AUDIENCE=https://<api-host>/internal/tick`, `TICK_SERVICE_ACCOUNT=tick-<env>@swastik-4fcc9.iam.gserviceaccount.com`, `WEB_ORIGINS=https://<admin-host>,https://<app-host>`, `TRUSTED_PROXY_HOPS=1`, `JWT_ACTIVE_KID`, `PII_ACTIVE_KEY_ID` (003), `SENTRY_DSN`, `SENTRY_ENVIRONMENT=<env>` (if Q1 yes; the API falls back to `APP_ENV`). Tofu env variables `auth_keys_enabled`, `jwt_active_kid`, `pii_active_key_id` are set per environment when 003 arrives; production Cloud Run has `deletion_protection = true`; Access uses a one-time-PIN identity provider.
+`APP_ENV=<env>`, `TICK_AUTH=oidc`, `TICK_AUDIENCE=https://<api-host>/internal/tick`, `TICK_SERVICE_ACCOUNT=tick-<env>@swastik-4fcc9.iam.gserviceaccount.com`, `WEB_ORIGINS=https://<admin-host>,https://<app-host>`, `TRUSTED_PROXY_HOPS=1`, `JWT_ACTIVE_KID`, `PII_ACTIVE_KEY_ID` (003), `OTP_EMAIL_FROM=no-reply@mail.swastikapp.co.in` and `FIREBASE_PROJECT_ID=swastik-4fcc9` (004, only when `otp_enabled = true`; `FIREBASE_JWKS_URL` is local/ci only and never set by tofu), `SENTRY_DSN`, `SENTRY_ENVIRONMENT=<env>` (if Q1 yes; the API falls back to `APP_ENV`). Tofu env variables `auth_keys_enabled`, `jwt_active_kid`, `pii_active_key_id` are set per environment when 003 arrives; `otp_enabled` (default false) wires the two OTP secrets and the two OTP settings and is set to true only after `secrets.sh <env> --with-otp` has created the secrets (owner gate G-SECRETS); until then the API answers `otp.not_configured` on the OTP operations; production Cloud Run has `deletion_protection = true`; Access uses a one-time-PIN identity provider.
 
 ## Cloudflare (zone `swastikapp.co.in`)
 

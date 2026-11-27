@@ -36,4 +36,5 @@ module "env" {
   auth_keys_enabled     = var.auth_keys_enabled
   jwt_active_kid        = var.jwt_active_kid
   pii_active_key_id     = var.pii_active_key_id
+  otp_enabled           = var.otp_enabled
 }

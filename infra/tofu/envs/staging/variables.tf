@@ -35,3 +35,9 @@ variable "pii_active_key_id" {
   type    = string
   default = ""
 }
+
+variable "otp_enabled" {
+  description = "Wire the 004 OTP delivery secrets and settings once secrets.sh --with-otp has created them (owner gate G-SECRETS)."
+  type        = bool
+  default     = false
+}
