@@ -225,6 +225,110 @@ absent "secrets.sh grants" "$(cat "$FAKE_OUT/calls.log")" "secretmanager.secretA
 grep -q "add-iam-policy-binding database-url-staging.*projects/swastik-4fcc9/roles/" "$FAKE_OUT/calls.log" || { echo "FAIL: tofu SA must be granted the custom role projects/swastik-4fcc9/roles/<id> per secret" >&2; fail=1; }
 rm -rf "$fake"
 
+# ---- feature 004: --with-otp and --rotate-otp-hmac (plan "Configuration, secrets and infra") ------
+# OTP secrets: otp-hmac-key-<env> (bare base64 of 32 random bytes, generated with openssl, never
+# printed) and resend-api-key-<env> (the owner pastes the Resend key at a second hidden prompt, after
+# the database URL). Without the flag nothing OTP is touched (0 rupees before feature 004 ships).
+DBL='postgresql://swastik_app.ref:S3CRET-pw@host:5432/postgres'
+RESEND_KEY='re_TESTONLY_resend_key_0123456789'
+for env in staging production; do
+  out=$(printf '%s\n%s\n' "$DBL" "$RESEND_KEY" | PATH="$sandbox" bash ./secrets.sh "$env" --dry-run 2>&1); rc=$?
+  [ "$rc" -eq 0 ] || { echo "FAIL: secrets.sh $env --dry-run exit $rc: $out" >&2; fail=1; }
+  for s_ in otp-hmac-key resend-api-key; do absent "secrets $env (no --with-otp)" "$out" "$s_-$env"; done
+
+  out=$(printf '%s\n%s\n' "$DBL" "$RESEND_KEY" | PATH="$sandbox" bash ./secrets.sh "$env" --with-otp --dry-run 2>&1); rc=$?
+  [ "$rc" -eq 0 ] || { echo "FAIL: secrets.sh $env --with-otp --dry-run exit $rc: $out" >&2; fail=1; }
+  for s_ in otp-hmac-key resend-api-key; do
+    check "secrets $env --with-otp" "$out" "gcloud secrets create $s_-$env"
+    check "secrets $env --with-otp" "$out" "gcloud secrets versions add $s_-$env --data-file=-"
+  done
+  check "secrets $env --with-otp" "$out" "openssl rand -base64 32"
+  check "secrets $env --with-otp" "$out" "(hidden input)"
+  absent "secrets $env --with-otp" "$out" "$RESEND_KEY"
+  absent "secrets $env --with-otp" "$out" "re_TESTONLY"
+  absent "secrets $env --with-otp" "$out" "S3CRET"
+  absent "secrets $env --with-otp" "$out" "--data="
+  absent "secrets $env --with-otp" "$out" "echo "
+  absent "secrets $env --with-otp" "$out" "secretmanager.admin"
+  absent "secrets $env --with-otp" "$out" "secretmanager.versions.access"
+  # --with-otp alone does not drag the 003 auth secrets in.
+  for s_ in jwt-signing-keys pii-encryption-keys blind-index-key; do absent "secrets $env --with-otp" "$out" "$s_-$env"; done
+done
+
+# Behaviour with the fake gcloud: two hidden prompts, values only on stdin of `versions add`.
+run_otp() { # stdin-text, existing-list, script args...
+  export FAKE_OUT; FAKE_OUT=$(mktemp -d); export FAKE_EXISTING="$FAKE_OUT/existing"
+  local input="$1"; printf '%s' "$2" >"$FAKE_EXISTING"; shift 2
+  export WRANGLER_CMD="$fake/wrangler"
+  sout=$(printf '%s' "$input" | PATH="$fake" bash ./secrets.sh "$@" 2>&1); srcode=$?
+}
+fake=$(mktemp -d)
+cp -P "$sandbox"/* "$fake"/ 2>/dev/null
+cat >"$fake/gcloud" <<'FAKE'
+#!/usr/bin/env bash
+echo "$*" >>"$FAKE_OUT/calls.log"
+case "$1 $2 $3" in
+  "secrets describe "*) grep -qxF "$3" "$FAKE_EXISTING" ;;
+  "secrets create "*) exit 0 ;;
+  "secrets versions add") cat >"$FAKE_OUT/$4.val" ;;
+  *) exit 0 ;;
+esac
+FAKE
+chmod +x "$fake/gcloud"
+cat >"$fake/wrangler" <<'FAKE'
+#!/usr/bin/env bash
+echo "$*" >>"$FAKE_OUT/wrangler.log"
+if [ "$1 $2" = "secret list" ]; then echo '[{"name":"PROXY_KEY"}]'; exit 0; fi
+cat >"$FAKE_OUT/wrangler.stdin"
+FAKE
+chmod +x "$fake/wrangler"
+BASE_EXISTING=$(printf 'database-url-staging\nproxy-shared-secrets-staging\n')
+
+run_otp "$(printf '%s\n%s\n' "$DBL" "$RESEND_KEY")" "$BASE_EXISTING" staging --with-otp
+[ "$srcode" -eq 0 ] || { echo "FAIL: secrets.sh staging --with-otp exit $srcode: $sout" >&2; fail=1; }
+for s_ in otp-hmac-key resend-api-key; do
+  grep -q "secrets create $s_-staging" "$FAKE_OUT/calls.log" || { echo "FAIL: --with-otp must create $s_-staging" >&2; fail=1; }
+  grep -q "add-iam-policy-binding $s_-staging.*projects/swastik-4fcc9/roles/" "$FAKE_OUT/calls.log" || { echo "FAIL: tofu SA must get the metadata-only custom role on $s_-staging" >&2; fail=1; }
+done
+hmac=$(cat "$FAKE_OUT/otp-hmac-key-staging.val" 2>/dev/null)
+b64_32 "$hmac" || { echo "FAIL: OTP_HMAC_KEY must be bare std base64 of exactly 32 random bytes" >&2; fail=1; }
+[ "$(cat "$FAKE_OUT/resend-api-key-staging.val" 2>/dev/null)" = "$RESEND_KEY" ] || { echo "FAIL: the pasted Resend key must be piped unchanged to resend-api-key-staging" >&2; fail=1; }
+[ "$(cat "$FAKE_OUT/database-url-staging.val" 2>/dev/null)" = "" ] || { echo "FAIL: an existing database-url-staging must be left unchanged" >&2; fail=1; }
+for needle in "$RESEND_KEY" "$hmac" "S3CRET"; do
+  [ -n "$needle" ] && { absent "--with-otp output" "$sout" "$needle"; absent "--with-otp gcloud args" "$(cat "$FAKE_OUT/calls.log")" "$needle"; }
+done
+absent "--with-otp gcloud args" "$(cat "$FAKE_OUT/calls.log")" "secretmanager.admin"
+absent "--with-otp gcloud args" "$(cat "$FAKE_OUT/calls.log")" "secretAccessor"
+grep -qE 'jwt-signing-keys|pii-encryption-keys|blind-index-key' "$FAKE_OUT/calls.log" && { echo "FAIL: --with-otp must not touch the auth secrets" >&2; fail=1; }
+
+# Existing OTP secrets are never recreated or versioned by --with-otp (the owner keeps the live key).
+run_otp "$(printf '%s\n%s\n' "$DBL" "$RESEND_KEY")" "$(printf '%s\notp-hmac-key-staging\nresend-api-key-staging\n' "$BASE_EXISTING")" staging --with-otp
+[ "$srcode" -eq 0 ] || { echo "FAIL: --with-otp over existing secrets exit $srcode: $sout" >&2; fail=1; }
+grep -qE 'secrets create (otp-hmac|resend-api)-key|versions add (otp-hmac|resend-api)-key' "$FAKE_OUT/calls.log" && { echo "FAIL: --with-otp must leave existing OTP secrets unchanged" >&2; fail=1; }
+
+# Production names carry the env suffix.
+run_otp "$(printf '%s\n%s\n' "$DBL" "$RESEND_KEY")" "$(printf 'database-url-production\nproxy-shared-secrets-production\n')" production --with-otp
+grep -q 'secrets create otp-hmac-key-production' "$FAKE_OUT/calls.log" && grep -q 'secrets create resend-api-key-production' "$FAKE_OUT/calls.log" ||
+  { echo "FAIL: --with-otp production must create otp-hmac-key-production and resend-api-key-production" >&2; fail=1; }
+
+# --rotate-otp-hmac adds ONE new random version to otp-hmac-key only (live codes and limit counters
+# reset; nothing else is rotated, the Resend key is never touched, the old key is not appended).
+run_otp "$(printf '%s\n' "$DBL")" "$(printf '%s\notp-hmac-key-staging\nresend-api-key-staging\n' "$BASE_EXISTING")" staging --rotate-otp-hmac
+[ "$srcode" -eq 0 ] || { echo "FAIL: --rotate-otp-hmac exit $srcode: $sout" >&2; fail=1; }
+grep -q 'versions add otp-hmac-key-staging --data-file=-' "$FAKE_OUT/calls.log" || { echo "FAIL: --rotate-otp-hmac must add a version to otp-hmac-key-staging" >&2; fail=1; }
+b64_32 "$(cat "$FAKE_OUT/otp-hmac-key-staging.val" 2>/dev/null)" || { echo "FAIL: the rotated OTP_HMAC_KEY must be a bare base64 32-byte value (a single key, not a ring)" >&2; fail=1; }
+grep -qE 'secrets create|versions add (resend-api-key|database-url|jwt|pii|blind|proxy)' "$FAKE_OUT/calls.log" && { echo "FAIL: --rotate-otp-hmac must add a version to otp-hmac-key only" >&2; fail=1; }
+rotated=$(cat "$FAKE_OUT/otp-hmac-key-staging.val" 2>/dev/null)
+[ -z "$rotated" ] || absent "--rotate-otp-hmac output" "$sout" "$rotated"
+# Without --rotate-otp-hmac, --rotate (JWT/PII rings) never rotates the OTP key.
+run_otp "$(printf '%s\n' "$DBL")" "$(printf '%s\notp-hmac-key-staging\nresend-api-key-staging\njwt-signing-keys-staging\npii-encryption-keys-staging\nblind-index-key-staging\n' "$BASE_EXISTING")" staging --rotate-proxy
+grep -q 'versions add otp-hmac-key-staging' "$FAKE_OUT/calls.log" && { echo "FAIL: only --rotate-otp-hmac may rotate the OTP HMAC key" >&2; fail=1; }
+rm -rf "$fake"
+
+# Static: the Resend key is read with a second hidden prompt, never from arguments or the environment.
+[ "$(grep -c 'read -s' secrets.sh)" -ge 2 ] || { echo "FAIL: secrets.sh must read the Resend key with its own hidden prompt (read -s)" >&2; fail=1; }
+grep -q -- '--with-otp' secrets.sh && grep -q -- '--rotate-otp-hmac' secrets.sh || { echo "FAIL: secrets.sh must document and accept --with-otp and --rotate-otp-hmac" >&2; fail=1; }
+
 # ---- argument errors ------------------------------------------------------------------------
 PATH="$sandbox" bash ./secrets.sh --dry-run >/dev/null 2>&1 && { echo "FAIL: secrets.sh without env must fail" >&2; fail=1; }
 PATH="$sandbox" bash ./secrets.sh qa --dry-run >/dev/null 2>&1 && { echo "FAIL: secrets.sh with env qa must fail" >&2; fail=1; }
