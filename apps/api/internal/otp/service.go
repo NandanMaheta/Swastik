@@ -220,6 +220,3 @@ func settle(dst *error, refusal error) error {
 func clientActor(user uuid.UUID) audit.Actor { return audit.Actor{ID: user, Kind: audit.KindClient} }
 
 func randomReader() io.Reader { return rand.Reader }
-
-// errNotImplemented is the body of the slices that land later (removed by S17).
-var errNotImplemented = errors.New("otp: not implemented")

@@ -573,6 +573,29 @@ components:
         - trend
         - subscription
       type: object
+    ContactStatus:
+      additionalProperties: false
+      properties:
+        code_expires_at:
+          format: date-time
+          type: string
+        masked:
+          description: For example r***@gmail.com or +91 ******5678; omitted for a password reset.
+          type: string
+        next_resend_at:
+          description: Email contacts with a live flow only.
+          format: date-time
+          type: string
+        state:
+          enum:
+            - pending
+            - verified
+            - proved
+            - expired
+          type: string
+      required:
+        - state
+      type: object
     CurrentGMP:
       additionalProperties: false
       properties:
@@ -782,6 +805,13 @@ components:
             - https://example.com/error-log/abc123
           format: uri
           type: string
+        retry_after_seconds:
+          description: Seconds to wait before retrying; same value as the Retry-After header.
+          examples:
+            - 60
+          format: int64
+          minimum: 1
+          type: integer
         status:
           description: HTTP status code
           examples:
@@ -887,6 +917,23 @@ components:
         - entry
         - current
         - warnings
+      type: object
+    HandleRequest:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/HandleRequest.json
+          format: uri
+          readOnly: true
+          type: string
+        handle:
+          description: Opaque verification handle; stored only as SHA-256.
+          pattern: ^ovh_[A-Za-z0-9_-]{43}$
+          type: string
+      required:
+        - handle
       type: object
     IPODates:
       additionalProperties: false
@@ -1317,6 +1364,97 @@ components:
       required:
         - device_id
       type: object
+    ResendResponse:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/ResendResponse.json
+          format: uri
+          readOnly: true
+          type: string
+        code_expires_at:
+          format: date-time
+          type: string
+        next_resend_at:
+          format: date-time
+          type: string
+      required:
+        - next_resend_at
+        - code_expires_at
+      type: object
+    ResetCompleteRequest:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/ResetCompleteRequest.json
+          format: uri
+          readOnly: true
+          type: string
+        handle:
+          description: Opaque verification handle.
+          pattern: ^ovh_[A-Za-z0-9_-]{43}$
+          type: string
+        new_password:
+          description: The password policy is enforced with specific codes.
+          format: password
+          maxLength: 1024
+          minLength: 1
+          type: string
+        reset_token:
+          description: One-time permission from verify-email.
+          pattern: ^prt_[A-Za-z0-9_-]{43}$
+          type: string
+      required:
+        - handle
+        - reset_token
+        - new_password
+      type: object
+    ResetStartRequest:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/ResetStartRequest.json
+          format: uri
+          readOnly: true
+          type: string
+        identifier:
+          description: Email or Indian mobile; never echoed.
+          maxLength: 254
+          minLength: 1
+          type: string
+      required:
+        - identifier
+      type: object
+    ResetStartedResponse:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/ResetStartedResponse.json
+          format: uri
+          readOnly: true
+          type: string
+        expires_at:
+          format: date-time
+          type: string
+        handle:
+          pattern: ^ovh_[A-Za-z0-9_-]{43}$
+          type: string
+        next_resend_at:
+          format: date-time
+          type: string
+      required:
+        - handle
+        - expires_at
+        - next_resend_at
+      type: object
     SessionResponse:
       additionalProperties: false
       properties:
@@ -1680,6 +1818,108 @@ components:
         - gmp_paise
         - expected_profit_per_lot_paise
         - at
+      type: object
+    VerificationStatus:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/VerificationStatus.json
+          format: uri
+          readOnly: true
+          type: string
+        email:
+          $ref: "#/components/schemas/ContactStatus"
+        expires_at:
+          format: date-time
+          type: string
+        mobile:
+          $ref: "#/components/schemas/ContactStatus"
+        purpose:
+          enum:
+            - signup
+            - change_email
+            - change_mobile
+            - password_reset
+          type: string
+        state:
+          enum:
+            - open
+            - completed
+            - expired
+            - cancelled
+          type: string
+      required:
+        - purpose
+        - state
+        - expires_at
+      type: object
+    VerifyEmailRequest:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/VerifyEmailRequest.json
+          format: uri
+          readOnly: true
+          type: string
+        code:
+          description: The 6-digit code from the email.
+          pattern: ^[0-9]{6}$
+          type: string
+        handle:
+          description: Opaque verification handle.
+          pattern: ^ovh_[A-Za-z0-9_-]{43}$
+          type: string
+      required:
+        - handle
+        - code
+      type: object
+    VerifyEmailResponse:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/VerifyEmailResponse.json
+          format: uri
+          readOnly: true
+          type: string
+        reset_token:
+          description: Password reset only; shown once, valid 10 minutes.
+          type: string
+        reset_token_expires_at:
+          format: date-time
+          type: string
+        verification:
+          $ref: "#/components/schemas/VerificationStatus"
+      required:
+        - verification
+      type: object
+    VerifyMobileRequest:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/VerifyMobileRequest.json
+          format: uri
+          readOnly: true
+          type: string
+        firebase_id_token:
+          description: Firebase ID token of the phone sign-in on the device.
+          maxLength: 4096
+          minLength: 1
+          type: string
+        handle:
+          description: Opaque verification handle.
+          pattern: ^ovh_[A-Za-z0-9_-]{43}$
+          type: string
+      required:
+        - handle
+        - firebase_id_token
       type: object
     VersionBody:
       additionalProperties: false
@@ -3020,3 +3260,475 @@ paths:
       summary: Current GMP, trend and latest subscription of a published IPO
       tags:
         - ipomarket
+  /v1/me/verifications/resend:
+    post:
+      operationId: my-verification-resend
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HandleRequest"
+        required: true
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResendResponse"
+          description: Accepted
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Not Found
+        "409":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Conflict
+        "410":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Gone
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Refused by a cooldown or limit; Retry-After and retry_after_seconds say when to try again
+          headers:
+            Retry-After:
+              schema:
+                minimum: 1
+                type: integer
+      security:
+        - bearer:
+            - client
+      summary: Send a new code to my new email
+      tags:
+        - Verification
+  /v1/me/verifications/status:
+    post:
+      operationId: my-verification-status
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HandleRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerificationStatus"
+          description: OK
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Not Found
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Too Many Requests
+      security:
+        - bearer:
+            - client
+      summary: Read one of my contact-change verifications
+      tags:
+        - Verification
+  /v1/me/verifications/verify-email:
+    post:
+      operationId: my-verification-verify-email
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyEmailRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerifyEmailResponse"
+          description: OK
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Not Found
+        "409":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Conflict
+        "410":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Gone
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Refused by a cooldown or limit; Retry-After and retry_after_seconds say when to try again
+          headers:
+            Retry-After:
+              schema:
+                minimum: 1
+                type: integer
+      security:
+        - bearer:
+            - client
+      summary: Prove my new email; the account is unchanged until the approved change is applied
+      tags:
+        - Verification
+  /v1/me/verifications/verify-mobile:
+    post:
+      operationId: my-verification-verify-mobile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyMobileRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerificationStatus"
+          description: OK
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Not Found
+        "409":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Conflict
+        "410":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Gone
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Refused by a cooldown or limit; Retry-After and retry_after_seconds say when to try again
+          headers:
+            Retry-After:
+              schema:
+                minimum: 1
+                type: integer
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Service Unavailable
+      security:
+        - bearer:
+            - client
+      summary: Prove my new mobile with a Firebase ID token
+      tags:
+        - Verification
+  /v1/password-reset/complete:
+    post:
+      operationId: password-reset-complete
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetCompleteRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Refused by a cooldown or limit; Retry-After and retry_after_seconds say when to try again
+          headers:
+            Retry-After:
+              schema:
+                minimum: 1
+                type: integer
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Service Unavailable
+      security: []
+      summary: Set a new password with the one-time reset token; ends all sessions
+      tags:
+        - Verification
+  /v1/password-reset/start:
+    post:
+      operationId: password-reset-start
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetStartRequest"
+        required: true
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResetStartedResponse"
+          description: Accepted
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Refused by a cooldown or limit; Retry-After and retry_after_seconds say when to try again
+          headers:
+            Retry-After:
+              schema:
+                minimum: 1
+                type: integer
+      security: []
+      summary: Start a password reset by email or mobile; always 202 with a handle
+      tags:
+        - Verification
+  /v1/verifications/resend:
+    post:
+      operationId: verification-resend
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HandleRequest"
+        required: true
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResendResponse"
+          description: Accepted
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Not Found
+        "409":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Conflict
+        "410":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Gone
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Refused by a cooldown or limit; Retry-After and retry_after_seconds say when to try again
+          headers:
+            Retry-After:
+              schema:
+                minimum: 1
+                type: integer
+      security: []
+      summary: Send a new email code (cooldown and limits apply)
+      tags:
+        - Verification
+  /v1/verifications/status:
+    post:
+      operationId: verification-status
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HandleRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerificationStatus"
+          description: OK
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Not Found
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Too Many Requests
+      security: []
+      summary: Read a sign-up or password-reset verification by its handle
+      tags:
+        - Verification
+  /v1/verifications/verify-email:
+    post:
+      operationId: verification-verify-email
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyEmailRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerifyEmailResponse"
+          description: OK
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Not Found
+        "410":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Gone
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Refused by a cooldown or limit; Retry-After and retry_after_seconds say when to try again
+          headers:
+            Retry-After:
+              schema:
+                minimum: 1
+                type: integer
+      security: []
+      summary: Check the 6-digit email code; a password reset returns a one-time reset token
+      tags:
+        - Verification
+  /v1/verifications/verify-mobile:
+    post:
+      operationId: verification-verify-mobile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyMobileRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerificationStatus"
+          description: OK
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Not Found
+        "409":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Conflict
+        "410":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Gone
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unprocessable Entity
+        "429":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Refused by a cooldown or limit; Retry-After and retry_after_seconds say when to try again
+          headers:
+            Retry-After:
+              schema:
+                minimum: 1
+                type: integer
+        "503":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Service Unavailable
+      security: []
+      summary: Prove the sign-up mobile with a Firebase phone sign-in ID token
+      tags:
+        - Verification
