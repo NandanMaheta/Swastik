@@ -27,8 +27,7 @@ const wording: Record<string, string> = {
   "otp.proof_replayed": "That confirmation was already used. Please request a new SMS code.",
   "otp.number_mismatch": "The number you confirmed is different from the one on your account.",
   "otp.contact_unavailable": "This email or mobile number cannot be used. Please choose another.",
-  "otp.reset_token_invalid":
-    "This reset link has expired or was already used. Please start again.",
+  "otp.reset_token_invalid": "This reset link has expired or was already used. Please start again.",
   "otp.not_configured": "This step is not available right now. Please try again later.",
 };
 const codes = Object.keys(wording);
@@ -58,7 +57,9 @@ describe("otpErrorCodes", () => {
       const message: string = otpErrorMessages[code];
       expect(message.trim().length, code).toBeGreaterThan(5);
       expect(message.length, code).toBeLessThanOrEqual(160);
-      expect(message.replace(/\{(seconds|minutes)\}/g, ""), code).not.toMatch(/[{}<>]|undefined|null/);
+      expect(message.replace(/\{(seconds|minutes)\}/g, ""), code).not.toMatch(
+        /[{}<>]|undefined|null/,
+      );
     }
   });
 
@@ -70,8 +71,13 @@ describe("otpErrorCodes", () => {
 
   // FR-016: the codes the API can send and the codes the apps know are the same list.
   it("matches the problem codes of the Go module (internal/otp/errors.go)", () => {
-    const go = readFileSync(new URL("../../../apps/api/internal/otp/errors.go", import.meta.url), "utf8");
-    const goCodes = [...go.matchAll(/"(otp\.[a-z_]+)"/g)].map((m) => m[1]).filter((c) => c !== undefined);
+    const go = readFileSync(
+      new URL("../../../apps/api/internal/otp/errors.go", import.meta.url),
+      "utf8",
+    );
+    const goCodes = [...go.matchAll(/"(otp\.[a-z_]+)"/g)]
+      .map((m) => m[1])
+      .filter((c) => c !== undefined);
     expect([...new Set(goCodes)].sort()).toEqual([...otpErrorCodes].sort());
   });
 });
@@ -87,7 +93,9 @@ describe("otpErrorMessage", () => {
     expect(otpErrorMessage("otp.rate_limited", { retryAfterSeconds: 3300 })).toBe(
       "Too many codes were requested. Please try again in 55 minutes.",
     );
-    expect(otpErrorMessage("otp.rate_limited", { retryAfterSeconds: 120 })).toContain("in 2 minutes");
+    expect(otpErrorMessage("otp.rate_limited", { retryAfterSeconds: 120 })).toContain(
+      "in 2 minutes",
+    );
   });
 
   it("never leaves a placeholder behind, even without a wait time", () => {
@@ -98,7 +106,9 @@ describe("otpErrorMessage", () => {
   });
 
   it("returns fixed wording for codes without placeholders and ignores the wait time", () => {
-    expect(otpErrorMessage("otp.code_wrong", { retryAfterSeconds: 9 })).toBe(wording["otp.code_wrong"]);
+    expect(otpErrorMessage("otp.code_wrong", { retryAfterSeconds: 9 })).toBe(
+      wording["otp.code_wrong"],
+    );
     expect(otpErrorMessage("otp.email_first")).toBe(wording["otp.email_first"]);
   });
 
