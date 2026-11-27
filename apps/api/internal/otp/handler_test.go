@@ -514,41 +514,5 @@ func TestHandler_BR_CLI_04_NoOperationPutsAHandleOrSecretInTheURL(t *testing.T) 
 	}
 }
 
-// SC-004: the median time of a reset start for a known account and for an unknown one differ by
-// less than 10 %, with the real 1.5 s floor and the machine clock.
-func TestHandler_BR_CLI_04_ResetStartTimingMatchesForKnownAndUnknown(t *testing.T) {
-	if testing.Short() {
-		t.Skip("takes about 10 s of real time")
-	}
-	h := newHxEnv(t, 10_000, otptest.WithRealClock())
-	const rounds = 3
-	timeIt := func(identifier string) time.Duration {
-		start := time.Now()
-		rec := h.post(pResetGo, map[string]any{"identifier": identifier})
-		d := time.Since(start)
-		if rec.Code != http.StatusAccepted {
-			t.Fatalf("StartReset(%q): %d %s", identifier, rec.Code, rec.Body.String())
-		}
-		return d
-	}
-	var known, unknown []time.Duration
-	for i := 0; i < rounds; i++ {
-		known = append(known, timeIt(h.Active(t).Email))
-		unknown = append(unknown, timeIt("nobody."+strconv.Itoa(i)+"@example.com"))
-	}
-	median := func(ds []time.Duration) time.Duration {
-		sort.Slice(ds, func(i, j int) bool { return ds[i] < ds[j] })
-		return ds[len(ds)/2]
-	}
-	mk, mu := median(known), median(unknown)
-	if mk < 1500*time.Millisecond || mu < 1500*time.Millisecond {
-		t.Errorf("medians known %v unknown %v: both must wait the 1.5 s floor (I-3)", mk, mu)
-	}
-	diff := mk - mu
-	if diff < 0 {
-		diff = -diff
-	}
-	if float64(diff) > 0.10*float64(max(mk, mu)) {
-		t.Errorf("median known %v vs unknown %v differ by more than 10 %% (SC-004)", mk, mu)
-	}
-}
+// SC-004 (timing of reset start and resend for known and unknown accounts) is covered without
+// real time by TestHandler_BR_CLI_04_SC004_* in handler_review_test.go.

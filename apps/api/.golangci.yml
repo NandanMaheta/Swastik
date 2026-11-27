@@ -45,10 +45,10 @@ linters:
               desc: platform packages must not import business modules
             - pkg: "github.com/NandanMaheta/swastik/apps/api/internal/ipomarket"
               desc: platform packages must not import business modules
-        # Separate from platform-is-a-leaf: platform tests may use the otp test helpers (otptest),
-        # so this rule skips test files.
+        # Separate from platform-is-a-leaf. No test-file exemption: platform tests carry their own
+        # helpers (firebaseauth/minter_test.go) and never import otp or otptest.
         platform-does-not-know-otp:
-          files: ["**/internal/platform/**", "!$test"]
+          files: ["**/internal/platform/**"]
           deny:
             - pkg: "github.com/NandanMaheta/swastik/apps/api/internal/otp"
               desc: platform packages must not import business modules

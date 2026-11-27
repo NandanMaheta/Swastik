@@ -42,15 +42,24 @@ const DefaultIP = "203.0.113.5"
 
 // WaitLog records the response-floor waits of the service (Deps.Wait) without sleeping.
 type WaitLog struct {
+	// Hook, when set, runs after the wait is recorded and is the wait itself: a test can block in it
+	// until it decides the floor has elapsed (a controllable floor, no real sleeping). Set it before
+	// the service runs.
+	Hook func(ctx context.Context, until time.Time)
+
 	mu     sync.Mutex
 	untils []time.Time
 }
 
-// Wait is the Deps.Wait of the test world: it records and returns at once.
-func (w *WaitLog) Wait(_ context.Context, until time.Time) {
+// Wait is the Deps.Wait of the test world: it records and returns at once, unless Hook is set.
+func (w *WaitLog) Wait(ctx context.Context, until time.Time) {
 	w.mu.Lock()
-	defer w.mu.Unlock()
 	w.untils = append(w.untils, until)
+	hook := w.Hook
+	w.mu.Unlock()
+	if hook != nil {
+		hook(ctx, until)
+	}
 }
 
 // Untils returns the recorded targets, oldest first.

@@ -1,6 +1,6 @@
 // Tests for the Firebase phone sign-in ID token verifier (feature 004, S02; BR-CLI-04 mobile proof,
 // D-04). Offline: tokens are minted with a local RSA key and served as a JWKS by an httptest
-// server (otptest.Minter). The clock is injected, and set far from the real time so a verifier that
+// server (Minter). The clock is injected, and set far from the real time so a verifier that
 // reads time.Now() fails these tests.
 //
 // Contract (go-module-api.md section 4): RS256 only; kid must be in the key set; iss =
@@ -19,7 +19,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NandanMaheta/swastik/apps/api/internal/otp/otptest"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/firebaseauth"
 )
 
@@ -30,13 +29,13 @@ var now = time.Date(2026, time.November, 13, 5, 0, 0, 0, time.UTC)
 
 func clock() time.Time { return now }
 
-func newVerifier(t *testing.T, m *otptest.Minter) firebaseauth.Verifier {
+func newVerifier(t *testing.T, m *Minter) firebaseauth.Verifier {
 	t.Helper()
 	return firebaseauth.New(t.Context(), project, clock, firebaseauth.WithJWKSURL(m.JWKSURL))
 }
 
 func TestVerify_BR_CLI_04_AcceptsAFreshPhoneSignIn(t *testing.T) {
-	m := otptest.NewMinter(t, project)
+	m := NewMinter(t, project)
 	c := m.Valid(now)
 	c.Subject, c.PhoneNumber = "fb-uid-77", "+919812345678"
 	c.AuthTime, c.IssuedAt = now.Add(-3*time.Minute).Truncate(time.Second), now.Add(-2*time.Minute).Truncate(time.Second)
@@ -55,7 +54,7 @@ func TestVerify_BR_CLI_04_AcceptsAFreshPhoneSignIn(t *testing.T) {
 
 // The verifier reports another provider as it is; refusing it is otp's job (D-04), not the token check.
 func TestVerify_BR_CLI_04_ReportsTheSignInProviderWithoutJudgingIt(t *testing.T) {
-	m := otptest.NewMinter(t, project)
+	m := NewMinter(t, project)
 	c := m.Valid(now)
 	c.SignInProvider = "password"
 	p, err := newVerifier(t, m).Verify(t.Context(), m.Token(t, c))
@@ -68,11 +67,11 @@ func TestVerify_BR_CLI_04_ReportsTheSignInProviderWithoutJudgingIt(t *testing.T)
 }
 
 func TestVerify_BR_CLI_04_RejectsEveryInvalidToken(t *testing.T) {
-	m := otptest.NewMinter(t, project)
+	m := NewMinter(t, project)
 	v := newVerifier(t, m)
 	valid := m.Valid(now)
 
-	mod := func(f func(*otptest.Claims)) string {
+	mod := func(f func(*Claims)) string {
 		c := valid
 		f(&c)
 		return m.Token(t, c)
@@ -87,13 +86,13 @@ func TestVerify_BR_CLI_04_RejectsEveryInvalidToken(t *testing.T) {
 		name  string
 		token string
 	}{
-		{"issuer of another project", mod(func(c *otptest.Claims) { c.Issuer = "https://securetoken.google.com/other-project" })},
-		{"issuer is not Firebase", mod(func(c *otptest.Claims) { c.Issuer = "https://accounts.google.com" })},
-		{"audience of another project", mod(func(c *otptest.Claims) { c.Audience = "other-project" })},
-		{"expired one second ago", mod(func(c *otptest.Claims) { c.Expires = now.Add(-time.Second) })},
-		{"expires exactly now", mod(func(c *otptest.Claims) { c.Expires = now })},
-		{"issued 31 s in the future", mod(func(c *otptest.Claims) { c.IssuedAt = now.Add(31 * time.Second) })},
-		{"empty subject", mod(func(c *otptest.Claims) { c.Subject = "" })},
+		{"issuer of another project", mod(func(c *Claims) { c.Issuer = "https://securetoken.google.com/other-project" })},
+		{"issuer is not Firebase", mod(func(c *Claims) { c.Issuer = "https://accounts.google.com" })},
+		{"audience of another project", mod(func(c *Claims) { c.Audience = "other-project" })},
+		{"expired one second ago", mod(func(c *Claims) { c.Expires = now.Add(-time.Second) })},
+		{"expires exactly now", mod(func(c *Claims) { c.Expires = now })},
+		{"issued 31 s in the future", mod(func(c *Claims) { c.IssuedAt = now.Add(31 * time.Second) })},
+		{"empty subject", mod(func(c *Claims) { c.Subject = "" })},
 		{"missing subject", m.Raw(t, "RS256", nil, payload(func(p map[string]any) { delete(p, "sub") }))},
 		{"missing audience", m.Raw(t, "RS256", nil, payload(func(p map[string]any) { delete(p, "aud") }))},
 		{"missing expiry", m.Raw(t, "RS256", nil, payload(func(p map[string]any) { delete(p, "exp") }))},
@@ -128,17 +127,17 @@ func TestVerify_BR_CLI_04_RejectsEveryInvalidToken(t *testing.T) {
 
 // Boundaries are inclusive/exclusive exactly as the contract says (SC-001): exp > now, iat <= now+30 s.
 func TestVerify_BR_CLI_04_TimeBoundaries(t *testing.T) {
-	m := otptest.NewMinter(t, project)
+	m := NewMinter(t, project)
 	v := newVerifier(t, m)
 	tests := []struct {
 		name    string
-		edit    func(*otptest.Claims)
+		edit    func(*Claims)
 		wantErr bool
 	}{
-		{"expires in one second", func(c *otptest.Claims) { c.Expires = now.Add(time.Second) }, false},
-		{"issued exactly 30 s ahead", func(c *otptest.Claims) { c.IssuedAt = now.Add(30 * time.Second) }, false},
-		{"issued 31 s ahead", func(c *otptest.Claims) { c.IssuedAt = now.Add(31 * time.Second) }, true},
-		{"expired exactly now", func(c *otptest.Claims) { c.Expires = now }, true},
+		{"expires in one second", func(c *Claims) { c.Expires = now.Add(time.Second) }, false},
+		{"issued exactly 30 s ahead", func(c *Claims) { c.IssuedAt = now.Add(30 * time.Second) }, false},
+		{"issued 31 s ahead", func(c *Claims) { c.IssuedAt = now.Add(31 * time.Second) }, true},
+		{"expired exactly now", func(c *Claims) { c.Expires = now }, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -157,7 +156,7 @@ func TestVerify_BR_CLI_04_TimeBoundaries(t *testing.T) {
 
 // The verifier must use the injected clock, not the real one.
 func TestVerify_BR_CLI_04_UsesTheInjectedClock(t *testing.T) {
-	m := otptest.NewMinter(t, project)
+	m := NewMinter(t, project)
 	c := m.Valid(now)
 	tok := m.Token(t, c)
 	v := newVerifier(t, m)
@@ -172,7 +171,7 @@ func TestVerify_BR_CLI_04_UsesTheInjectedClock(t *testing.T) {
 }
 
 func TestVerify_BR_CLI_04_UnreachableKeySetFailsClosed(t *testing.T) {
-	m := otptest.NewMinter(t, project)
+	m := NewMinter(t, project)
 	tok := m.Token(t, m.Valid(now))
 	dead := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	url := dead.URL
@@ -189,7 +188,7 @@ func TestVerify_BR_CLI_04_UnreachableKeySetFailsClosed(t *testing.T) {
 }
 
 func TestVerify_BR_CLI_04_KeySetServerErrorFailsClosed(t *testing.T) {
-	m := otptest.NewMinter(t, project)
+	m := NewMinter(t, project)
 	tok := m.Token(t, m.Valid(now))
 	bad := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
@@ -203,7 +202,7 @@ func TestVerify_BR_CLI_04_KeySetServerErrorFailsClosed(t *testing.T) {
 }
 
 func TestVerify_BR_CLI_04_CancelledContextFails(t *testing.T) {
-	m := otptest.NewMinter(t, project)
+	m := NewMinter(t, project)
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if _, err := newVerifier(t, m).Verify(ctx, m.Token(t, m.Valid(now))); err == nil {
@@ -212,7 +211,7 @@ func TestVerify_BR_CLI_04_CancelledContextFails(t *testing.T) {
 }
 
 func TestDisabled_BR_CLI_04_AlwaysErrDisabled(t *testing.T) {
-	m := otptest.NewMinter(t, project)
+	m := NewMinter(t, project)
 	tok := m.Token(t, m.Valid(now))
 
 	for name, v := range map[string]firebaseauth.Verifier{

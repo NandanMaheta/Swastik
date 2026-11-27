@@ -47,8 +47,10 @@ func TestSender_BR_CLI_04_SkipsACodeThatHasExpired(t *testing.T) {
 		t.Fatalf("Send one second before expiry: %v calls %d, want it sent", err, e.Mailer.Calls())
 	}
 	e.Clock.Advance(time.Second) // now == expires_at
-	if err := e.Svc.Sender().Send(t.Context(), row.Envelope(e.Org)); err != nil {
-		t.Fatalf("Send at expiry: %v, want nil (the outbox then marks it sent and erases it)", err)
+	// An expired code is not delivered, and the sender must say so: returning nil would make the
+	// outbox mark the message "sent" (review fix; see TestSender_BR_CLI_04_ExpiredCodeIsReportedNotDeliveredNeverSent).
+	if err := e.Svc.Sender().Send(t.Context(), row.Envelope(e.Org)); err == nil {
+		t.Fatal("Send at expiry = nil, want an error: nil means delivered and the message would be marked sent")
 	}
 	if e.Mailer.Calls() != 1 {
 		t.Errorf("mailer calls = %d, want no second call for an expired code", e.Mailer.Calls())

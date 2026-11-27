@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -27,13 +28,21 @@ import (
 type Mailer struct {
 	Sent    []email.Mail
 	FailErr error // returned instead of recording when set
+	// Hook, when set, runs at the start of every Send, before anything is recorded, and receives
+	// the context the sender was called with. Tests use it to make a send slow (block until a
+	// channel is closed) or to cancel the caller's context in the middle of a send. Set it before
+	// the service runs; it is called without the mailer's lock held.
+	Hook func(ctx context.Context)
 
 	mu    sync.Mutex
 	calls int
 }
 
 // Send implements email.Mailer. A failing call is counted in Calls but not recorded in Sent.
-func (m *Mailer) Send(_ context.Context, mail email.Mail) error {
+func (m *Mailer) Send(ctx context.Context, mail email.Mail) error {
+	if m.Hook != nil {
+		m.Hook(ctx)
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.calls++
@@ -74,7 +83,12 @@ type Minter struct {
 
 	key   *rsa.PrivateKey
 	other *rsa.PrivateKey // never published
+	down  atomic.Bool
 }
+
+// SetOutage makes the key-set server answer HTTP 500 (true) or serve its key again (false), the
+// way an outage of Google's key endpoint looks to the verifier.
+func (m *Minter) SetOutage(down bool) { m.down.Store(down) }
 
 // NewMinter starts a local JWKS server (closed with t.Cleanup) publishing one key.
 func NewMinter(t testing.TB, projectID string) *Minter {
@@ -89,6 +103,10 @@ func NewMinter(t testing.TB, projectID string) *Minter {
 	}
 	m := &Minter{ProjectID: projectID, KID: "test-kid-1", key: key, other: other}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if m.down.Load() {
+			http.Error(w, "key set unavailable", http.StatusInternalServerError)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "public, max-age=3600")
 		_ = json.NewEncoder(w).Encode(map[string]any{"keys": []map[string]any{{

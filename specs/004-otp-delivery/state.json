@@ -399,5 +399,22 @@
     "G-AUTH": "additive auth API FindUser/DefaultOrg (ADR 0004: auth PRs need owner approval) - S09",
     "G-SECRETS": "owner creates resend-api-key-<env>, otp-hmac-key-<env> (secrets.sh --with-otp) and sets otp_enabled - S19"
   },
-  "metrics": []
+  "metrics": [],
+  "review_fix": {
+    "done_command": "cd apps/api && go test -race ./internal/otp/... ./internal/outbox/... ./internal/platform/firebaseauth/... ./internal/platform/config/... && cd .. && make lint-go",
+    "protected_tests": [
+      "apps/api/internal/otp/handler_review_test.go",
+      "apps/api/internal/otp/service_review_test.go",
+      "apps/api/internal/otp/service_sender_test.go",
+      "apps/api/internal/otp/handler_test.go",
+      "apps/api/internal/otp/store_test.go",
+      "apps/api/internal/otp/otptest/otptest.go",
+      "apps/api/internal/otp/otptest/env.go",
+      "apps/api/internal/outbox/sensitive_review_test.go",
+      "apps/api/internal/platform/firebaseauth/minter_test.go",
+      "apps/api/internal/platform/firebaseauth/verify_test.go",
+      "apps/api/internal/platform/firebaseauth/verify_review_test.go",
+      "apps/api/internal/platform/config/otp_review_test.go"
+    ]
+  }
 }

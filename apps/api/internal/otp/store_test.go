@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"runtime"
 	"slices"
 	"sync"
 	"testing"
@@ -115,6 +116,28 @@ func (e *storeEnv) newCode(ver otp.VerificationRow, key string) otp.CodeRow {
 		e.t.Fatalf("InsertCode: %v", err)
 	}
 	return c
+}
+
+// awaitLockWaiter blocks until PostgreSQL reports a backend waiting on a lock (the other side of a
+// contended row), or the test times out. It replaces fixed sleeps that "widen race windows".
+func (e *storeEnv) awaitLockWaiter() {
+	e.t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		var n int
+		err := e.pool.QueryRow(context.Background(), `SELECT count(*) FROM pg_stat_activity
+			WHERE datname = current_database() AND wait_event_type = 'Lock'`).Scan(&n)
+		if err != nil {
+			e.t.Errorf("pg_stat_activity: %v", err)
+			return
+		}
+		if n > 0 {
+			return
+		}
+		runtime.Gosched()
+		<-time.After(5 * time.Millisecond) // poll interval of a condition wait, not a race widener
+	}
+	e.t.Errorf("no transaction was ever seen waiting on a lock: the locks are not contended")
 }
 
 func sameTime(a, b time.Time) bool { return a.Equal(b) }
@@ -396,24 +419,35 @@ func TestStore_BR_CLI_04_LiveCodeLockMakesDoubleEntrySingleUse(t *testing.T) {
 	if _, err := e.store.LockLiveCode(t.Context(), e.org, v.ID); !errors.Is(err, db.ErrNoTx) {
 		t.Fatalf("LockLiveCode outside a tx = %v, want db.ErrNoTx", err)
 	}
-	// Two concurrent verifies: both lock the live code; only the first still finds it live.
+	// Two concurrent verifies: both lock the live code; only the first still finds it live. The
+	// winner holds its lock until the database reports the other one blocked on it (no sleeps).
 	var wg sync.WaitGroup
 	results := make([]error, 2)
+	locked, release := make(chan struct{}), make(chan struct{})
 	for i := range results {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			if i == 1 {
+				<-locked // the second verify starts once the first holds the lock
+			}
 			results[i] = e.inTx(func(ctx context.Context) error {
 				c, err := e.store.LockLiveCode(ctx, e.org, v.ID)
 				if err != nil {
 					return err
 				}
-				time.Sleep(150 * time.Millisecond) // widen the race window
+				if i == 0 {
+					close(locked)
+					<-release
+				}
 				_, err = e.store.EndLiveCode(ctx, e.org, c.VerificationID, otp.EndUsed, st0)
 				return err
 			})
 		}()
 	}
+	<-locked
+	e.awaitLockWaiter()
+	close(release)
 	wg.Wait()
 	wins, losses := 0, 0
 	for _, err := range results {
@@ -591,6 +625,8 @@ func TestStore_BR_CLI_04_LockLimitsCannotDeadlockOnOppositeInputOrders(t *testin
 	for round := range 25 {
 		var wg sync.WaitGroup
 		errs := make([]error, 2)
+		done := make(chan struct{}) // closed once a transaction is seen waiting on the other's lock
+		go func() { e.awaitLockWaiter(); close(done) }()
 		for i, keys := range [][]otp.LimitKey{{contact, ip}, {ip, contact}} {
 			wg.Add(1)
 			go func() {
@@ -599,7 +635,12 @@ func TestStore_BR_CLI_04_LockLimitsCannotDeadlockOnOppositeInputOrders(t *testin
 					if _, err := e.store.LockLimits(ctx, e.org, keys); err != nil {
 						return err
 					}
-					time.Sleep(20 * time.Millisecond)
+					// Hold the locks until the other transaction is blocked on them: with a fixed lock
+					// order that is always how the pair ends; with an unfixed one they deadlock.
+					select {
+					case <-done:
+					case <-ctx.Done():
+					}
 					return nil
 				})
 			}()
