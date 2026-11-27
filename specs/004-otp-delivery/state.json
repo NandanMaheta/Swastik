@@ -206,7 +206,14 @@
       "expect": "red",
       "owner_gates": [],
       "est_lines": 600,
-      "protected_tests": []
+      "protected_tests": [
+        "apps/api/internal/otp/otptest/env.go",
+        "apps/api/internal/otp/service_resend_test.go",
+        "apps/api/internal/otp/service_sender_test.go",
+        "apps/api/internal/otp/service_start_test.go",
+        "apps/api/internal/otp/svc_helpers_test.go"
+      ],
+      "tests_written": true
     },
     "S11": {
       "owner": "backend-dev",
@@ -243,7 +250,11 @@
       "expect": "red",
       "owner_gates": [],
       "est_lines": 620,
-      "protected_tests": []
+      "protected_tests": [
+        "apps/api/internal/otp/service_verify_email_test.go",
+        "apps/api/internal/otp/service_verify_mobile_test.go"
+      ],
+      "tests_written": true
     },
     "S13": {
       "owner": "backend-dev",
@@ -278,7 +289,12 @@
       "expect": "red",
       "owner_gates": [],
       "est_lines": 560,
-      "protected_tests": []
+      "protected_tests": [
+        "apps/api/internal/otp/service_housekeeping_test.go",
+        "apps/api/internal/otp/service_leak_test.go",
+        "apps/api/internal/otp/service_reset_test.go"
+      ],
+      "tests_written": true
     },
     "S15": {
       "owner": "backend-dev",
@@ -312,7 +328,14 @@
       "expect": "red",
       "owner_gates": [],
       "est_lines": 600,
-      "protected_tests": []
+      "protected_tests": [
+        "apps/api/cmd/swastik/contract_test.go",
+        "apps/api/cmd/swastik/otp_contract_test.go",
+        "apps/api/internal/otp/handler_test.go",
+        "packages/domain/src/otp-error-codes.test.ts",
+        "scripts/check-lint-boundaries.sh"
+      ],
+      "tests_written": true
     },
     "S17": {
       "owner": "backend-dev",
@@ -344,7 +367,12 @@
       "expect": "red",
       "owner_gates": [],
       "est_lines": 300,
-      "protected_tests": []
+      "protected_tests": [
+        "infra/bootstrap/test.sh",
+        "infra/tofu/tests/env/otp.tftest.hcl",
+        "infra/tofu/tests/lifecycle_test.sh"
+      ],
+      "tests_written": true
     },
     "S19": {
       "owner": "ops",
