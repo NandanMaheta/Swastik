@@ -129,6 +129,9 @@ type Store interface {
 	InsertVerification(ctx context.Context, in NewVerification) (VerificationRow, error)
 	// GetVerification reads one verification; ErrNotFound when absent or of another org.
 	GetVerification(ctx context.Context, org, id uuid.UUID) (VerificationRow, error)
+	// GetVerificationByHandle reads (without locking) the row whose handle hash matches;
+	// ErrNotFound when absent or of another org.
+	GetVerificationByHandle(ctx context.Context, org uuid.UUID, handleHash []byte) (VerificationRow, error)
 	// LockVerificationByHandle locks the row whose handle hash matches (requires a tx); ErrNotFound.
 	LockVerificationByHandle(ctx context.Context, org uuid.UUID, handleHash []byte) (VerificationRow, error)
 	// LockVerification locks a verification by id (requires a tx); ErrNotFound.
@@ -148,6 +151,8 @@ type Store interface {
 
 	// InsertCode creates a live code; ErrLiveCodeExists when the verification has one.
 	InsertCode(ctx context.Context, in NewCode) (CodeRow, error)
+	// GetLiveCode reads (without locking) the live code; ErrNoLiveCode.
+	GetLiveCode(ctx context.Context, org, verificationID uuid.UUID) (CodeRow, error)
 	// LockLiveCode locks the live code (requires a tx); ErrNoLiveCode.
 	LockLiveCode(ctx context.Context, org, verificationID uuid.UUID) (CodeRow, error)
 	// EndLiveCode ends the live code with a reason (EndUsed...) and returns it; ErrNoLiveCode.

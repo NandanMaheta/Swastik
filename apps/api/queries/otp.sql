@@ -10,6 +10,9 @@ RETURNING *;
 -- name: GetOtpVerification :one
 SELECT * FROM otp_verifications WHERE id = @id AND org_id = @org_id;
 
+-- name: GetOtpVerificationByHandle :one
+SELECT * FROM otp_verifications WHERE org_id = @org_id AND handle_hash = @handle_hash;
+
 -- name: LockOtpVerificationByHandle :one
 SELECT * FROM otp_verifications WHERE org_id = @org_id AND handle_hash = @handle_hash FOR UPDATE;
 
@@ -46,6 +49,10 @@ WHERE id = @id AND org_id = @org_id;
 INSERT INTO otp_email_codes (id, org_id, verification_id, code_digest, issued_at, expires_at, outbox_key)
 VALUES (@id, @org_id, @verification_id, @code_digest, @issued_at, @expires_at, sqlc.narg('outbox_key'))
 RETURNING *;
+
+-- name: GetLiveOtpCode :one
+SELECT * FROM otp_email_codes
+WHERE org_id = @org_id AND verification_id = @verification_id AND ended_at IS NULL;
 
 -- name: LockLiveOtpCode :one
 SELECT * FROM otp_email_codes

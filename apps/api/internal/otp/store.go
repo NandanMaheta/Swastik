@@ -122,6 +122,11 @@ func (s *pgStore) GetVerification(ctx context.Context, org, id uuid.UUID) (Verif
 	return oneVerification(v, err, "get verification")
 }
 
+func (s *pgStore) GetVerificationByHandle(ctx context.Context, org uuid.UUID, handleHash []byte) (VerificationRow, error) {
+	v, err := s.q(ctx).GetOtpVerificationByHandle(ctx, dbgen.GetOtpVerificationByHandleParams{OrgID: org, HandleHash: handleHash})
+	return oneVerification(v, err, "get verification by handle")
+}
+
 func (s *pgStore) LockVerificationByHandle(ctx context.Context, org uuid.UUID, handleHash []byte) (VerificationRow, error) {
 	q, err := s.qTx(ctx)
 	if err != nil {
@@ -188,6 +193,17 @@ func (s *pgStore) InsertCode(ctx context.Context, in NewCode) (CodeRow, error) {
 	}
 	if err != nil {
 		return CodeRow{}, fmt.Errorf("otp: insert code: %w", err)
+	}
+	return codeRow(c), nil
+}
+
+func (s *pgStore) GetLiveCode(ctx context.Context, org, verificationID uuid.UUID) (CodeRow, error) {
+	c, err := s.q(ctx).GetLiveOtpCode(ctx, dbgen.GetLiveOtpCodeParams{OrgID: org, VerificationID: verificationID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return CodeRow{}, ErrNoLiveCode
+	}
+	if err != nil {
+		return CodeRow{}, fmt.Errorf("otp: get live code: %w", err)
 	}
 	return codeRow(c), nil
 }

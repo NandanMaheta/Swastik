@@ -9,6 +9,6 @@ import (
 )
 
 // DailyCounts returns the delivery counters of one IST day (FR-017).
-func (s *Service) DailyCounts(_ context.Context, _ uuid.UUID, _ istdate.Date) (DailyCounts, error) {
-	return DailyCounts{}, errNotImplemented
+func (s *Service) DailyCounts(ctx context.Context, org uuid.UUID, day istdate.Date) (DailyCounts, error) {
+	return s.st.GetCounts(ctx, org, day)
 }

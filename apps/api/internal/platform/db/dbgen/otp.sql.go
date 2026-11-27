@@ -129,6 +129,34 @@ func (q *Queries) FinishOtpVerification(ctx context.Context, arg FinishOtpVerifi
 	return result.RowsAffected(), nil
 }
 
+const getLiveOtpCode = `-- name: GetLiveOtpCode :one
+SELECT id, org_id, verification_id, code_digest, issued_at, expires_at, wrong_attempts, outbox_key, ended_at, end_reason FROM otp_email_codes
+WHERE org_id = $1 AND verification_id = $2 AND ended_at IS NULL
+`
+
+type GetLiveOtpCodeParams struct {
+	OrgID          uuid.UUID `json:"org_id"`
+	VerificationID uuid.UUID `json:"verification_id"`
+}
+
+func (q *Queries) GetLiveOtpCode(ctx context.Context, arg GetLiveOtpCodeParams) (OtpEmailCode, error) {
+	row := q.db.QueryRow(ctx, getLiveOtpCode, arg.OrgID, arg.VerificationID)
+	var i OtpEmailCode
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.VerificationID,
+		&i.CodeDigest,
+		&i.IssuedAt,
+		&i.ExpiresAt,
+		&i.WrongAttempts,
+		&i.OutboxKey,
+		&i.EndedAt,
+		&i.EndReason,
+	)
+	return i, err
+}
+
 const getOtpCounts = `-- name: GetOtpCounts :many
 SELECT metric, count FROM otp_daily_counts WHERE org_id = $1 AND day = $2::date
 `
@@ -174,6 +202,40 @@ type GetOtpVerificationParams struct {
 
 func (q *Queries) GetOtpVerification(ctx context.Context, arg GetOtpVerificationParams) (OtpVerification, error) {
 	row := q.db.QueryRow(ctx, getOtpVerification, arg.ID, arg.OrgID)
+	var i OtpVerification
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.UserID,
+		&i.Purpose,
+		&i.HandleHash,
+		&i.Email,
+		&i.Mobile,
+		&i.EmailDoneAt,
+		&i.MobileDoneAt,
+		&i.ResetTokenHash,
+		&i.ResetTokenExpiresAt,
+		&i.FinishedAt,
+		&i.CancelledAt,
+		&i.CancelReason,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getOtpVerificationByHandle = `-- name: GetOtpVerificationByHandle :one
+SELECT id, org_id, user_id, purpose, handle_hash, email, mobile, email_done_at, mobile_done_at, reset_token_hash, reset_token_expires_at, finished_at, cancelled_at, cancel_reason, created_at, expires_at, updated_at FROM otp_verifications WHERE org_id = $1 AND handle_hash = $2
+`
+
+type GetOtpVerificationByHandleParams struct {
+	OrgID      uuid.UUID `json:"org_id"`
+	HandleHash []byte    `json:"handle_hash"`
+}
+
+func (q *Queries) GetOtpVerificationByHandle(ctx context.Context, arg GetOtpVerificationByHandleParams) (OtpVerification, error) {
+	row := q.db.QueryRow(ctx, getOtpVerificationByHandle, arg.OrgID, arg.HandleHash)
 	var i OtpVerification
 	err := row.Scan(
 		&i.ID,

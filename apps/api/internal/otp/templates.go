@@ -8,8 +8,6 @@ import (
 
 // codeMail renders the code email (subject "Your Swastik code: 123456"). The sender sets the
 // idempotency key.
-//
-//nolint:unused // used by the sender in a later slice
 func codeMail(to, code, purpose string) email.Mail {
 	var what string
 	switch Purpose(purpose) {
@@ -35,8 +33,6 @@ func codeMail(to, code, purpose string) email.Mail {
 
 // noticeMail renders the contact-change notice (no code, no new contact). changed is "email" or
 // "mobile".
-//
-//nolint:unused // used by the sender in a later slice
 func noticeMail(to, changed string) email.Mail {
 	what := "email address"
 	if changed == "mobile" {

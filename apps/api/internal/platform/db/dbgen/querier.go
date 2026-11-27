@@ -89,10 +89,12 @@ type Querier interface {
 	GetIPOsByIDs(ctx context.Context, arg GetIPOsByIDsParams) ([]Ipo, error)
 	// The row is locked so a retry or cancel decides on a state nobody changes meanwhile.
 	GetJobForOrg(ctx context.Context, arg GetJobForOrgParams) (ScheduledJob, error)
+	GetLiveOtpCode(ctx context.Context, arg GetLiveOtpCodeParams) (OtpEmailCode, error)
 	// The row is locked so a retry or cancel decides on a state nobody changes meanwhile.
 	GetMessageForOrg(ctx context.Context, arg GetMessageForOrgParams) (OutboxMessage, error)
 	GetOtpCounts(ctx context.Context, arg GetOtpCountsParams) ([]GetOtpCountsRow, error)
 	GetOtpVerification(ctx context.Context, arg GetOtpVerificationParams) (OtpVerification, error)
+	GetOtpVerificationByHandle(ctx context.Context, arg GetOtpVerificationByHandleParams) (OtpVerification, error)
 	GetPublishedIPO(ctx context.Context, arg GetPublishedIPOParams) (Ipo, error)
 	// No row means the default window (21:30-08:00 IST).
 	GetQuietHours(ctx context.Context, orgID uuid.UUID) (GetQuietHoursRow, error)
