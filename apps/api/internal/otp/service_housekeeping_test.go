@@ -153,8 +153,14 @@ func TestHousekeeping_BR_CLI_04_PurgesWhatIsOldKeepsWhatIsNotAndAuditsOnce(t *te
 	if n := e.Count(t, `SELECT count(*) FROM otp_used_proofs`); n != 1 {
 		t.Errorf("used proofs left = %d, want 1 (the one used an hour ago)", n)
 	}
-	if n := e.Count(t, `SELECT count(*) FROM otp_limits`); n != 1 {
-		t.Errorf("limit rows left = %d, want 1 (updated 47 h ago)", n)
+	if n := e.Count(t, `SELECT count(*) FROM otp_limits WHERE scope = 'send_ip' AND subject = decode(repeat('01', 32), 'hex')`); n != 0 {
+		t.Errorf("limit row updated 49 h ago left = %d, want purged", n)
+	}
+	if n := e.Count(t, `SELECT count(*) FROM otp_limits WHERE scope = 'send_ip' AND subject = decode(repeat('02', 32), 'hex')`); n != 1 {
+		t.Errorf("limit row updated 47 h ago left = %d, want kept", n)
+	}
+	if n := e.Count(t, `SELECT count(*) FROM otp_limits WHERE updated_at < $1`, now.Add(-48*time.Hour)); n != 0 {
+		t.Errorf("stale limit rows left = %d, want 0", n)
 	}
 	if n := e.Count(t, `SELECT count(*) FROM otp_daily_counts`); n != 1 {
 		t.Errorf("daily counts left = %d, want 1 (399 days old)", n)
