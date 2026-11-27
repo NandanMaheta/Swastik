@@ -294,6 +294,73 @@ func (q *Queries) GetIPOForUpdate(ctx context.Context, arg GetIPOForUpdateParams
 	return i, err
 }
 
+const getIPOsByIDs = `-- name: GetIPOsByIDs :many
+SELECT id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, create_request_hash, version, created_at, updated_at FROM ipos WHERE org_id = $1 AND id = ANY($2::uuid[])
+`
+
+type GetIPOsByIDsParams struct {
+	OrgID uuid.UUID   `json:"org_id"`
+	Ids   []uuid.UUID `json:"ids"`
+}
+
+func (q *Queries) GetIPOsByIDs(ctx context.Context, arg GetIPOsByIDsParams) ([]Ipo, error) {
+	rows, err := q.db.Query(ctx, getIPOsByIDs, arg.OrgID, arg.Ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Ipo{}
+	for rows.Next() {
+		var i Ipo
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrgID,
+			&i.Name,
+			&i.Board,
+			&i.Exchanges,
+			&i.NseSymbol,
+			&i.IssueSizePaise,
+			&i.PriceBandFloorPaise,
+			&i.PriceBandCapPaise,
+			&i.IssuePricePaise,
+			&i.LotSize,
+			&i.OpenDate,
+			&i.CloseDate,
+			&i.AllotmentDate,
+			&i.RefundDate,
+			&i.DematCreditDate,
+			&i.ListingDate,
+			&i.Registrar,
+			&i.LeadManagers,
+			&i.OfferDocumentUrl,
+			&i.ApplyFlag,
+			&i.FlagNote,
+			&i.Published,
+			&i.FirstPublishedAt,
+			&i.Status,
+			&i.StatusSource,
+			&i.StatusChangedAt,
+			&i.LastOverrideAt,
+			&i.Source,
+			&i.SourceRef,
+			&i.LastSyncedAt,
+			&i.FieldSources,
+			&i.CreateIdempotencyKey,
+			&i.CreateRequestHash,
+			&i.Version,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPublishedIPO = `-- name: GetPublishedIPO :one
 SELECT id, org_id, name, board, exchanges, nse_symbol, issue_size_paise, price_band_floor_paise, price_band_cap_paise, issue_price_paise, lot_size, open_date, close_date, allotment_date, refund_date, demat_credit_date, listing_date, registrar, lead_managers, offer_document_url, apply_flag, flag_note, published, first_published_at, status, status_source, status_changed_at, last_override_at, source, source_ref, last_synced_at, field_sources, create_idempotency_key, create_request_hash, version, created_at, updated_at FROM ipos WHERE org_id = $1 AND id = $2 AND published
 `

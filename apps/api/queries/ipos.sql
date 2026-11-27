@@ -126,3 +126,6 @@ SELECT id, COALESCE(COALESCE(after, before) ->> 'request_hash', '')::text AS req
 WHERE org_id = @org_id AND entity = 'ipo' AND entity_id = @entity_id AND action = @action
   AND COALESCE(after, before) ->> 'idempotency_key' = @key::text
 LIMIT 1;
+
+-- name: GetIPOsByIDs :many
+SELECT * FROM ipos WHERE org_id = @org_id AND id = ANY(@ids::uuid[]);

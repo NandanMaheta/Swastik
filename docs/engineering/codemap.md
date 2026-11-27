@@ -174,6 +174,52 @@ type Service struct{ ... }
 type Status struct{ ... }
 ```
 
+### `internal/ipomarket`
+
+```go
+var ErrNotFound = errors.New("ipomarket: not found") ...
+var ErrBadCursor = errors.New("ipomarket: invalid cursor")
+func ExpectedProfitPerLot(gmpPaise int64, lotSize int32) int64
+func Register(api huma.API, s *Service)
+type ActorView struct{ ... }
+type AdminGMPEntry struct{ ... }
+type AdminGMPPage struct{ ... }
+type AdminSubscription struct{ ... }
+type AdminSubscriptionPage struct{ ... }
+type ClientMarketView struct{ ... }
+type CurrentGMP struct{ ... }
+type CurrentView struct{ ... }
+type Deps struct{ ... }
+type FieldIssue struct{ ... }
+type GMP struct{ ... }
+type GMPEntry struct{ ... }
+type GMPEntryInput struct{ ... }
+type GMPInput struct{ ... }
+type GMPRecordResult struct{ ... }
+type GMPResult struct{ ... }
+type IPOPath struct{ ... }
+type IPOReader interface{ ... }
+type IdemInput struct{ ... }
+type MarketSummaries struct{ ... }
+type MarketSummary struct{ ... }
+type Page[T any] struct{ ... }
+type PageQuery struct{ ... }
+type Service struct{ ... }
+    func NewService(d Deps) *Service
+type Snapshot struct{ ... }
+type SubscriptionBody struct{ ... }
+type SubscriptionInput struct{ ... }
+type SubscriptionRecordResult struct{ ... }
+type SubscriptionResult struct{ ... }
+type SubscriptionView struct{ ... }
+type Summary struct{ ... }
+type TrendPoint struct{ ... }
+type TrendPointView struct{ ... }
+type ValidationError struct{ ... }
+type View struct{ ... }
+type Warning struct{ ... }
+```
+
 ### `internal/ipos`
 
 ```go
@@ -477,8 +523,12 @@ export function isAuthErrorCode(code: unknown): code is AuthErrorCode
 export function authErrorMessage(code: string | null | undefined): string
 export * from "./auth-error-codes";
 export * from "./ipo";
+export * from "./ipo-market";
 export * from "./money";
 export * from "./status";
+export const ipoMarketErrorMessages =
+export type IpoMarketErrorCode = keyof typeof ipoMarketErrorMessages;
+export function formatTimesSubscribed(x100: number): string
 export const ipoStatuses = [
 export type IpoStatus = (typeof ipoStatuses)[number];
 export const ipoApplyFlags = ["APPLY", "DO_NOT_APPLY"] as const;

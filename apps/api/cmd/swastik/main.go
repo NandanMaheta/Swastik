@@ -17,6 +17,7 @@ import (
 
 	"github.com/NandanMaheta/swastik/apps/api/internal/auth"
 	"github.com/NandanMaheta/swastik/apps/api/internal/health"
+	"github.com/NandanMaheta/swastik/apps/api/internal/ipomarket"
 	"github.com/NandanMaheta/swastik/apps/api/internal/ipos"
 	"github.com/NandanMaheta/swastik/apps/api/internal/otp"
 	"github.com/NandanMaheta/swastik/apps/api/internal/outbox"
@@ -108,7 +109,9 @@ type deps struct {
 	// IPOs is the IPO catalogue service; nil registers its operations without one.
 	IPOs *ipos.Service
 	// OTP is the OTP delivery service (feature 004); nil registers its operations without one.
-	OTP              *otp.Service
+	OTP *otp.Service
+	// Market is the GMP and subscription service; nil registers its operations without one.
+	Market           *ipomarket.Service
 	WebOrigins       []string
 	TrustedProxyHops int
 	ProxySecrets     []string
@@ -128,6 +131,7 @@ func buildAPI(d deps) huma.API {
 	}
 	auth.Register(api, d.Auth, auth.HandlerConfig{WebOrigins: d.WebOrigins, TrustedProxyHops: d.TrustedProxyHops, ProxySecrets: d.ProxySecrets})
 	ipos.Register(api, d.IPOs)
+	ipomarket.Register(api, d.Market)
 	authz.AssertDeclared(api)
 	return api
 }
@@ -191,6 +195,7 @@ func serve(ctx context.Context, log *slog.Logger, cfg config.Config, pool *pgxpo
 	sched.Register(scheduler.RetentionKind, sched.RetentionHandler(), scheduler.RetentionOptions())
 	iposSvc := ipos.NewService(ipos.Deps{Tx: txr, Scheduler: sched, Now: clock.Real, Log: log})
 	ipos.RegisterJobs(sched, iposSvc)
+	marketSvc := ipomarket.NewService(ipomarket.Deps{Tx: txr, IPOs: iposSvc, Now: clock.Real, Log: log})
 
 	authSvc, err := newAuthService(cfg, txr, log)
 	if err != nil {
@@ -200,7 +205,7 @@ func serve(ctx context.Context, log *slog.Logger, cfg config.Config, pool *pgxpo
 
 	api := buildAPI(deps{ //nolint:contextcheck // the tick middleware takes its context from each request
 		Env: cfg.Env, Pool: pool, Tick: sched, TickAuth: selectTickAuth(ctx, log, cfg),
-		Auth: authSvc, IPOs: iposSvc, WebOrigins: cfg.Auth.WebOrigins, TrustedProxyHops: cfg.Auth.TrustedProxyHops,
+		Auth: authSvc, IPOs: iposSvc, Market: marketSvc, WebOrigins: cfg.Auth.WebOrigins, TrustedProxyHops: cfg.Auth.TrustedProxyHops,
 		ProxySecrets: cfg.Auth.ProxySharedSecrets,
 	})
 	// CORS wraps the whole API: an exact-origin allowlist with credentials, never a wildcard.

@@ -61,3 +61,20 @@ func pageOf(rows []IPO, limit int) Page[IPO] {
 	rows = rows[:n]
 	return Page[IPO]{Items: rows, NextCursor: encodeCursor(rows[n-1])}
 }
+
+// GetMany returns the org's IPOs among ids (drafts included), keyed by id; unknown ids are absent.
+// len(ids) ≤ 200.
+func (s *Service) GetMany(ctx context.Context, org uuid.UUID, ids []uuid.UUID) (map[uuid.UUID]IPO, error) {
+	if len(ids) > maxGetMany {
+		return nil, &ValidationError{Code: "ipo.invalid_value", Issues: []FieldIssue{{Field: "ids", Message: "at most 200 ids"}}}
+	}
+	var out map[uuid.UUID]IPO
+	err := s.inTx(ctx, func(ctx context.Context) (err error) {
+		out, err = s.store.GetIPOsByIDs(ctx, org, ids)
+		return err
+	})
+	return out, err
+}
+
+// maxGetMany bounds the ids accepted by GetMany.
+const maxGetMany = 200

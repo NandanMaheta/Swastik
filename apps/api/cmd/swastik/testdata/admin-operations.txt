@@ -17,3 +17,8 @@ ipos-set-flag
 ipos-publish
 ipos-unpublish
 ipos-override-status
+ipomarket-record-gmp
+ipomarket-list-gmp
+ipomarket-record-subscription
+ipomarket-list-subscription
+ipomarket-admin-summaries
