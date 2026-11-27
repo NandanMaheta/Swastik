@@ -8,10 +8,10 @@ package otp_test
 import (
 	"context"
 	"encoding/json"
-	"github.com/google/uuid"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"pgregory.net/rapid"
 
 	"github.com/NandanMaheta/swastik/apps/api/internal/otp"

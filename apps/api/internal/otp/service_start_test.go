@@ -338,7 +338,7 @@ func TestStart_BR_CLI_04_AuditHoldsNoContactCodeHandleOrToken(t *testing.T) {
 	code := e.LastCode(t)
 	e.Clock.Advance(30 * time.Second)
 	_, err := e.Svc.Resend(t.Context(), otptest.Caller(), st.Handle) // cooldown refusal
-	svRetry(t, err, otp.ReasonCooldown)
+	_ = svRetry(t, err, otp.ReasonCooldown)
 
 	rows := e.OTPAudit(t)
 	var actions []string

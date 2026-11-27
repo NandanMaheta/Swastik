@@ -77,7 +77,8 @@ type LogSink struct {
 func (l *LogSink) Write(p []byte) (int, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	return l.b.Write(p)
+	n, _ := l.b.Write(p) // a bytes.Buffer never fails
+	return n, nil
 }
 
 // String returns everything logged so far.
