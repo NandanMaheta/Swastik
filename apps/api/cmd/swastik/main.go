@@ -195,13 +195,16 @@ func newOTPService(ctx context.Context, cfg config.Config, txr db.TxRunner, ob *
 	if cfg.OTP.ResendAPIKey != "" {
 		mailer = email.NewResend(cfg.OTP.ResendAPIKey, cfg.OTP.EmailFrom)
 	}
-	var fbOpts []firebaseauth.Option
+	// The key set is fetched once and then cached: a short timeout keeps a hung Google endpoint
+	// from holding up sign-ups.
+	fbOpts := []firebaseauth.Option{firebaseauth.WithHTTPClient(&http.Client{Timeout: 5 * time.Second})}
 	if cfg.OTP.FirebaseJWKSURL != "" {
 		fbOpts = append(fbOpts, firebaseauth.WithJWKSURL(cfg.OTP.FirebaseJWKSURL))
 	}
 	return otp.New(otp.Deps{
 		Tx: txr, Now: clock.Real, Accounts: accounts, Outbox: ob, Keyring: cfg.Auth.PII, Digests: cfg.OTP.Digests,
 		Proofs: firebaseauth.New(ctx, cfg.OTP.FirebaseProjectID, clock.Real, fbOpts...), Mailer: mailer, Log: log,
+		SendGrace: -1, // the reply time is the response floor, never the send (SC-004)
 	})
 }
 

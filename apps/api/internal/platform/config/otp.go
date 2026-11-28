@@ -1,6 +1,7 @@
 package config
 
 import (
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -78,10 +79,29 @@ func loadOTP(appEnv string) (OTPConfig, error) {
 			return OTPConfig{}, errors.New("OTP_HMAC_KEY must be standard base64 of exactly 32 bytes")
 		}
 	}
+	if hmacRaw != "" && reusesAnotherKey(key) {
+		return OTPConfig{}, errors.New("OTP_HMAC_KEY must differ from BLIND_INDEX_KEY and the PII encryption keys")
+	}
 	digests, err := crypto.NewBlindIndexer(key)
 	if err != nil {
 		return OTPConfig{}, errors.New("OTP_HMAC_KEY must be exactly 32 bytes")
 	}
 	o.Digests, o.Enabled = digests, true
 	return o, nil
+}
+
+// reusesAnotherKey reports whether key equals BLIND_INDEX_KEY or any PII encryption key. One leak
+// must not open two protections (D-08). Unparsable values are loadAuth's to refuse.
+func reusesAnotherKey(key []byte) bool {
+	if other, err := decodeKey(os.Getenv("BLIND_INDEX_KEY")); err == nil && subtle.ConstantTimeCompare(key, other) == 1 {
+		return true
+	}
+	if ring, err := parsePIIKeys(os.Getenv("PII_ENCRYPTION_KEYS")); err == nil {
+		for _, other := range ring {
+			if subtle.ConstantTimeCompare(key, other) == 1 {
+				return true
+			}
+		}
+	}
+	return false
 }

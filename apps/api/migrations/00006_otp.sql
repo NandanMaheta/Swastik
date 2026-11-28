@@ -15,6 +15,10 @@ CREATE TABLE otp_verifications (
     mobile_done_at         timestamptz,
     reset_token_hash       bytea CHECK (octet_length(reset_token_hash) = 32),
     reset_token_expires_at timestamptz,
+    -- Password reset only: keyed digest (OTP_HMAC_KEY) of the normalised identifier the stranger
+    -- typed. Real and decoy flows carry one alike, so a handle is superseded by a later start of
+    -- the same typed identifier whether or not the account exists (D-07).
+    identifier_key         bytea CHECK (octet_length(identifier_key) = 32),
     finished_at            timestamptz,
     cancelled_at           timestamptz,
     cancel_reason          text CHECK (cancel_reason IN ('cancelled', 'superseded')),
@@ -33,6 +37,7 @@ CREATE TABLE otp_verifications (
     CONSTRAINT otp_verifications_reset_only_ck CHECK (
         (reset_token_hash IS NULL) = (reset_token_expires_at IS NULL)
         AND (purpose = 'password_reset' OR reset_token_hash IS NULL)),
+    CONSTRAINT otp_verifications_identifier_key_ck CHECK (purpose = 'password_reset' OR identifier_key IS NULL),
     CONSTRAINT otp_verifications_done_ck CHECK (
         (email_done_at IS NULL OR email IS NOT NULL) AND (mobile_done_at IS NULL OR mobile IS NOT NULL)),
     CONSTRAINT otp_verifications_cancel_ck CHECK (
@@ -40,9 +45,13 @@ CREATE TABLE otp_verifications (
     CONSTRAINT otp_verifications_expiry_ck CHECK (expires_at > created_at)
 );
 
--- One live flow per user and purpose; Start supersedes the previous one in the same transaction.
-CREATE UNIQUE INDEX otp_verifications_open_uq ON otp_verifications (user_id, purpose)
+-- One live flow per user, purpose and typed identifier (NULL identifier_key outside password
+-- reset, so one per user and purpose there); Start supersedes the previous one in the same
+-- transaction. A decoy reset (no user) is held to one live flow per typed identifier alike.
+CREATE UNIQUE INDEX otp_verifications_open_uq ON otp_verifications (user_id, purpose, COALESCE(identifier_key, '\x'::bytea))
     WHERE user_id IS NOT NULL AND cancelled_at IS NULL AND finished_at IS NULL;
+CREATE UNIQUE INDEX otp_verifications_open_decoy_uq ON otp_verifications (identifier_key)
+    WHERE user_id IS NULL AND identifier_key IS NOT NULL AND cancelled_at IS NULL AND finished_at IS NULL;
 CREATE INDEX otp_verifications_expires_idx ON otp_verifications (expires_at);
 
 CREATE TABLE otp_email_codes (
@@ -97,12 +106,16 @@ CREATE TABLE otp_daily_counts (
 
 -- Outbox: a payload that carries a secret (an OTP code, sealed) is erased on every terminal
 -- status (ADR 0003 Amendment 2). The trigger covers relay, withdraw, expiry and admin cancel.
+-- The flag is one way: the same trigger refuses to clear it, so no row can opt out of the erase.
 ALTER TABLE outbox_messages ADD COLUMN sensitive_payload boolean NOT NULL DEFAULT false;
 
 -- +goose StatementBegin
 CREATE FUNCTION outbox_erase_sensitive_payload() RETURNS trigger
 LANGUAGE plpgsql AS $$
 BEGIN
+    IF TG_OP = 'UPDATE' AND OLD.sensitive_payload AND NOT NEW.sensitive_payload THEN
+        RAISE EXCEPTION 'outbox_messages.sensitive_payload cannot be cleared' USING ERRCODE = '23514';
+    END IF;
     IF NEW.sensitive_payload AND NEW.status IN ('sent', 'dead', 'withdrawn', 'expired') THEN
         NEW.payload = '{}'::jsonb;
     END IF;
@@ -112,7 +125,7 @@ $$;
 -- +goose StatementEnd
 
 CREATE TRIGGER outbox_erase_sensitive_payload
-    BEFORE INSERT OR UPDATE OF status ON outbox_messages
+    BEFORE INSERT OR UPDATE OF status, sensitive_payload ON outbox_messages
     FOR EACH ROW EXECUTE FUNCTION outbox_erase_sensitive_payload();
 
 ALTER TABLE outbox_messages ADD CONSTRAINT outbox_messages_sensitive_erased_ck

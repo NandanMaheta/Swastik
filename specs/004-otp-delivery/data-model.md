@@ -13,6 +13,7 @@ One verification flow for one user and purpose. Interpretation I-1 (plan): spec 
 | `id` | uuid PK `DEFAULT uuidv7()` | |
 | `org_id` | uuid NOT NULL FK `orgs` | |
 | `user_id` | uuid FK `users` | NULL only for a password-reset decoy (D-06/D-07, section 7) |
+| `identifier_key` | bytea(32) NULL | password reset only, real and decoy alike: HMAC (OTP_HMAC_KEY) of the normalised identifier the stranger typed. A later start of the same typed identifier supersedes the flow; limits use it too (review fix, D-07) |
 | `purpose` | text NOT NULL | CHECK IN (`signup`, `change_email`, `change_mobile`, `password_reset`) |
 | `handle_hash` | bytea NOT NULL UNIQUE | SHA-256 of the opaque handle `ovh_…` (`crypto.NewToken`); 32 bytes |
 | `email` | text | target email; same normalisation CHECK as `users.email` |
@@ -32,7 +33,7 @@ Constraints:
 - `…_cancel_ck`: `(cancelled_at IS NULL) = (cancel_reason IS NULL)`; `NOT (cancelled_at IS NOT NULL AND finished_at IS NOT NULL)`.
 - `…_expiry_ck`: `expires_at > created_at`.
 
-Indexes: `otp_verifications_open_uq` UNIQUE (`user_id`, `purpose`) WHERE `user_id IS NOT NULL AND cancelled_at IS NULL AND finished_at IS NULL` (one live flow per user and purpose; `Start` supersedes the previous one in the same transaction); `otp_verifications_expires_idx` (`expires_at`) for housekeeping.
+Indexes: `otp_verifications_open_uq` UNIQUE (`user_id`, `purpose`, `COALESCE(identifier_key, '')`) WHERE `user_id IS NOT NULL AND cancelled_at IS NULL AND finished_at IS NULL` (one live flow per user and purpose, and per typed identifier for password reset; `otp_verifications_open_decoy_uq` UNIQUE (`identifier_key`) WHERE `user_id IS NULL` does the same for decoys; `Start` supersedes the previous one in the same transaction); `otp_verifications_expires_idx` (`expires_at`) for housekeeping.
 
 State (derived, never stored): `cancelled` if `cancelled_at`; else `completed` if `finished_at`; else `expired` if `now ≥ expires_at`; else `open`. Per contact: `done` (`verified` for signup, `proved` for change), `pending`, or `expired` with the verification.
 
@@ -93,7 +94,7 @@ PK (`org_id`, `day` date IST, `metric`); `metric` CHECK IN (`email_sent`, `email
 ## 6. Outbox change (002 tables; ADR 0003 Amendment 2; owner gate)
 
 - `ALTER TABLE outbox_messages ADD COLUMN sensitive_payload boolean NOT NULL DEFAULT false` (old app versions never set it).
-- Trigger `outbox_erase_sensitive_payload` BEFORE INSERT OR UPDATE OF `status`: when `NEW.sensitive_payload AND NEW.status IN ('sent','dead','withdrawn','expired')` set `NEW.payload = '{}'`. Covers every terminal path (relay, withdraw by key/subject, expiry sweep, admin cancel) without editing those queries.
+- Trigger `outbox_erase_sensitive_payload` BEFORE INSERT OR UPDATE OF `status`, `sensitive_payload` (it also refuses to clear `sensitive_payload`, so the flag is one way): when `NEW.sensitive_payload AND NEW.status IN ('sent','dead','withdrawn','expired')` set `NEW.payload = '{}'`. Covers every terminal path (relay, withdraw by key/subject, expiry sweep, admin cancel) without editing those queries.
 - CHECK `outbox_messages_sensitive_erased_ck`: `NOT sensitive_payload OR status IN ('pending','sending') OR payload = '{}'::jsonb`.
 - Query edits: `InsertMessage` takes `sensitive_payload`; `ExpireDueMessages` also expires `sending` rows whose lease ran out and whose `expires_at <= @now`; `ClaimMessage`'s lease-takeover branch requires `expires_at IS NULL OR expires_at > @now` (an expired code is never sent); `AdminRetryMessage` excludes `sensitive_payload` rows (payload gone → `ErrConflict`); new `ClaimMessageByKey` (same claim as `ClaimMessage` for one `org, topic, dedupe_key`, `FOR UPDATE SKIP LOCKED`) for `DeliverNow`.
 - Down migration drops trigger, function, CHECK and column.

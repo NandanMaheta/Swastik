@@ -45,7 +45,11 @@ const (
 
 	// responseFloor is the earliest a public send operation answers (plan I-3).
 	responseFloor = 1500 * time.Millisecond
-	noticeTTL     = 24 * time.Hour
+	// deliverTimeout bounds one immediate delivery, claim and database work included; the mail send
+	// inside it has its own, shorter outbox send timeout.
+	deliverTimeout = 15 * time.Second
+	defaultGrace   = 250 * time.Millisecond
+	noticeTTL      = 24 * time.Hour
 )
 
 // Accounts is the subset of auth.Accounts otp needs (satisfied by *auth.Service).
@@ -83,6 +87,11 @@ type Deps struct {
 	Mailer   email.Mailer          // used by the outbox Sender
 	Log      *slog.Logger
 	Wait     func(ctx context.Context, until time.Time) // response floor; nil = real timer
+	// SendGrace is how long a public reply that has reached the response floor still waits for its
+	// in-flight email send (so a fast send is finished before the reply). Zero means the default
+	// (250 ms); negative means never wait: production sets -1, so the reply time is the floor
+	// whatever the send takes (SC-004, D-07).
+	SendGrace time.Duration
 }
 
 // Service is the OTP module.
@@ -149,6 +158,25 @@ func (s *Service) wait(ctx context.Context, until time.Time) {
 	select {
 	case <-t.C:
 	case <-ctx.Done():
+	}
+}
+
+// awaitSend gives an in-flight send the grace period to finish after the floor has elapsed. It
+// never waits for a send that is still running when the grace is over: that send is not the
+// reply's business (the outbox row is the fallback).
+func (s *Service) awaitSend(done <-chan struct{}) {
+	if done == nil || s.d.SendGrace < 0 {
+		return
+	}
+	grace := s.d.SendGrace
+	if grace == 0 {
+		grace = defaultGrace
+	}
+	t := time.NewTimer(grace)
+	defer t.Stop()
+	select {
+	case <-done:
+	case <-t.C:
 	}
 }
 

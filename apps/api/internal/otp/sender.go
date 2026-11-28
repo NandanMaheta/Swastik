@@ -2,6 +2,7 @@ package otp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -15,9 +16,14 @@ import (
 
 type sender struct{ s *Service }
 
+// errExpiredUnsent says an expired code was not sent. It is an error, never nil: nil means
+// delivered and would let the outbox mark the message sent. The relay's own expiry check then
+// marks the message expired and erases it.
+var errExpiredUnsent = errors.New("otp: code expired before it was sent")
+
 // Send opens the sealed message and mails it. A code that has expired is not sent and not
-// counted: it returns nil, so the outbox marks the message sent and erases it. A provider error
-// is counted and returned, so the relay retries until the message expires. Nothing here logs or
+// counted: it returns errExpiredUnsent. A provider error is counted and returned, so the relay
+// retries until the message expires. Nothing here logs or
 // returns the recipient, the code or the payload.
 func (snd sender) Send(ctx context.Context, env outbox.Envelope) error {
 	s := snd.s
@@ -28,7 +34,7 @@ func (snd sender) Send(ctx context.Context, env outbox.Envelope) error {
 	if c.ExpiresAt != "" {
 		exp, err := time.Parse(time.RFC3339Nano, c.ExpiresAt)
 		if err == nil && !s.now().Before(exp) {
-			return nil
+			return errExpiredUnsent
 		}
 	}
 	var mail email.Mail

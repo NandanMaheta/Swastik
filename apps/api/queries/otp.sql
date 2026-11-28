@@ -3,8 +3,8 @@
 -- purge treats it as garbage until it is saved).
 
 -- name: InsertOtpVerification :one
-INSERT INTO otp_verifications (org_id, user_id, purpose, handle_hash, email, mobile, created_at, expires_at, updated_at)
-VALUES (@org_id, sqlc.narg('user_id'), @purpose, @handle_hash, sqlc.narg('email'), sqlc.narg('mobile'), @now, @expires_at, @now)
+INSERT INTO otp_verifications (org_id, user_id, purpose, handle_hash, email, mobile, identifier_key, created_at, expires_at, updated_at)
+VALUES (@org_id, sqlc.narg('user_id'), @purpose, @handle_hash, sqlc.narg('email'), sqlc.narg('mobile'), sqlc.narg('identifier_key'), @now, @expires_at, @now)
 RETURNING *;
 
 -- name: GetOtpVerification :one
@@ -22,6 +22,14 @@ SELECT * FROM otp_verifications WHERE id = @id AND org_id = @org_id FOR UPDATE;
 -- name: LockOpenOtpVerification :one
 SELECT * FROM otp_verifications
 WHERE org_id = @org_id AND user_id = @user_id AND purpose = @purpose AND cancelled_at IS NULL AND finished_at IS NULL
+FOR UPDATE;
+
+-- The open reset flow of a typed identifier: a user's own, or (user NULL) the decoy of an unknown one.
+-- name: LockOpenOtpResetFlow :one
+SELECT * FROM otp_verifications
+WHERE org_id = @org_id AND purpose = 'password_reset' AND identifier_key = @identifier_key
+  AND user_id IS NOT DISTINCT FROM sqlc.narg('user_id')::uuid
+  AND cancelled_at IS NULL AND finished_at IS NULL
 FOR UPDATE;
 
 -- The first instant is kept when the contact is already done.

@@ -70,6 +70,7 @@ type VerificationRow struct {
 	Email, Mobile        string
 	EmailDoneAt          *time.Time
 	MobileDoneAt         *time.Time
+	IdentifierKey        []byte // password reset only: keyed digest of the typed identifier
 	ResetTokenHash       []byte
 	ResetTokenExpiresAt  *time.Time
 	FinishedAt           *time.Time
@@ -86,6 +87,7 @@ type NewVerification struct {
 	Purpose       Purpose
 	HandleHash    []byte
 	Email, Mobile string
+	IdentifierKey []byte // password reset only (32 bytes), real and decoy alike; nil otherwise
 	Now           time.Time
 	ExpiresAt     time.Time
 }
@@ -139,6 +141,9 @@ type Store interface {
 	// LockOpenVerification locks the user's open (not cancelled, not finished) flow of the purpose
 	// (requires a tx); ErrNotFound when there is none. It is what Start supersedes.
 	LockOpenVerification(ctx context.Context, org, user uuid.UUID, p Purpose) (VerificationRow, error)
+	// LockOpenResetFlow locks the open password-reset flow of a typed identifier (requires a tx):
+	// the user's own, or with user Nil the decoy of an unknown identifier; ErrNotFound when none.
+	LockOpenResetFlow(ctx context.Context, org, user uuid.UUID, identifierKey []byte) (VerificationRow, error)
 	// MarkContactDone sets email_done_at or mobile_done_at to now when still NULL; ErrNotFound.
 	MarkContactDone(ctx context.Context, org, id uuid.UUID, c ContactKind, now time.Time) error
 	// FinishVerification sets finished_at; ErrNotFound when absent or already cancelled/finished.

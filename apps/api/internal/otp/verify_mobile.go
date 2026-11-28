@@ -27,6 +27,12 @@ func (s *Service) VerifyMobile(ctx context.Context, c Caller, handle, idToken st
 	if errors.Is(verr, firebaseauth.ErrDisabled) {
 		return View{}, ErrNotConfigured
 	}
+	if errors.Is(verr, firebaseauth.ErrUnavailable) {
+		// Google's key set could not be fetched: the proof was not judged. Answer 503, count no
+		// refusal and burn nothing, so the client can send the same proof again.
+		s.log.WarnContext(ctx, "otp: the Firebase key set is unavailable")
+		return View{}, ErrNotConfigured
+	}
 
 	var view View
 	var outcome error

@@ -192,7 +192,7 @@ func (q *Queries) GetOtpCounts(ctx context.Context, arg GetOtpCountsParams) ([]G
 }
 
 const getOtpVerification = `-- name: GetOtpVerification :one
-SELECT id, org_id, user_id, purpose, handle_hash, email, mobile, email_done_at, mobile_done_at, reset_token_hash, reset_token_expires_at, finished_at, cancelled_at, cancel_reason, created_at, expires_at, updated_at FROM otp_verifications WHERE id = $1 AND org_id = $2
+SELECT id, org_id, user_id, purpose, handle_hash, email, mobile, email_done_at, mobile_done_at, reset_token_hash, reset_token_expires_at, identifier_key, finished_at, cancelled_at, cancel_reason, created_at, expires_at, updated_at FROM otp_verifications WHERE id = $1 AND org_id = $2
 `
 
 type GetOtpVerificationParams struct {
@@ -215,6 +215,7 @@ func (q *Queries) GetOtpVerification(ctx context.Context, arg GetOtpVerification
 		&i.MobileDoneAt,
 		&i.ResetTokenHash,
 		&i.ResetTokenExpiresAt,
+		&i.IdentifierKey,
 		&i.FinishedAt,
 		&i.CancelledAt,
 		&i.CancelReason,
@@ -226,7 +227,7 @@ func (q *Queries) GetOtpVerification(ctx context.Context, arg GetOtpVerification
 }
 
 const getOtpVerificationByHandle = `-- name: GetOtpVerificationByHandle :one
-SELECT id, org_id, user_id, purpose, handle_hash, email, mobile, email_done_at, mobile_done_at, reset_token_hash, reset_token_expires_at, finished_at, cancelled_at, cancel_reason, created_at, expires_at, updated_at FROM otp_verifications WHERE org_id = $1 AND handle_hash = $2
+SELECT id, org_id, user_id, purpose, handle_hash, email, mobile, email_done_at, mobile_done_at, reset_token_hash, reset_token_expires_at, identifier_key, finished_at, cancelled_at, cancel_reason, created_at, expires_at, updated_at FROM otp_verifications WHERE org_id = $1 AND handle_hash = $2
 `
 
 type GetOtpVerificationByHandleParams struct {
@@ -249,6 +250,7 @@ func (q *Queries) GetOtpVerificationByHandle(ctx context.Context, arg GetOtpVeri
 		&i.MobileDoneAt,
 		&i.ResetTokenHash,
 		&i.ResetTokenExpiresAt,
+		&i.IdentifierKey,
 		&i.FinishedAt,
 		&i.CancelledAt,
 		&i.CancelReason,
@@ -346,20 +348,21 @@ func (q *Queries) InsertOtpProof(ctx context.Context, arg InsertOtpProofParams) 
 
 const insertOtpVerification = `-- name: InsertOtpVerification :one
 
-INSERT INTO otp_verifications (org_id, user_id, purpose, handle_hash, email, mobile, created_at, expires_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $7)
-RETURNING id, org_id, user_id, purpose, handle_hash, email, mobile, email_done_at, mobile_done_at, reset_token_hash, reset_token_expires_at, finished_at, cancelled_at, cancel_reason, created_at, expires_at, updated_at
+INSERT INTO otp_verifications (org_id, user_id, purpose, handle_hash, email, mobile, identifier_key, created_at, expires_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $8)
+RETURNING id, org_id, user_id, purpose, handle_hash, email, mobile, email_done_at, mobile_done_at, reset_token_hash, reset_token_expires_at, identifier_key, finished_at, cancelled_at, cancel_reason, created_at, expires_at, updated_at
 `
 
 type InsertOtpVerificationParams struct {
-	OrgID      uuid.UUID          `json:"org_id"`
-	UserID     uuid.NullUUID      `json:"user_id"`
-	Purpose    string             `json:"purpose"`
-	HandleHash []byte             `json:"handle_hash"`
-	Email      pgtype.Text        `json:"email"`
-	Mobile     pgtype.Text        `json:"mobile"`
-	Now        pgtype.Timestamptz `json:"now"`
-	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	OrgID         uuid.UUID          `json:"org_id"`
+	UserID        uuid.NullUUID      `json:"user_id"`
+	Purpose       string             `json:"purpose"`
+	HandleHash    []byte             `json:"handle_hash"`
+	Email         pgtype.Text        `json:"email"`
+	Mobile        pgtype.Text        `json:"mobile"`
+	IdentifierKey []byte             `json:"identifier_key"`
+	Now           pgtype.Timestamptz `json:"now"`
+	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
 }
 
 // OTP delivery queries (feature 004). Every statement filters by org_id; every instant is a
@@ -373,6 +376,7 @@ func (q *Queries) InsertOtpVerification(ctx context.Context, arg InsertOtpVerifi
 		arg.HandleHash,
 		arg.Email,
 		arg.Mobile,
+		arg.IdentifierKey,
 		arg.Now,
 		arg.ExpiresAt,
 	)
@@ -389,6 +393,7 @@ func (q *Queries) InsertOtpVerification(ctx context.Context, arg InsertOtpVerifi
 		&i.MobileDoneAt,
 		&i.ResetTokenHash,
 		&i.ResetTokenExpiresAt,
+		&i.IdentifierKey,
 		&i.FinishedAt,
 		&i.CancelledAt,
 		&i.CancelReason,
@@ -428,8 +433,49 @@ func (q *Queries) LockLiveOtpCode(ctx context.Context, arg LockLiveOtpCodeParams
 	return i, err
 }
 
+const lockOpenOtpResetFlow = `-- name: LockOpenOtpResetFlow :one
+SELECT id, org_id, user_id, purpose, handle_hash, email, mobile, email_done_at, mobile_done_at, reset_token_hash, reset_token_expires_at, identifier_key, finished_at, cancelled_at, cancel_reason, created_at, expires_at, updated_at FROM otp_verifications
+WHERE org_id = $1 AND purpose = 'password_reset' AND identifier_key = $2
+  AND user_id IS NOT DISTINCT FROM $3::uuid
+  AND cancelled_at IS NULL AND finished_at IS NULL
+FOR UPDATE
+`
+
+type LockOpenOtpResetFlowParams struct {
+	OrgID         uuid.UUID     `json:"org_id"`
+	IdentifierKey []byte        `json:"identifier_key"`
+	UserID        uuid.NullUUID `json:"user_id"`
+}
+
+// The open reset flow of a typed identifier: a user's own, or (user NULL) the decoy of an unknown one.
+func (q *Queries) LockOpenOtpResetFlow(ctx context.Context, arg LockOpenOtpResetFlowParams) (OtpVerification, error) {
+	row := q.db.QueryRow(ctx, lockOpenOtpResetFlow, arg.OrgID, arg.IdentifierKey, arg.UserID)
+	var i OtpVerification
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.UserID,
+		&i.Purpose,
+		&i.HandleHash,
+		&i.Email,
+		&i.Mobile,
+		&i.EmailDoneAt,
+		&i.MobileDoneAt,
+		&i.ResetTokenHash,
+		&i.ResetTokenExpiresAt,
+		&i.IdentifierKey,
+		&i.FinishedAt,
+		&i.CancelledAt,
+		&i.CancelReason,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const lockOpenOtpVerification = `-- name: LockOpenOtpVerification :one
-SELECT id, org_id, user_id, purpose, handle_hash, email, mobile, email_done_at, mobile_done_at, reset_token_hash, reset_token_expires_at, finished_at, cancelled_at, cancel_reason, created_at, expires_at, updated_at FROM otp_verifications
+SELECT id, org_id, user_id, purpose, handle_hash, email, mobile, email_done_at, mobile_done_at, reset_token_hash, reset_token_expires_at, identifier_key, finished_at, cancelled_at, cancel_reason, created_at, expires_at, updated_at FROM otp_verifications
 WHERE org_id = $1 AND user_id = $2 AND purpose = $3 AND cancelled_at IS NULL AND finished_at IS NULL
 FOR UPDATE
 `
@@ -455,6 +501,7 @@ func (q *Queries) LockOpenOtpVerification(ctx context.Context, arg LockOpenOtpVe
 		&i.MobileDoneAt,
 		&i.ResetTokenHash,
 		&i.ResetTokenExpiresAt,
+		&i.IdentifierKey,
 		&i.FinishedAt,
 		&i.CancelledAt,
 		&i.CancelReason,
@@ -489,7 +536,7 @@ func (q *Queries) LockOtpLimit(ctx context.Context, arg LockOtpLimitParams) (Otp
 }
 
 const lockOtpVerification = `-- name: LockOtpVerification :one
-SELECT id, org_id, user_id, purpose, handle_hash, email, mobile, email_done_at, mobile_done_at, reset_token_hash, reset_token_expires_at, finished_at, cancelled_at, cancel_reason, created_at, expires_at, updated_at FROM otp_verifications WHERE id = $1 AND org_id = $2 FOR UPDATE
+SELECT id, org_id, user_id, purpose, handle_hash, email, mobile, email_done_at, mobile_done_at, reset_token_hash, reset_token_expires_at, identifier_key, finished_at, cancelled_at, cancel_reason, created_at, expires_at, updated_at FROM otp_verifications WHERE id = $1 AND org_id = $2 FOR UPDATE
 `
 
 type LockOtpVerificationParams struct {
@@ -512,6 +559,7 @@ func (q *Queries) LockOtpVerification(ctx context.Context, arg LockOtpVerificati
 		&i.MobileDoneAt,
 		&i.ResetTokenHash,
 		&i.ResetTokenExpiresAt,
+		&i.IdentifierKey,
 		&i.FinishedAt,
 		&i.CancelledAt,
 		&i.CancelReason,
@@ -523,7 +571,7 @@ func (q *Queries) LockOtpVerification(ctx context.Context, arg LockOtpVerificati
 }
 
 const lockOtpVerificationByHandle = `-- name: LockOtpVerificationByHandle :one
-SELECT id, org_id, user_id, purpose, handle_hash, email, mobile, email_done_at, mobile_done_at, reset_token_hash, reset_token_expires_at, finished_at, cancelled_at, cancel_reason, created_at, expires_at, updated_at FROM otp_verifications WHERE org_id = $1 AND handle_hash = $2 FOR UPDATE
+SELECT id, org_id, user_id, purpose, handle_hash, email, mobile, email_done_at, mobile_done_at, reset_token_hash, reset_token_expires_at, identifier_key, finished_at, cancelled_at, cancel_reason, created_at, expires_at, updated_at FROM otp_verifications WHERE org_id = $1 AND handle_hash = $2 FOR UPDATE
 `
 
 type LockOtpVerificationByHandleParams struct {
@@ -546,6 +594,7 @@ func (q *Queries) LockOtpVerificationByHandle(ctx context.Context, arg LockOtpVe
 		&i.MobileDoneAt,
 		&i.ResetTokenHash,
 		&i.ResetTokenExpiresAt,
+		&i.IdentifierKey,
 		&i.FinishedAt,
 		&i.CancelledAt,
 		&i.CancelReason,

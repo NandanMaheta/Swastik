@@ -173,6 +173,8 @@ type Querier interface {
 	// append-only; "effective" GMP entries are those no later entry corrects.
 	LockIPOMarket(ctx context.Context, ipoID string) error
 	LockLiveOtpCode(ctx context.Context, arg LockLiveOtpCodeParams) (OtpEmailCode, error)
+	// The open reset flow of a typed identifier: a user's own, or (user NULL) the decoy of an unknown one.
+	LockOpenOtpResetFlow(ctx context.Context, arg LockOpenOtpResetFlowParams) (OtpVerification, error)
 	LockOpenOtpVerification(ctx context.Context, arg LockOpenOtpVerificationParams) (OtpVerification, error)
 	LockOtpLimit(ctx context.Context, arg LockOtpLimitParams) (OtpLimit, error)
 	LockOtpVerification(ctx context.Context, arg LockOtpVerificationParams) (OtpVerification, error)

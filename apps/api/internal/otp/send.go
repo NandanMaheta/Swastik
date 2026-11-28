@@ -145,12 +145,39 @@ func (s *Service) Deliver(ctx context.Context, id uuid.UUID) error {
 	return s.deliverKey(ctx, org, code.OutboxKey)
 }
 
+// deliverAsync starts the immediate delivery of one queued message on its own goroutine and
+// returns a channel closed when it ends. The send runs on a context detached from the request
+// (a client that goes away must not lose a code) and bounded by deliverTimeout; its failure is
+// logged and left to the relay. Nil when there is nothing to deliver.
+func (s *Service) deliverAsync(ctx context.Context, org uuid.UUID, key string) <-chan struct{} {
+	if key == "" {
+		return nil
+	}
+	done := make(chan struct{})
+	dctx := context.WithoutCancel(ctx)
+	go func() {
+		defer close(done)
+		s.deliverLogged(dctx, org, key)
+	}()
+	return done
+}
+
+// deliverLogged delivers one message on a detached, bounded context; a failure is only logged
+// because the outbox row stays as the fallback.
+func (s *Service) deliverLogged(ctx context.Context, org uuid.UUID, key string) {
+	if err := s.deliverKey(ctx, org, key); err != nil {
+		s.log.WarnContext(ctx, "otp: delivering a code failed; the relay will retry", "err", err)
+	}
+}
+
 // deliverKey hands one queued code message to DeliverNow. A failed send is recorded by the outbox
 // as an attempt (the tick relay retries until the code expires); it is not an error here.
 func (s *Service) deliverKey(ctx context.Context, org uuid.UUID, key string) error {
 	if key == "" {
 		return nil
 	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), deliverTimeout)
+	defer cancel()
 	if _, err := s.d.Outbox.DeliverNow(ctx, org, TopicEmailCode, key); err != nil {
 		return fmt.Errorf("otp: deliver code: %w", err)
 	}
@@ -161,8 +188,13 @@ func (s *Service) deliverKey(ctx context.Context, org uuid.UUID, key string) err
 // public caller is answered no earlier than the response floor, whatever the outcome (I-3).
 func (s *Service) Resend(ctx context.Context, c Caller, handle string) (res ResendResult, err error) {
 	start := s.now()
+	var inflight <-chan struct{}
 	if c.UserID == nil {
-		defer func() { s.wait(ctx, start.Add(responseFloor)) }()
+		// The floor and the send run side by side; the reply never waits for a slow send.
+		defer func() {
+			s.wait(ctx, start.Add(responseFloor))
+			s.awaitSend(inflight)
+		}()
 	}
 	org, err := s.orgID(ctx)
 	if err != nil {
@@ -182,12 +214,7 @@ func (s *Service) Resend(ctx context.Context, c Caller, handle string) (res Rese
 			return nil
 		}
 		now := s.now()
-		keys := []LimitKey{s.limitKey(ScopeSendContact, ver.Email), s.limitKey(ScopeSendIP, c.IP)}
-		if decoy {
-			keys[0] = s.limitKey(ScopeSendContact, "decoy:"+ver.ID.String())
-		} else {
-			keys = append(keys, s.limitKey(ScopeSendUser, ver.UserID.String()))
-		}
+		keys := s.resendKeys(ver, c.IP, decoy)
 		refusal, err := s.applyLimits(ctx, org, keys, now)
 		if err != nil {
 			return err
@@ -215,10 +242,26 @@ func (s *Service) Resend(ctx context.Context, c Caller, handle string) (res Rese
 	if outcome != nil {
 		return ResendResult{}, outcome
 	}
-	if err := s.deliverKey(ctx, org, key); err != nil {
-		s.log.WarnContext(ctx, "otp: delivering a code failed; the relay will retry", "err", err)
+	if c.UserID == nil {
+		inflight = s.deliverAsync(ctx, org, key)
+	} else {
+		s.deliverLogged(ctx, org, key)
 	}
 	return res, nil
+}
+
+// resendKeys are the limit rows of one resend. A password-reset flow, real or decoy, is limited
+// on the digest of the identifier its stranger typed (the row its start used), never on the
+// account's email or user id: a limit shared by a mobile and an email would link them (D-07).
+func (s *Service) resendKeys(ver VerificationRow, ip string, decoy bool) []LimitKey {
+	ipKey := s.limitKey(ScopeSendIP, ip)
+	switch {
+	case ver.Purpose == PurposePasswordReset && len(ver.IdentifierKey) > 0:
+		return []LimitKey{{Scope: ScopeSendContact, Subject: ver.IdentifierKey}, ipKey}
+	case decoy:
+		return []LimitKey{s.limitKey(ScopeSendContact, "decoy:"+ver.ID.String()), ipKey}
+	}
+	return []LimitKey{s.limitKey(ScopeSendContact, ver.Email), ipKey, s.limitKey(ScopeSendUser, ver.UserID.String())}
 }
 
 // lockFlow locks the verification behind handle for a caller: absent, another user's, a flow of a

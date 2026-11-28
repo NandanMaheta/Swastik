@@ -30,8 +30,9 @@ var _ Store = (*pgStore)(nil)
 
 // Constraint names of migration 00006 that carry a domain meaning.
 const (
-	constraintOpenFlow = "otp_verifications_open_uq"
-	constraintLiveCode = "otp_email_codes_live_uq"
+	constraintOpenFlow  = "otp_verifications_open_uq"
+	constraintOpenDecoy = "otp_verifications_open_decoy_uq"
+	constraintLiveCode  = "otp_email_codes_live_uq"
 )
 
 func (s *pgStore) q(ctx context.Context) *dbgen.Queries { return dbgen.New(s.txr.Conn(ctx)) }
@@ -65,7 +66,7 @@ func verificationRow(v dbgen.OtpVerification) VerificationRow {
 		ID: v.ID, OrgID: v.OrgID, UserID: v.UserID.UUID, Purpose: Purpose(v.Purpose),
 		Email: v.Email.String, Mobile: v.Mobile.String,
 		EmailDoneAt: db.TimePtr(v.EmailDoneAt), MobileDoneAt: db.TimePtr(v.MobileDoneAt),
-		ResetTokenHash: v.ResetTokenHash, ResetTokenExpiresAt: db.TimePtr(v.ResetTokenExpiresAt),
+		IdentifierKey: v.IdentifierKey, ResetTokenHash: v.ResetTokenHash, ResetTokenExpiresAt: db.TimePtr(v.ResetTokenExpiresAt),
 		FinishedAt: db.TimePtr(v.FinishedAt), CancelledAt: db.TimePtr(v.CancelledAt), CancelReason: v.CancelReason.String,
 		CreatedAt: db.Time(v.CreatedAt), ExpiresAt: db.Time(v.ExpiresAt), UpdatedAt: db.Time(v.UpdatedAt),
 	}
@@ -106,9 +107,9 @@ func affected(n int64, err error, op string) error {
 func (s *pgStore) InsertVerification(ctx context.Context, in NewVerification) (VerificationRow, error) {
 	v, err := s.q(ctx).InsertOtpVerification(ctx, dbgen.InsertOtpVerificationParams{
 		OrgID: in.OrgID, UserID: nullUUID(in.UserID), Purpose: string(in.Purpose), HandleHash: in.HandleHash,
-		Email: nullText(in.Email), Mobile: nullText(in.Mobile), Now: db.Timestamptz(in.Now), ExpiresAt: db.Timestamptz(in.ExpiresAt),
+		Email: nullText(in.Email), Mobile: nullText(in.Mobile), IdentifierKey: in.IdentifierKey, Now: db.Timestamptz(in.Now), ExpiresAt: db.Timestamptz(in.ExpiresAt),
 	})
-	if uniqueViolation(err) == constraintOpenFlow {
+	if c := uniqueViolation(err); c == constraintOpenFlow || c == constraintOpenDecoy {
 		return VerificationRow{}, ErrOpenFlowExists
 	}
 	if err != nil {
@@ -152,6 +153,15 @@ func (s *pgStore) LockOpenVerification(ctx context.Context, org, user uuid.UUID,
 	}
 	v, err := q.LockOpenOtpVerification(ctx, dbgen.LockOpenOtpVerificationParams{OrgID: org, UserID: nullUUID(user), Purpose: string(p)})
 	return oneVerification(v, err, "lock open verification")
+}
+
+func (s *pgStore) LockOpenResetFlow(ctx context.Context, org, user uuid.UUID, identifierKey []byte) (VerificationRow, error) {
+	q, err := s.qTx(ctx)
+	if err != nil {
+		return VerificationRow{}, err
+	}
+	v, err := q.LockOpenOtpResetFlow(ctx, dbgen.LockOpenOtpResetFlowParams{OrgID: org, IdentifierKey: identifierKey, UserID: nullUUID(user)})
+	return oneVerification(v, err, "lock open reset flow")
 }
 
 func (s *pgStore) MarkContactDone(ctx context.Context, org, id uuid.UUID, c ContactKind, now time.Time) error {

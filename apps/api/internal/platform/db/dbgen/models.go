@@ -213,6 +213,7 @@ type OtpVerification struct {
 	MobileDoneAt        pgtype.Timestamptz `json:"mobile_done_at"`
 	ResetTokenHash      []byte             `json:"reset_token_hash"`
 	ResetTokenExpiresAt pgtype.Timestamptz `json:"reset_token_expires_at"`
+	IdentifierKey       []byte             `json:"identifier_key"`
 	FinishedAt          pgtype.Timestamptz `json:"finished_at"`
 	CancelledAt         pgtype.Timestamptz `json:"cancelled_at"`
 	CancelReason        pgtype.Text        `json:"cancel_reason"`

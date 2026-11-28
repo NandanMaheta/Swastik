@@ -31,6 +31,9 @@ var (
 	ErrInvalid = errors.New("firebaseauth: invalid token")
 	// ErrDisabled is returned when no Firebase project is configured.
 	ErrDisabled = errors.New("firebaseauth: not configured")
+	// ErrUnavailable is a key set that could not be fetched (HTTP error, timeout, unreadable
+	// body). The token was not judged: the caller answers 503 and counts no refusal.
+	ErrUnavailable = errors.New("firebaseauth: key set unavailable")
 )
 
 const (
@@ -38,6 +41,8 @@ const (
 	jwksFirebase = "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"
 	// maxFutureIAT is the clock skew tolerated for iat.
 	maxFutureIAT = 30 * time.Second
+	// fetchTimeout bounds one key-set request when the caller supplies no HTTP client.
+	fetchTimeout = 5 * time.Second
 )
 
 // Option customises New.
@@ -69,17 +74,37 @@ func New(ctx context.Context, projectID string, now func() time.Time, opts ...Op
 	for _, o := range opts {
 		o(&cfg)
 	}
-	if cfg.client != nil {
-		ctx = oidc.ClientContext(ctx, cfg.client)
+	if cfg.client == nil {
+		cfg.client = &http.Client{Timeout: fetchTimeout}
 	}
+	ctx = oidc.ClientContext(ctx, cfg.client)
 	return &verifier{
 		now: now,
-		verifier: oidc.NewVerifier(issuerPrefix+projectID, oidc.NewRemoteKeySet(ctx, cfg.jwksURL), &oidc.Config{
+		verifier: oidc.NewVerifier(issuerPrefix+projectID, outageKeySet{inner: oidc.NewRemoteKeySet(ctx, cfg.jwksURL)}, &oidc.Config{
 			ClientID:             projectID,
 			SupportedSigningAlgs: []string{oidc.RS256},
 			Now:                  now,
 		}),
 	}
+}
+
+// outageKeySet tells a key set that cannot be fetched from a signature that does not verify.
+// go-oidc flattens errors to text, so the outage is noted in a per-call recorder in the context.
+type outageKeySet struct{ inner oidc.KeySet }
+
+type outageKey struct{}
+
+func (k outageKeySet) VerifySignature(ctx context.Context, jwt string) ([]byte, error) {
+	payload, err := k.inner.VerifySignature(ctx, jwt)
+	if err != nil && strings.HasPrefix(err.Error(), "fetching keys") {
+		if rec, ok := ctx.Value(outageKey{}).(*bool); ok {
+			*rec = true
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("key set: %w", err)
+	}
+	return payload, nil
 }
 
 func (v *verifier) Verify(ctx context.Context, rawIDToken string) (Proof, error) {
@@ -89,8 +114,12 @@ func (v *verifier) Verify(ctx context.Context, rawIDToken string) (Proof, error)
 	if !hasKeyID(rawIDToken) {
 		return Proof{}, fmt.Errorf("%w: missing key id", ErrInvalid)
 	}
-	tok, err := v.verifier.Verify(ctx, rawIDToken)
+	var outage bool
+	tok, err := v.verifier.Verify(context.WithValue(ctx, outageKey{}, &outage), rawIDToken)
 	if err != nil {
+		if outage {
+			return Proof{}, ErrUnavailable
+		}
 		// go-oidc errors name claims and algorithms, never the token itself.
 		return Proof{}, fmt.Errorf("%w: %w", ErrInvalid, err)
 	}

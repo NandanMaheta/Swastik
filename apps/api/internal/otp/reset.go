@@ -16,13 +16,22 @@ import (
 // for known and unknown identifiers (decoys, D-06, D-07): an account that cannot reset (unknown,
 // not an active client, an admin) gets a decoy flow, and every call answers no earlier than the
 // response floor. Only a malformed identifier is refused, before anything is looked up.
+//
+// Everything a stranger can observe is keyed on what the stranger typed, never on the account: the
+// flow a later start supersedes, the cooldown and the hourly limit all use a keyed digest of the
+// normalised typed identifier, for a real flow and a decoy alike. The email is sent while the floor
+// runs and the reply never waits for it (SC-004).
 func (s *Service) StartReset(ctx context.Context, ip, identifier string) (ResetStarted, error) {
 	start := s.now()
 	_, normalised, err := auth.NormalizeIdentifier(identifier)
 	if err != nil {
 		return ResetStarted{}, auth.ErrInvalidIdentifier
 	}
-	defer func() { s.wait(ctx, start.Add(responseFloor)) }()
+	var inflight <-chan struct{}
+	defer func() {
+		s.wait(ctx, start.Add(responseFloor))
+		s.awaitSend(inflight)
+	}()
 	org, err := s.orgID(ctx)
 	if err != nil {
 		return ResetStarted{}, err
@@ -32,31 +41,25 @@ func (s *Service) StartReset(ctx context.Context, ip, identifier string) (ResetS
 		return ResetStarted{}, err
 	}
 	eligible := err == nil && user.OrgID == org && user.Role == roleClient && user.Status == auth.StatusActive
+	userID := uuid.Nil
+	if eligible {
+		userID = user.ID
+	}
+	typed := s.typedKey(normalised)
 
 	var out ResetStarted
 	var outcome error
 	var key string
 	err = s.d.Tx.InTx(ctx, func(ctx context.Context) error {
 		now := s.now()
-		var err error
-		contact, userID := normalised, uuid.Nil
-		if eligible {
-			contact, userID = user.Email, user.ID
+		// The open flow of this typed identifier is locked first, as Resend does (one lock order:
+		// flow, then limits). A decoy is held and superseded exactly as a real flow is.
+		old, err := s.st.LockOpenResetFlow(ctx, org, userID, typed)
+		hasOld := err == nil
+		if err != nil && !errors.Is(err, ErrNotFound) {
+			return err
 		}
-		// The open flow is locked first, as Resend does (one lock order: flow, then limits).
-		var old VerificationRow
-		hasOld := false
-		if eligible {
-			old, err = s.st.LockOpenVerification(ctx, org, userID, PurposePasswordReset)
-			if hasOld = err == nil; err != nil && !errors.Is(err, ErrNotFound) {
-				return err
-			}
-		}
-		keys := []LimitKey{s.limitKey(ScopeSendContact, contact), s.limitKey(ScopeSendIP, ip)}
-		if eligible {
-			keys = append(keys, s.limitKey(ScopeSendUser, userID.String()))
-		}
-		refusal, err := s.applyLimits(ctx, org, keys, now)
+		refusal, err := s.applyLimits(ctx, org, []LimitKey{{Scope: ScopeSendContact, Subject: typed}, s.limitKey(ScopeSendIP, ip)}, now)
 		if err != nil {
 			return err
 		}
@@ -74,7 +77,7 @@ func (s *Service) StartReset(ctx context.Context, ip, identifier string) (ResetS
 			return err
 		}
 		nv := NewVerification{OrgID: org, UserID: userID, Purpose: PurposePasswordReset, HandleHash: hash,
-			Now: now, ExpiresAt: now.Add(VerificationTTL)}
+			IdentifierKey: typed, Now: now, ExpiresAt: now.Add(VerificationTTL)}
 		if eligible {
 			nv.Email = user.Email
 		}
@@ -82,14 +85,7 @@ func (s *Service) StartReset(ctx context.Context, ip, identifier string) (ResetS
 		if err != nil {
 			return err
 		}
-		to := nv.Email
-		if !eligible {
-			// The decoy's own send row, so its resends meet the same cooldown and hourly limit.
-			if _, err := s.applyLimits(ctx, org, []LimitKey{s.limitKey(ScopeSendContact, "decoy:"+ver.ID.String())}, now); err != nil {
-				return err
-			}
-		}
-		code, err := s.issueCode(ctx, ver, to, userID)
+		code, err := s.issueCode(ctx, ver, nv.Email, userID)
 		if err != nil {
 			return err
 		}
@@ -110,10 +106,15 @@ func (s *Service) StartReset(ctx context.Context, ip, identifier string) (ResetS
 	if outcome != nil {
 		return ResetStarted{}, outcome
 	}
-	if err := s.deliverKey(ctx, org, key); err != nil {
-		s.log.WarnContext(ctx, "otp: delivering a code failed; the relay will retry", "err", err)
-	}
+	inflight = s.deliverAsync(ctx, org, key)
 	return out, nil
+}
+
+// typedKey is the keyed digest of a normalised typed identifier: the subject of the send limit of
+// a reset and the identifier_key of its flow. A distinct HMAC domain keeps it apart from every
+// other limit row.
+func (s *Service) typedKey(normalised string) []byte {
+	return s.d.Digests.Index("otp.reset.typed", []byte(normalised))
 }
 
 // CompleteReset sets a new password once the reset token proves the code was entered. One answer,
@@ -144,6 +145,20 @@ func (s *Service) CompleteReset(ctx context.Context, ip, handle, resetToken, new
 			return nil
 		}
 		actor := clientActor(ver.UserID)
+		// The code was proved while the account could reset; it may not be able to any more. The
+		// answer is the same one, and the refusal leaves its trace in the audit log (FR-010).
+		reason, err := s.resetBlocked(ctx, org, ver, now)
+		if err != nil {
+			return err
+		}
+		if reason != "" {
+			outcome = ErrResetTokenInvalid
+			if err := s.endFlow(ctx, ver, EndCancelled, CancelCancelled); err != nil {
+				return err
+			}
+			return s.record(ctx, org, actor, ver.UserID, "otp.reset.refused", auditAfter{
+				VerificationID: ver.ID.String(), Purpose: string(PurposePasswordReset), Outcome: "refused", Reason: reason, IP: ip})
+		}
 		// ResetPassword joins this transaction: a policy error rolls everything back.
 		if err := s.d.Accounts.ResetPassword(ctx, ver.UserID, newPassword, actor); err != nil {
 			return err
@@ -158,6 +173,24 @@ func (s *Service) CompleteReset(ctx context.Context, ip, handle, resetToken, new
 		return err
 	}
 	return outcome
+}
+
+// resetBlocked says why a verified reset may no longer set a password ("" when it may): the
+// verification passed its 24 hour expiry, or the user is no longer an active client of the org.
+func (s *Service) resetBlocked(ctx context.Context, org uuid.UUID, ver VerificationRow, now time.Time) (string, error) {
+	if !now.Before(ver.ExpiresAt) {
+		return "flow_expired", nil
+	}
+	user, err := s.d.Accounts.GetUser(ctx, ver.UserID)
+	switch {
+	case errors.Is(err, auth.ErrUserNotFound):
+		return "not_eligible", nil
+	case err != nil:
+		return "", err
+	case user.OrgID != org || user.Role != roleClient || user.Status != auth.StatusActive:
+		return "not_eligible", nil
+	}
+	return "", nil
 }
 
 // tokenValid reports whether the token is the unspent, unexpired permission of a real reset flow.
