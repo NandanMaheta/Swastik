@@ -82,7 +82,7 @@
   - Done command: `cd apps/api && go test -race ./internal/otp/... ./cmd/swastik/... && make -C ../.. lint-go && cd ../.. && pnpm --filter @swastik/api-client generate && pnpm turbo run typecheck test --filter @swastik/domain --filter @swastik/api-client && bash scripts/check-lint-boundaries.sh`
 - [ ] S18 [P] **test-engineer**: Infra tests: infra/bootstrap/test.sh cases for --with-otp (hidden prompt for Resend key, generated 32-byte HMAC key, dry run prints names only) and --rotate-otp-hmac; tofu tftest: otp_enabled adds RESEND_API_KEY/OTP_HMAC_KEY secret refs, OTP_EMAIL_FROM/FIREBASE_PROJECT_ID plain env, IAM accessor, nothing when disabled.
   - Depends on: S01 | Rules: none (mechanism) | Gates: none | ~300 lines | expect red
-  - Done command: `bash infra/bootstrap/test.sh && cd infra/tofu/modules/env && tofu init -backend=false -input=false >/dev/null && tofu test`
+  - Done command: `bash infra/bootstrap/test.sh && tofu -chdir=infra/tofu/modules/env init -backend=false -input=false >/dev/null && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env`
 - [ ] S19 **ops**: OWNER GATE G-SECRETS: infra/bootstrap/secrets.sh --with-otp/--rotate-otp-hmac, tofu variables/secrets/cloudrun + envs tfvars (otp_enabled false until the owner creates the secrets), runbook (Firebase console state, Resend cap, rotation, Q3 real-device SMS test), handover + modules.md status.
   - Depends on: S18 | Rules: none (mechanism) | Gates: G-SECRETS | ~260 lines | expect green
-  - Done command: `bash infra/bootstrap/test.sh && cd infra/tofu/modules/env && tofu init -backend=false -input=false >/dev/null && tofu test`
+  - Done command: `bash infra/bootstrap/test.sh && tofu -chdir=infra/tofu/modules/env init -backend=false -input=false >/dev/null && tofu -chdir=infra/tofu/modules/env test -test-directory=../../tests/env`
