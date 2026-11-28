@@ -2,7 +2,7 @@
 
 Read this first in every new conductor session (with `CLAUDE.md` and `docs/engineering/delivery-pipeline.md`). Keep it short and current: update it whenever a feature merges or a decision is made.
 
-_Last updated: 2026-11-26_
+_Last updated: 2026-11-27_
 
 ## Owner and setup
 
@@ -33,14 +33,15 @@ _Last updated: 2026-11-26_
 
 ## Feature status
 
-| Feature                | State                                                                                            |
-| ---------------------- | ------------------------------------------------------------------------------------------------ |
-| 001 Platform           | done                                                                                             |
-| 002 Scheduler + outbox | done (PR #9)                                                                                     |
-| 003 Auth core          | done (PR #10)                                                                                    |
-| 008 IPO catalogue      | done (PR #12)                                                                                    |
-| 027 Staging hosting    | done (PR #11); owner is following `docs/engineering/staging-setup-guide.md` to make staging live |
-| Others                 | not started; see `docs/product/modules.md`                                                       |
+| Feature                | State                                                                                                  |
+| ---------------------- | ------------------------------------------------------------------------------------------------------ |
+| 001 Platform           | done                                                                                                   |
+| 002 Scheduler + outbox | done (PR #9)                                                                                           |
+| 003 Auth core          | done (PR #10)                                                                                          |
+| 008 IPO catalogue      | done (PR #12)                                                                                          |
+| 004 OTP delivery       | review (branch `feat/004-otp-delivery`); code and review fixes in, PR and owner approval (Tier A) next |
+| 027 Staging hosting    | done (PR #11); owner is following `docs/engineering/staging-setup-guide.md` to make staging live       |
+| Others                 | not started; see `docs/product/modules.md`                                                             |
 
 Small follow-ups:
 
@@ -50,5 +51,8 @@ Small follow-ups:
 ## Next steps
 
 1. Owner: finish the staging setup guide. Then create the first admin with `swastik admin create`.
-2. Next features, which can run in parallel: 004 OTP delivery (Tier A, unblocks 005 registration and 024 client auth) and 009 GMP and expected profit (Tier B).
+2. 004 OTP delivery is in review (Tier A, unblocks 005 registration and 024 client auth); 009 GMP and expected profit is also in review.
+   - New secrets, names only: `RESEND_API_KEY` (secret `resend-api-key-<env>`) and `OTP_HMAC_KEY` (secret `otp-hmac-key-<env>`). Run `bash infra/bootstrap/secrets.sh <env> --with-otp`; it asks for the Resend key (hidden) and generates the HMAC key. The HMAC key must differ from `BLIND_INDEX_KEY` and every PII key (the API refuses to start otherwise). Plain settings: `OTP_EMAIL_FROM`, `FIREBASE_PROJECT_ID`. All four, or none.
+   - Owner steps after merge: verify the Resend domain, create the secrets, set `otp_enabled = true` in the env tfvars through an infra PR, then run the real-device SMS test on staging before 024 (Q3; see "OTP delivery" in `docs/engineering/runbook.md`).
+   - Migration 00006 is not on `stage` yet, so it was edited in place for the review fixes (typed-identifier key on reset flows, one-way `sensitive_payload`); no new migration.
 3. Then 005, 006 and 012 (clients, family accounts, apply tasks), and the admin shell (022) once 005 is done.

@@ -63,7 +63,7 @@ func loadAuth(appEnv string) (AuthConfig, error) {
 	jwtKeys, jwtActive := os.Getenv("JWT_SIGNING_KEYS"), os.Getenv("JWT_ACTIVE_KID")
 	switch {
 	case jwtKeys == "" && jwtActive == "" && !strict:
-		seed, err := randomBytes(keyBytes)
+		seed, err := randomKey()
 		if err != nil {
 			return AuthConfig{}, err
 		}
@@ -88,7 +88,7 @@ func loadAuth(appEnv string) (AuthConfig, error) {
 	var piiMaterial map[uint16][]byte
 	switch {
 	case piiKeys == "" && piiActive == "" && !strict:
-		key, err := randomBytes(keyBytes)
+		key, err := randomKey()
 		if err != nil {
 			return AuthConfig{}, err
 		}
@@ -124,7 +124,7 @@ func loadAuth(appEnv string) (AuthConfig, error) {
 	var blindKey []byte
 	if blindRaw == "" && !strict {
 		var err error
-		if blindKey, err = randomBytes(keyBytes); err != nil {
+		if blindKey, err = randomKey(); err != nil {
 			return AuthConfig{}, err
 		}
 		ephemeral = append(ephemeral, "BLIND_INDEX_KEY")
@@ -289,8 +289,8 @@ func intVar(name string, fallback, lo, hi int) (int, error) {
 	return n, nil
 }
 
-func randomBytes(n int) ([]byte, error) {
-	b := make([]byte, n)
+func randomKey() ([]byte, error) {
+	b := make([]byte, keyBytes)
 	if _, err := rand.Read(b); err != nil {
 		return nil, fmt.Errorf("random key: %w", err)
 	}

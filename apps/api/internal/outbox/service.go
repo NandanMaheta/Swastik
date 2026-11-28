@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/clock"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/db"
@@ -40,6 +41,9 @@ type Message struct {
 	ExemptFromQuietHours bool // zero value respects quiet hours (FR-031)
 	ExpiresAt            *time.Time
 	MaxAttempts          int // 0 = the topic default, else the global default
+	// SensitivePayload marks a payload that carries a secret (an OTP code, sealed): it is erased
+	// when the message reaches sent, dead, withdrawn or expired, and admin retry is refused.
+	SensitivePayload bool
 }
 
 // Envelope is what a Sender receives.
@@ -117,6 +121,35 @@ func (s *Service) registrationFor(topic string) (registration, bool) {
 	return r, ok
 }
 
+// DeliverNow sends the one pending, available, unexpired message (org, topic, key) during the
+// caller's request, with the same fenced claim as the relay. It returns false when the message is
+// absent, claimed elsewhere, expired or the send failed (a failure is recorded as a normal failed
+// attempt). It refuses to run inside a transaction.
+func (s *Service) DeliverNow(ctx context.Context, org uuid.UUID, topic, key string) (sent bool, err error) {
+	if _, err := db.MustTx(ctx); err == nil {
+		return false, errors.New("outbox: DeliverNow must not run inside a transaction")
+	}
+	q := dbgen.New(s.txr.Conn(ctx))
+	now := s.now()
+	msg, err := q.ClaimMessageByKey(ctx, dbgen.ClaimMessageByKeyParams{
+		OrgID: org, Topic: topic, DedupeKey: key,
+		Now:         db.Timestamptz(now),
+		LockedUntil: db.Timestamptz(now.Add(s.opts.Lease)),
+		LockedBy:    db.Text(s.opts.Instance),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("outbox: claim %s: %w", topic, err)
+	}
+	var sum RelaySummary
+	if err := s.deliver(ctx, q, msg, &sum); err != nil {
+		return false, err
+	}
+	return sum.Sent == 1, nil
+}
+
 // Add records m in the caller's transaction, so it commits or vanishes with the business change.
 // A message whose (org, topic, dedupe key) was already recorded, in any state, is ignored and
 // Add returns (false, nil). Invalid input returns ErrInvalid before any SQL runs.
@@ -147,6 +180,7 @@ func (s *Service) Add(ctx context.Context, m Message) (bool, error) {
 		Subject:            m.Subject,
 		DedupeKey:          m.DedupeKey,
 		Payload:            payload,
+		SensitivePayload:   m.SensitivePayload,
 		RespectsQuietHours: respects,
 		AvailableAt:        db.Timestamptz(availableAt),
 		ExpiresAt:          db.NullTimestamptz(m.ExpiresAt),

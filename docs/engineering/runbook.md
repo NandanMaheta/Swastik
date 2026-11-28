@@ -7,7 +7,7 @@ Names: [contracts/deployment.md](../../specs/027-staging-hosting/contracts/deplo
 1. **Google Cloud Shell** (signed in as the owner, project `swastik-4fcc9`):
    - `bash infra/bootstrap/bootstrap.sh --dry-run` to read what it will do, then without `--dry-run`. It turns on the needed APIs, creates the state bucket, the `github` identity pool, and the `tofu` SA.
    - Billing → Budgets: create a budget of ₹100 with alerts at 1 % (₹1), 50 % and 100 %.
-2. **Secrets**: `bash infra/bootstrap/secrets.sh staging`. It asks for the Supabase session-pooler URL for `swastik_app` (hidden input) and creates that secret plus the proxy key (`proxy-shared-secrets-<env>`). The proxy key is also sent to the Cloudflare Worker with wrangler (set `CLOUDFLARE_API_TOKEN` first); the Worker only exists after the first Infra apply (step 6), so **run `secrets.sh` a second time after that apply**: it re-sends the stored key without creating a new version (`--push-proxy` forces it). Once feature 003 is deployed, run it again with `--with-auth` (creates the JWT, PII and blind-index keys itself; existing secrets are left alone). To rotate: `--rotate` appends a new JWT/PII key to the ring, then set `jwt_active_kid` / `pii_active_key_id` in tfvars via the Infra workflow and remove old keys only after sessions/data are migrated; `--rotate-blind-index` needs a reindex. Nothing is printed.
+2. **Secrets**: `bash infra/bootstrap/secrets.sh staging`. It asks for the Supabase session-pooler URL for `swastik_app` (hidden input) and creates that secret plus the proxy key (`proxy-shared-secrets-<env>`). The proxy key is also sent to the Cloudflare Worker with wrangler (set `CLOUDFLARE_API_TOKEN` first); the Worker only exists after the first Infra apply (step 6), so **run `secrets.sh` a second time after that apply**: it re-sends the stored key without creating a new version (`--push-proxy` forces it). Once feature 003 is deployed, run it again with `--with-auth` (creates the JWT, PII and blind-index keys itself; existing secrets are left alone). To rotate: `--rotate` appends a new JWT/PII key to the ring, then set `jwt_active_kid` / `pii_active_key_id` in tfvars via the Infra workflow and remove old keys only after sessions/data are migrated; `--rotate-blind-index` needs a reindex. For OTP delivery (004) run it with `--with-otp` (see "OTP delivery" below). Nothing is printed.
 3. **Supabase** (staging project, then production; run `roles.sql` after every migration batch that adds tables so grants stay complete):
    - Settings → API → switch off the Data API.
    - Cloud Shell: `psql "<postgres session-pooler URL>" -f infra/supabase/roles.sql`, then `\password swastik_app` (and `\password swastik_backup` on production).
@@ -32,6 +32,16 @@ Names: [contracts/deployment.md](../../specs/027-staging-hosting/contracts/deplo
 ## Key rotation
 
 Follow 003's quickstart; secret names carry the environment suffix. Add a new secret version with `gcloud secrets versions add`, then change the active id in tfvars through an infra PR.
+
+## OTP delivery (feature 004)
+
+Sign-up codes and password-reset codes go by email (Resend); the mobile number is proved by Firebase phone sign-in. Both are off until the owner has done the steps below, and the API then answers `otp.not_configured`.
+
+1. **Resend**: the domain `mail.swastikapp.co.in` is verified in Resend and an API key exists. The free plan allows 100 emails a day shared by every code, reset and notice; the API counts sent, failed and limit-refused emails per day (`otp_daily_counts`) for the ops digest. A code that Resend refuses is retried by the tick for at most 10 minutes (3 attempts), then the person asks for a new one.
+2. **Secrets**: `bash infra/bootstrap/secrets.sh <env> --with-otp`. It asks for the database URL and then the Resend key (both hidden) and creates `otp-hmac-key-<env>` itself. Then set `otp_enabled = true` in `infra/tofu/envs/<env>/terraform.tfvars` through an infra PR and run the Infra workflow. Rotating the HMAC key: `secrets.sh <env> --rotate-otp-hmac` (open codes stop working and the limit counters reset; people ask for a new code). The Resend key is rotated in Resend, then added as a new version of `resend-api-key-<env>`.
+3. **Firebase console** (project `swastik-4fcc9`, Authentication → Phone): SMS region policy allows India only; reCAPTCHA protection on; App Check is deferred; add test phone numbers for staging and CI. The API checks the ID token against this project only.
+4. **Real-device test before the client app (024) depends on it** (open question Q3): on staging, sign up with a real number on Jio, Airtel and Vi, on Android and on the iPhone home-screen app, and time the email code and the SMS. If SMS delivery fails on a network, add an Indian provider as a separate feature; there is no SMS fallback now. Record the result here.
+5. **After a rollback or a key change**: a code that was queued but not yet sent is sealed with the PII key ring; it opens only with the same ring, so keep old PII keys until open codes (10 minutes) have expired.
 
 ## Checks that run without cloud access
 

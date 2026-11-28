@@ -185,6 +185,22 @@ Everything is in github.com/NandanMaheta/Swastik → **Settings**.
 4. **Uptime alert.** Create a free account at uptimerobot.com. Add an HTTPS monitor on `https://api-staging.swastikapp.co.in/healthz`, checking every 5 minutes, with alerts to your email.
 5. Tell me it's done, with the Postgres version from Part 1. I'll then create your first admin account with you (`swastik admin create`), and mark staging as live in the handover.
 
+## Part 8: Sign-up codes by email and SMS (feature 004, about 15 min)
+
+Do this once feature 004 is deployed. Until then the API answers that sign-up verification is not available, which is safe.
+
+1. **Resend.** In resend.com, check that the domain `mail.swastikapp.co.in` shows as verified, then create an API key (Sending access) and keep the tab open for the next step. The free plan sends 100 emails a day.
+2. **Firebase.** In the Firebase console for project `swastik-4fcc9`, go to Authentication → Sign-in method and make sure **Phone** is on. Under Settings → SMS region policy, allow **India** only. Add a couple of test phone numbers for staging.
+3. **Secrets.** In Cloud Shell (inside `Swastik`, with `CLOUDFLARE_API_TOKEN` still set if you want the Worker check to run), run:
+
+   ```bash
+   bash infra/bootstrap/secrets.sh staging --with-otp
+   ```
+
+   Paste the **app URL** when asked, then paste the **Resend key** at the second prompt. Both stay hidden and nothing is printed. The script creates the other key (the one that protects the codes) itself and leaves everything that already exists alone.
+4. **Switch it on.** I will open a small change that sets `otp_enabled = true` for staging. Merge it, then run Actions → **Infra** → target **`staging`** and approve.
+5. **Try it on a real phone** (Android and iPhone home-screen app) once the client app screens exist, and tell me how long the email and the SMS took.
+
 ## If something fails
 
 - Copy the **name of the failed step** and the **red error lines** from the Actions log, or the Cloud Shell output, and send them to me. Error text never contains secret values. If you think it might, remove the value first.
@@ -198,4 +214,5 @@ Everything is in github.com/NandanMaheta/Swastik → **Settings**.
 | Zone ID, Account ID                | Cloudflare overview | `infra` and `staging` vars          |
 | Sentry DSN                         | Sentry client keys  | `infra` var                         |
 | Your email                         | you                 | `infra` var `ACCESS_ALLOWED_EMAILS` |
+| Resend API key                     | Resend dashboard    | `secrets.sh --with-otp` prompt only |
 | Deploy SA, service and Pages names | this guide          | `staging` vars                      |

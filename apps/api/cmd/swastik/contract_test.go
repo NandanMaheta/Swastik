@@ -33,7 +33,12 @@ import (
 )
 
 // publicOperations is the allowlist of operations that need no credential (FR-030).
-var publicOperations = []string{"auth-refresh", "auth-sign-in", "health-live", "health-ready"}
+// Feature 004 adds the six handle-keyed sign-up and password-reset operations (plan "API operations").
+var publicOperations = []string{
+	"auth-refresh", "auth-sign-in", "health-live", "health-ready",
+	"password-reset-complete", "password-reset-start",
+	"verification-resend", "verification-status", "verification-verify-email", "verification-verify-mobile",
+}
 
 // authOperations is the contract of contracts/openapi-auth.yaml: id, method, path, security scheme
 // and the roles in the requirement.

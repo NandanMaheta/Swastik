@@ -406,6 +406,124 @@ else
 	skip_case pgx-in-auth "internal/auth missing or pgx not buildable"
 fi
 
+# --- feature 004 (internal/otp, platform/email, platform/firebaseauth) boundaries ---------------
+# Rules to add in apps/api/.golangci.yml (plan "depguard"): platform-is-a-leaf and
+# scheduler-does-not-know-owners deny internal/otp; auth must not import otp (otp calls auth, never
+# the reverse); otp-boundaries is a strict allow-list for non-test files of internal/otp;
+# otp-pgx-only-in-store keeps pgx in store.go; oidc-only-in-verifiers allows platform/firebaseauth.
+if has_pkg internal/otp; then
+	add_case platform-imports-otp violation depguard "internal/platform/zzviol_otp/v.go" <<EOF
+package zzviol
+
+import _ "$MOD/internal/otp"
+EOF
+	if has_pkg internal/platform/firebaseauth; then
+		add_case firebaseauth-imports-otp violation depguard "internal/platform/firebaseauth/zzviol_otp/v.go" <<EOF
+package zzviol
+
+import _ "$MOD/internal/otp"
+EOF
+		add_case firebaseauth-imports-auth violation depguard "internal/platform/firebaseauth/zzviol_auth/v.go" <<EOF
+package zzviol
+
+import _ "$MOD/internal/auth"
+EOF
+	fi
+	if has_pkg internal/platform/email; then
+		add_case email-imports-otp violation depguard "internal/platform/email/zzviol_otp/v.go" <<EOF
+package zzviol
+
+import _ "$MOD/internal/otp"
+EOF
+	fi
+	if has_pkg internal/scheduler; then
+		add_case scheduler-imports-otp violation depguard "internal/scheduler/zzviol_otp/v.go" <<EOF
+package zzviol
+
+import _ "$MOD/internal/otp"
+EOF
+	fi
+	if has_pkg internal/outbox; then
+		add_case outbox-imports-otp violation depguard "internal/outbox/zzviol_otp/v.go" <<EOF
+package zzviol
+
+import _ "$MOD/internal/otp"
+EOF
+	fi
+	if has_pkg internal/auth; then
+		add_case auth-imports-otp violation depguard "internal/auth/zzviol_otp/v.go" <<EOF
+package zzviol
+
+import _ "$MOD/internal/otp"
+EOF
+	fi
+	add_case otp-imports-health violation depguard "internal/otp/zzviol_health/v.go" <<EOF
+package zzviol
+
+import _ "$MOD/internal/health"
+EOF
+	add_case otp-imports-ipos violation depguard "internal/otp/zzviol_ipos/v.go" <<EOF
+package zzviol
+
+import _ "$MOD/internal/ipos"
+EOF
+	add_case otp-imports-thirdparty violation depguard "internal/otp/zzviol_third/v.go" <<EOF
+package zzviol
+
+import _ "pgregory.net/rapid"
+EOF
+	add_case otp-pgx-outside-store violation depguard "internal/otp/zzviol_pgx.go" <<EOF
+package otp
+
+import _ "github.com/jackc/pgx/v5"
+EOF
+	# go-oidc is for verifiers only: the Firebase verifier, never the otp module.
+	if buildable "$OIDC_PKG"; then
+		add_case oidc-in-otp violation depguard "internal/otp/zzviol_oidc/v.go" <<EOF
+package zzviol
+
+import _ "$OIDC_PKG"
+EOF
+		if has_pkg internal/platform/firebaseauth; then
+			add_case oidc-in-firebaseauth control depguard "internal/platform/firebaseauth/zzctl_oidc/v.go" <<EOF
+package zzctl
+
+import _ "$OIDC_PKG"
+EOF
+		fi
+	fi
+	# Negative controls: what the strict allow-list must keep allowing.
+	add_case otp-imports-allowed control depguard "internal/otp/zzctl_allowed/v.go" <<EOF
+package zzctl
+
+import (
+	_ "github.com/danielgtaylor/huma/v2"
+	_ "github.com/google/uuid"
+	_ "$MOD/internal/auth"
+	_ "$MOD/internal/otp"
+	_ "$MOD/internal/outbox"
+	_ "$MOD/internal/platform/audit"
+	_ "$MOD/internal/platform/email"
+	_ "$MOD/internal/platform/firebaseauth"
+	_ "$MOD/internal/scheduler"
+)
+EOF
+	add_case otp-pgx-in-test-file control depguard "internal/otp/zzctl_pgx_test.go" <<EOF
+package otp_test
+
+import _ "github.com/jackc/pgx/v5"
+EOF
+	add_case otp-time-now violation forbidigo "internal/otp/zzviol_now/v.go" <<'EOF'
+package zzviol
+
+import "time"
+
+func Now() time.Time { return time.Now() }
+EOF
+else
+	skip_case otp-boundaries "internal/otp does not exist yet"
+fi
+
 # --- one lint run over all offenders ---------------------------------------------------------
 out="$("$LINT" "${LINT_FLAGS[@]}" 2>&1)"
 if grep -qF "(typecheck)" <<<"$out"; then

@@ -288,6 +288,99 @@ type FailingListener struct{ ... }
 type RecordingListener struct{ ... }
 ```
 
+### `internal/otp`
+
+```go
+const CodeTTL = 10 * time.Minute ...
+const CancelCancelled = "cancelled" ...
+var ErrNotFound = errors.New("otp: verification not found") ...
+var ErrOpenFlowExists = errors.New("otp: an open verification already exists") ...
+func CodeDigest(d crypto.BlindIndexer, p Purpose, verificationID, codeID uuid.UUID, ...) []byte
+func GenerateCode(r io.Reader) (string, error)
+func HousekeepingNext(now time.Time) time.Time
+func MaskEmail(s string) string
+func MaskMobile(s string) string
+func ProblemFor(err error) error
+func Register(api huma.API, svc *Service, cfg HandlerConfig)
+func RegisterJobs(r JobRegistrar, s *Service)
+type Accounts interface{ ... }
+type Caller struct{ ... }
+type CodeRow struct{ ... }
+type ContactKind string
+    const ContactEmail ContactKind = "email" ...
+type ContactNotice struct{ ... }
+type ContactState string
+    const ContactPending ContactState = "pending" ...
+type ContactStatus struct{ ... }
+type ContactView struct{ ... }
+type DailyCounts struct{ ... }
+type Deps struct{ ... }
+type FlowState string
+    const FlowOpen FlowState = "open" ...
+type HandleRequest struct{ ... }
+type HandlerConfig struct{ ... }
+type JobRegistrar interface{ ... }
+type LimitDecision struct{ ... }
+    func ApplyLimits(in LimitInput, now time.Time) LimitDecision
+type LimitInput struct{ ... }
+type LimitKey struct{ ... }
+type LimitRow struct{ ... }
+type LimitScope string
+    const ScopeSendContact LimitScope = "send_contact" ...
+type Metric string
+    const MetricEmailSent Metric = "email_sent" ...
+type NewCode struct{ ... }
+type NewVerification struct{ ... }
+type Outbox interface{ ... }
+type Purpose string
+    const PurposeSignup Purpose = "signup" ...
+type ResendResponse struct{ ... }
+type ResendResult struct{ ... }
+type ResetCompleteRequest struct{ ... }
+type ResetStartRequest struct{ ... }
+type ResetStarted struct{ ... }
+type ResetStartedResponse struct{ ... }
+type RetryError struct{ ... }
+type RetryReason string
+    const ReasonCooldown RetryReason = "cooldown" ...
+type Service struct{ ... }
+    func New(d Deps) (*Service, error)
+type StartInput struct{ ... }
+type Started struct{ ... }
+type Store interface{ ... }
+    func NewPGStore(txr db.TxRunner) Store
+type VerificationRow struct{ ... }
+type VerificationStatus struct{ ... }
+type VerifyEmailRequest struct{ ... }
+type VerifyEmailResponse struct{ ... }
+type VerifyEmailResult struct{ ... }
+type VerifyMobileRequest struct{ ... }
+type View struct{ ... }
+```
+
+### `internal/otp/otptest`
+
+```go
+const DefaultIP = "203.0.113.5"
+const ProjectID = "swastik-test"
+func ActorOf(u authtest.User) audit.Actor
+func AuditAfter(t *testing.T, r authtest.AuditRow) map[string]any
+func Caller() otp.Caller
+func CallerOf(u authtest.User) otp.Caller
+type Claims struct{ ... }
+type Env struct{ ... }
+    func NewEnv(t *testing.T, opts ...Option) *Env
+type LogSink struct{ ... }
+type Mailer struct{ ... }
+type Minter struct{ ... }
+    func NewMinter(t testing.TB, projectID string) *Minter
+type Option func(*options)
+    func WithRealClock() Option
+    func WithoutFirebase() Option
+type OutboxRow struct{ ... }
+type WaitLog struct{ ... }
+```
+
 ### `internal/outbox`
 
 ```go
@@ -352,6 +445,7 @@ type Config struct{ ... }
     func Load() (Config, error)
 type DBConfig struct{ ... }
     func LoadDB() (DBConfig, error)
+type OTPConfig struct{ ... }
 type Tick struct{ ... }
 ```
 
@@ -395,6 +489,32 @@ func New(t *testing.T) *pgxpool.Pool
 func NewSized(t *testing.T, maxConns int32) *pgxpool.Pool
 ```
 
+### `internal/platform/email`
+
+```go
+var ErrRejected = errors.New("email: rejected") ...
+type Mail struct{ ... }
+type Mailer interface{ ... }
+    func Discard() Mailer
+    func NewResend(apiKey, from string, opts ...ResendOption) Mailer
+type ResendOption func(*resend)
+    func WithBaseURL(u string) ResendOption
+    func WithHTTPClient(c *http.Client) ResendOption
+```
+
+### `internal/platform/firebaseauth`
+
+```go
+var ErrInvalid = errors.New("firebaseauth: invalid token") ...
+type Option func(*config)
+    func WithHTTPClient(c *http.Client) Option
+    func WithJWKSURL(u string) Option
+type Proof struct{ ... }
+type Verifier interface{ ... }
+    func Disabled() Verifier
+    func New(ctx context.Context, projectID string, now func() time.Time, opts ...Option) Verifier
+```
+
 ### `internal/platform/httpx`
 
 ```go
@@ -407,6 +527,7 @@ func NewAPI() (*http.ServeMux, huma.API)
 func NewAPIFor(env string) (*http.ServeMux, huma.API)
 func NewServer(addr string, h http.Handler, log *slog.Logger) *http.Server
 func Problem(status int, code, detail string) error
+func ProblemRetry(status int, code, detail string, after time.Duration) error
 type ErrorModel struct{ ... }
 ```
 
@@ -525,6 +646,7 @@ export * from "./auth-error-codes";
 export * from "./ipo";
 export * from "./ipo-market";
 export * from "./money";
+export * from "./otp-error-codes";
 export * from "./status";
 export const ipoMarketErrorMessages =
 export type IpoMarketErrorCode = keyof typeof ipoMarketErrorMessages;
@@ -543,6 +665,12 @@ export function ipoErrorMessage(code: string | undefined): string
 export type Paise = number & { readonly __brand: "Paise" };
 export function paise(value: number): Paise
 export function formatRupees(amount: Paise, opts: { showPaise?: boolean } = {}): string
+export const otpErrorMessages =
+export type OtpErrorCode = keyof typeof otpErrorMessages;
+export const otpErrorCodes = Object.keys(otpErrorMessages) as readonly OtpErrorCode[];
+export function isOtpErrorCode(code: unknown): code is OtpErrorCode
+export interface OtpErrorOptions
+export function otpErrorMessage(
 export const statusTone =
 export type StatusKey = keyof typeof statusTone;
 export type Tone = (typeof statusTone)[StatusKey];

@@ -115,3 +115,25 @@ func (s *Service) replaceContact(ctx context.Context, id uuid.UUID, kind Identif
 		return s.writeAudit(ctx, u.OrgID, by, id, ActionUserContactReplaced, before, after)
 	})
 }
+
+// FindUser returns the user whose email or mobile equals identifier after normalisation, in any
+// status and role (the caller decides what a status or role means). It reads only, on the
+// caller's transaction when there is one. ErrInvalidIdentifier for a malformed identifier,
+// ErrUserNotFound for an unknown one; errors never echo the identifier.
+func (s *Service) FindUser(ctx context.Context, identifier string) (UserView, error) {
+	kind, value, err := NormalizeIdentifier(identifier)
+	if err != nil {
+		return UserView{}, fmt.Errorf("auth: find user: %w", err)
+	}
+	u, err := s.store.FindUserByIdentifier(ctx, kind, value)
+	if err != nil {
+		return UserView{}, fmt.Errorf("auth: find user: %w", err)
+	}
+	return viewOf(u), nil
+}
+
+// DefaultOrg returns the id of the one organisation of the deployment (ErrNoOrg when there is
+// none, ErrMultipleOrgs when there are several).
+func (s *Service) DefaultOrg(ctx context.Context) (uuid.UUID, error) {
+	return s.store.DefaultOrg(ctx)
+}

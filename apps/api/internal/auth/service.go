@@ -95,6 +95,10 @@ type Accounts interface {
 	ReplaceEmail(ctx context.Context, userID uuid.UUID, email string, by audit.Actor) error
 	ReplaceMobile(ctx context.Context, userID uuid.UUID, mobile string, by audit.Actor) error
 	GetUser(ctx context.Context, userID uuid.UUID) (UserView, error)
+	// FindUser looks a user up by email or mobile (normalised); ErrInvalidIdentifier, ErrUserNotFound.
+	FindUser(ctx context.Context, identifier string) (UserView, error)
+	// DefaultOrg is the single organisation of the deployment (ErrNoOrg when none).
+	DefaultOrg(ctx context.Context) (uuid.UUID, error)
 }
 
 // Throttle is the lockout capability for other features (OTP limits in 004). Fail and Clear

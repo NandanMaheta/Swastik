@@ -4,10 +4,10 @@
 -- Zero rows affected means duplicate.
 -- name: InsertMessage :execrows
 INSERT INTO outbox_messages (
-    org_id, topic, recipient_kind, recipient_id, subject, dedupe_key, payload,
+    org_id, topic, recipient_kind, recipient_id, subject, dedupe_key, payload, sensitive_payload,
     respects_quiet_hours, available_at, expires_at, max_attempts, created_at, updated_at
 ) VALUES (
-    @org_id, @topic, @recipient_kind, sqlc.narg('recipient_id'), @subject, @dedupe_key, @payload,
+    @org_id, @topic, @recipient_kind, sqlc.narg('recipient_id'), @subject, @dedupe_key, @payload, @sensitive_payload,
     @respects_quiet_hours, @available_at, sqlc.narg('expires_at'), @max_attempts, @now, @now
 )
 ON CONFLICT (org_id, topic, dedupe_key) DO NOTHING;
@@ -22,10 +22,12 @@ UPDATE outbox_messages SET status = 'withdrawn', finished_at = @now, updated_at 
 WHERE org_id = @org_id AND subject = @subject AND status = 'pending';
 
 -- Expiry sweep: a message past its expiry is never handed to a sender (FR-028). Bounded per tick.
+-- A 'sending' row whose lease ran out (the relay crashed) expires too: it is never claimed again.
 -- name: ExpireDueMessages :execrows
 WITH due AS (
     SELECT id FROM outbox_messages
-    WHERE status = 'pending' AND expires_at IS NOT NULL AND expires_at <= @now
+    WHERE expires_at IS NOT NULL AND expires_at <= @now
+      AND (status = 'pending' OR (status = 'sending' AND locked_until <= @now))
     ORDER BY expires_at, id
     LIMIT 1000
     FOR UPDATE SKIP LOCKED
@@ -39,9 +41,30 @@ FROM due WHERE m.id = due.id;
 WITH c AS (
     SELECT id FROM outbox_messages
     WHERE (status = 'pending' AND available_at <= @now AND (expires_at IS NULL OR expires_at > @now))
-       OR (status = 'sending' AND locked_until <= @now)
+       OR (status = 'sending' AND locked_until <= @now AND (expires_at IS NULL OR expires_at > @now))
     ORDER BY id
     LIMIT 1
+    FOR UPDATE SKIP LOCKED
+)
+UPDATE outbox_messages m SET
+    status           = 'sending',
+    attempts         = m.attempts + 1,
+    first_attempt_at = COALESCE(m.first_attempt_at, @now),
+    last_attempt_at  = @now,
+    locked_until     = @locked_until,
+    lock_token       = gen_random_uuid(),
+    locked_by        = @locked_by,
+    updated_at       = @now
+FROM c WHERE m.id = c.id
+RETURNING m.*;
+
+-- The same claim for one message by (org, topic, dedupe key): DeliverNow (feature 004).
+-- name: ClaimMessageByKey :one
+WITH c AS (
+    SELECT k.id FROM outbox_messages k
+    WHERE k.org_id = @org_id AND k.topic = @topic AND k.dedupe_key = @dedupe_key
+      AND ((k.status = 'pending' AND k.available_at <= @now AND (k.expires_at IS NULL OR k.expires_at > @now))
+        OR (k.status = 'sending' AND k.locked_until <= @now AND (k.expires_at IS NULL OR k.expires_at > @now)))
     FOR UPDATE SKIP LOCKED
 )
 UPDATE outbox_messages m SET

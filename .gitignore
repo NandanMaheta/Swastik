@@ -29,4 +29,4 @@ apps/client/ios/
 .claude/worktrees/
 
 # rapid failure files
-apps/api/internal/scheduler/testdata/rapid/
+**/testdata/rapid/*.fail

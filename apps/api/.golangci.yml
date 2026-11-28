@@ -45,6 +45,13 @@ linters:
               desc: platform packages must not import business modules
             - pkg: "github.com/NandanMaheta/swastik/apps/api/internal/ipomarket"
               desc: platform packages must not import business modules
+        # Separate from platform-is-a-leaf. No test-file exemption: platform tests carry their own
+        # helpers (firebaseauth/minter_test.go) and never import otp or otptest.
+        platform-does-not-know-otp:
+          files: ["**/internal/platform/**"]
+          deny:
+            - pkg: "github.com/NandanMaheta/swastik/apps/api/internal/otp"
+              desc: platform packages must not import business modules
         outbox-does-not-know-scheduler:
           files: ["**/internal/outbox/**"]
           deny:
@@ -55,6 +62,31 @@ linters:
           deny:
             - pkg: "github.com/NandanMaheta/swastik/apps/api/internal/ipos"
               desc: owners depend on the scheduler, never the reverse
+            - pkg: "github.com/NandanMaheta/swastik/apps/api/internal/otp"
+              desc: owners depend on the scheduler and the outbox, never the reverse
+        auth-does-not-know-otp:
+          files: ["**/internal/auth/**"]
+          deny:
+            - pkg: "github.com/NandanMaheta/swastik/apps/api/internal/otp"
+              desc: otp calls auth (Accounts), never the reverse
+        otp-boundaries:
+          list-mode: strict
+          files: ["**/internal/otp/**", "!$test"]
+          allow:
+            - $gostd
+            - github.com/danielgtaylor/huma/v2
+            - github.com/google/uuid
+            - github.com/jackc/pgx/v5
+            - github.com/NandanMaheta/swastik/apps/api/internal/auth
+            - github.com/NandanMaheta/swastik/apps/api/internal/otp
+            - github.com/NandanMaheta/swastik/apps/api/internal/outbox
+            - github.com/NandanMaheta/swastik/apps/api/internal/platform
+            - github.com/NandanMaheta/swastik/apps/api/internal/scheduler
+        otp-pgx-only-in-store:
+          files: ["**/internal/otp/**", "!**/internal/otp/store.go", "!$test"]
+          deny:
+            - pkg: "github.com/jackc/pgx/v5"
+              desc: pgx types stay in store.go (go-module-pattern)
         ipos-boundaries:
           list-mode: strict
           files: ["**/internal/ipos/**", "!$test"]
@@ -87,11 +119,12 @@ linters:
           deny:
             - pkg: "github.com/jackc/pgx/v5"
               desc: pgx types stay in store.go (go-module-pattern)
-        oidc-only-in-tickauth:
-          files: ["$all", "!**/internal/platform/tickauth/**"]
+        oidc-only-in-verifiers:
+          files:
+            ["$all", "!**/internal/platform/tickauth/**", "!**/internal/platform/firebaseauth/**"]
           deny:
             - pkg: "github.com/coreos/go-oidc/v3"
-              desc: OIDC verification lives in platform/tickauth
+              desc: OIDC verification lives in platform/tickauth and platform/firebaseauth
         sentry-only-in-observe:
           files: ["$all", "!**/internal/platform/observe/**"]
           deny:

@@ -20,6 +20,7 @@ type Config struct {
 	ShutdownTimeout   time.Duration
 	Tick              Tick
 	Auth              AuthConfig
+	OTP               OTPConfig
 }
 
 // LogValue implements slog.LogValuer so logging a Config never reveals the database password,
@@ -33,6 +34,7 @@ func (c Config) LogValue() slog.Value {
 		slog.Duration("shutdown_timeout", c.ShutdownTimeout),
 		slog.Any("tick", c.Tick),
 		slog.Any("auth", c.Auth),
+		slog.Any("otp", c.OTP),
 	)
 }
 
@@ -94,6 +96,11 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("config: %w", err)
 	}
 	cfg.Auth = auth
+	otp, err := loadOTP(cfg.Env)
+	if err != nil {
+		return Config{}, fmt.Errorf("config: %w", err)
+	}
+	cfg.OTP = otp
 	return cfg, nil
 }
 

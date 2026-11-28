@@ -16,3 +16,7 @@ e7901b28cb575ed7af2530b3978b76ba6ab1d0f6:apps/api/internal/auth/totp_test.go:gen
 815182ec7146327a84b8ff88ace3ae9f9b96f284:apps/api/internal/ipos/store_test.go:generic-api-key:605
 # Fake Cloudflare zone id ("fedcba9876543210…") in a tofu mock test.
 93404848244842d26d4176e57775f288bab2ea5f:infra/tofu/tests/env/dns.tftest.hcl:generic-api-key:89
+# Fake Resend API keys in 004 tests ("re_live_ABCDEF0123456789secret", "re_test_SECRETKEY0123456789").
+d48439f09086bdec3e8d9b49aacaf5aa0582c030:apps/api/internal/platform/config/otp_test.go:generic-api-key:30
+d48439f09086bdec3e8d9b49aacaf5aa0582c030:apps/api/internal/platform/config/otp_test.go:generic-api-key:234
+d48439f09086bdec3e8d9b49aacaf5aa0582c030:apps/api/internal/platform/email/resend_test.go:generic-api-key:27

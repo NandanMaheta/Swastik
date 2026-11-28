@@ -18,7 +18,7 @@ UPDATE outbox_messages SET
     finished_at = $1,
     updated_at  = $1
 WHERE id = $2 AND org_id = $3 AND status = 'dead'
-RETURNING id, org_id, topic, recipient_kind, recipient_id, subject, dedupe_key, payload, respects_quiet_hours, available_at, expires_at, status, attempts, max_attempts, first_attempt_at, last_attempt_at, last_error, locked_until, lock_token, locked_by, alerted_at, sent_at, finished_at, created_at, updated_at
+RETURNING id, org_id, topic, recipient_kind, recipient_id, subject, dedupe_key, payload, respects_quiet_hours, available_at, expires_at, status, attempts, max_attempts, first_attempt_at, last_attempt_at, last_error, locked_until, lock_token, locked_by, alerted_at, sent_at, finished_at, created_at, updated_at, sensitive_payload
 `
 
 type AdminCancelMessageParams struct {
@@ -57,6 +57,7 @@ func (q *Queries) AdminCancelMessage(ctx context.Context, arg AdminCancelMessage
 		&i.FinishedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SensitivePayload,
 	)
 	return i, err
 }
@@ -70,8 +71,8 @@ UPDATE outbox_messages SET
     alerted_at       = NULL,
     finished_at      = NULL,
     updated_at       = $2
-WHERE id = $3 AND org_id = $4 AND status = 'dead'
-RETURNING id, org_id, topic, recipient_kind, recipient_id, subject, dedupe_key, payload, respects_quiet_hours, available_at, expires_at, status, attempts, max_attempts, first_attempt_at, last_attempt_at, last_error, locked_until, lock_token, locked_by, alerted_at, sent_at, finished_at, created_at, updated_at
+WHERE id = $3 AND org_id = $4 AND status = 'dead' AND NOT sensitive_payload
+RETURNING id, org_id, topic, recipient_kind, recipient_id, subject, dedupe_key, payload, respects_quiet_hours, available_at, expires_at, status, attempts, max_attempts, first_attempt_at, last_attempt_at, last_error, locked_until, lock_token, locked_by, alerted_at, sent_at, finished_at, created_at, updated_at, sensitive_payload
 `
 
 type AdminRetryMessageParams struct {
@@ -82,6 +83,7 @@ type AdminRetryMessageParams struct {
 }
 
 // Retry: fresh attempts; available_at is computed by the caller so quiet hours still apply.
+// A sensitive message has no payload left to send, so it is never retried (no row = ErrConflict).
 func (q *Queries) AdminRetryMessage(ctx context.Context, arg AdminRetryMessageParams) (OutboxMessage, error) {
 	row := q.db.QueryRow(ctx, adminRetryMessage,
 		arg.AvailableAt,
@@ -116,6 +118,7 @@ func (q *Queries) AdminRetryMessage(ctx context.Context, arg AdminRetryMessagePa
 		&i.FinishedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SensitivePayload,
 	)
 	return i, err
 }
@@ -150,7 +153,7 @@ func (q *Queries) CountMessagesByState(ctx context.Context, orgID uuid.UUID) (Co
 }
 
 const getMessageForOrg = `-- name: GetMessageForOrg :one
-SELECT id, org_id, topic, recipient_kind, recipient_id, subject, dedupe_key, payload, respects_quiet_hours, available_at, expires_at, status, attempts, max_attempts, first_attempt_at, last_attempt_at, last_error, locked_until, lock_token, locked_by, alerted_at, sent_at, finished_at, created_at, updated_at FROM outbox_messages WHERE id = $1 AND org_id = $2 FOR UPDATE
+SELECT id, org_id, topic, recipient_kind, recipient_id, subject, dedupe_key, payload, respects_quiet_hours, available_at, expires_at, status, attempts, max_attempts, first_attempt_at, last_attempt_at, last_error, locked_until, lock_token, locked_by, alerted_at, sent_at, finished_at, created_at, updated_at, sensitive_payload FROM outbox_messages WHERE id = $1 AND org_id = $2 FOR UPDATE
 `
 
 type GetMessageForOrgParams struct {
@@ -188,13 +191,14 @@ func (q *Queries) GetMessageForOrg(ctx context.Context, arg GetMessageForOrgPara
 		&i.FinishedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SensitivePayload,
 	)
 	return i, err
 }
 
 const listFailedMessages = `-- name: ListFailedMessages :many
 
-SELECT id, org_id, topic, recipient_kind, recipient_id, subject, dedupe_key, payload, respects_quiet_hours, available_at, expires_at, status, attempts, max_attempts, first_attempt_at, last_attempt_at, last_error, locked_until, lock_token, locked_by, alerted_at, sent_at, finished_at, created_at, updated_at FROM outbox_messages
+SELECT id, org_id, topic, recipient_kind, recipient_id, subject, dedupe_key, payload, respects_quiet_hours, available_at, expires_at, status, attempts, max_attempts, first_attempt_at, last_attempt_at, last_error, locked_until, lock_token, locked_by, alerted_at, sent_at, finished_at, created_at, updated_at, sensitive_payload FROM outbox_messages
 WHERE org_id = $1
   AND (status = 'dead' OR (status = 'pending' AND attempts > 0))
   AND ($2::text = '' OR ($2::text = 'dead' AND status = 'dead') OR ($2::text = 'retrying' AND status = 'pending'))
@@ -261,6 +265,7 @@ func (q *Queries) ListFailedMessages(ctx context.Context, arg ListFailedMessages
 			&i.FinishedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SensitivePayload,
 		); err != nil {
 			return nil, err
 		}

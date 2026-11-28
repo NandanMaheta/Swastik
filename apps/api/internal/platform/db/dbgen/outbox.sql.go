@@ -16,7 +16,7 @@ const claimMessage = `-- name: ClaimMessage :one
 WITH c AS (
     SELECT id FROM outbox_messages
     WHERE (status = 'pending' AND available_at <= $1 AND (expires_at IS NULL OR expires_at > $1))
-       OR (status = 'sending' AND locked_until <= $1)
+       OR (status = 'sending' AND locked_until <= $1 AND (expires_at IS NULL OR expires_at > $1))
     ORDER BY id
     LIMIT 1
     FOR UPDATE SKIP LOCKED
@@ -31,7 +31,7 @@ UPDATE outbox_messages m SET
     locked_by        = $3,
     updated_at       = $1
 FROM c WHERE m.id = c.id
-RETURNING m.id, m.org_id, m.topic, m.recipient_kind, m.recipient_id, m.subject, m.dedupe_key, m.payload, m.respects_quiet_hours, m.available_at, m.expires_at, m.status, m.attempts, m.max_attempts, m.first_attempt_at, m.last_attempt_at, m.last_error, m.locked_until, m.lock_token, m.locked_by, m.alerted_at, m.sent_at, m.finished_at, m.created_at, m.updated_at
+RETURNING m.id, m.org_id, m.topic, m.recipient_kind, m.recipient_id, m.subject, m.dedupe_key, m.payload, m.respects_quiet_hours, m.available_at, m.expires_at, m.status, m.attempts, m.max_attempts, m.first_attempt_at, m.last_attempt_at, m.last_error, m.locked_until, m.lock_token, m.locked_by, m.alerted_at, m.sent_at, m.finished_at, m.created_at, m.updated_at, m.sensitive_payload
 `
 
 type ClaimMessageParams struct {
@@ -71,6 +71,79 @@ func (q *Queries) ClaimMessage(ctx context.Context, arg ClaimMessageParams) (Out
 		&i.FinishedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SensitivePayload,
+	)
+	return i, err
+}
+
+const claimMessageByKey = `-- name: ClaimMessageByKey :one
+WITH c AS (
+    SELECT k.id FROM outbox_messages k
+    WHERE k.org_id = $4 AND k.topic = $5 AND k.dedupe_key = $6
+      AND ((k.status = 'pending' AND k.available_at <= $1 AND (k.expires_at IS NULL OR k.expires_at > $1))
+        OR (k.status = 'sending' AND k.locked_until <= $1 AND (k.expires_at IS NULL OR k.expires_at > $1)))
+    FOR UPDATE SKIP LOCKED
+)
+UPDATE outbox_messages m SET
+    status           = 'sending',
+    attempts         = m.attempts + 1,
+    first_attempt_at = COALESCE(m.first_attempt_at, $1),
+    last_attempt_at  = $1,
+    locked_until     = $2,
+    lock_token       = gen_random_uuid(),
+    locked_by        = $3,
+    updated_at       = $1
+FROM c WHERE m.id = c.id
+RETURNING m.id, m.org_id, m.topic, m.recipient_kind, m.recipient_id, m.subject, m.dedupe_key, m.payload, m.respects_quiet_hours, m.available_at, m.expires_at, m.status, m.attempts, m.max_attempts, m.first_attempt_at, m.last_attempt_at, m.last_error, m.locked_until, m.lock_token, m.locked_by, m.alerted_at, m.sent_at, m.finished_at, m.created_at, m.updated_at, m.sensitive_payload
+`
+
+type ClaimMessageByKeyParams struct {
+	Now         pgtype.Timestamptz `json:"now"`
+	LockedUntil pgtype.Timestamptz `json:"locked_until"`
+	LockedBy    pgtype.Text        `json:"locked_by"`
+	OrgID       uuid.UUID          `json:"org_id"`
+	Topic       string             `json:"topic"`
+	DedupeKey   string             `json:"dedupe_key"`
+}
+
+// The same claim for one message by (org, topic, dedupe key): DeliverNow (feature 004).
+func (q *Queries) ClaimMessageByKey(ctx context.Context, arg ClaimMessageByKeyParams) (OutboxMessage, error) {
+	row := q.db.QueryRow(ctx, claimMessageByKey,
+		arg.Now,
+		arg.LockedUntil,
+		arg.LockedBy,
+		arg.OrgID,
+		arg.Topic,
+		arg.DedupeKey,
+	)
+	var i OutboxMessage
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.Topic,
+		&i.RecipientKind,
+		&i.RecipientID,
+		&i.Subject,
+		&i.DedupeKey,
+		&i.Payload,
+		&i.RespectsQuietHours,
+		&i.AvailableAt,
+		&i.ExpiresAt,
+		&i.Status,
+		&i.Attempts,
+		&i.MaxAttempts,
+		&i.FirstAttemptAt,
+		&i.LastAttemptAt,
+		&i.LastError,
+		&i.LockedUntil,
+		&i.LockToken,
+		&i.LockedBy,
+		&i.AlertedAt,
+		&i.SentAt,
+		&i.FinishedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SensitivePayload,
 	)
 	return i, err
 }
@@ -78,7 +151,8 @@ func (q *Queries) ClaimMessage(ctx context.Context, arg ClaimMessageParams) (Out
 const expireDueMessages = `-- name: ExpireDueMessages :execrows
 WITH due AS (
     SELECT id FROM outbox_messages
-    WHERE status = 'pending' AND expires_at IS NOT NULL AND expires_at <= $1
+    WHERE expires_at IS NOT NULL AND expires_at <= $1
+      AND (status = 'pending' OR (status = 'sending' AND locked_until <= $1))
     ORDER BY expires_at, id
     LIMIT 1000
     FOR UPDATE SKIP LOCKED
@@ -88,6 +162,7 @@ FROM due WHERE m.id = due.id
 `
 
 // Expiry sweep: a message past its expiry is never handed to a sender (FR-028). Bounded per tick.
+// A 'sending' row whose lease ran out (the relay crashed) expires too: it is never claimed again.
 func (q *Queries) ExpireDueMessages(ctx context.Context, now pgtype.Timestamptz) (int64, error) {
 	result, err := q.db.Exec(ctx, expireDueMessages, now)
 	if err != nil {
@@ -157,11 +232,11 @@ func (q *Queries) GetQuietHours(ctx context.Context, orgID uuid.UUID) (GetQuietH
 const insertMessage = `-- name: InsertMessage :execrows
 
 INSERT INTO outbox_messages (
-    org_id, topic, recipient_kind, recipient_id, subject, dedupe_key, payload,
+    org_id, topic, recipient_kind, recipient_id, subject, dedupe_key, payload, sensitive_payload,
     respects_quiet_hours, available_at, expires_at, max_attempts, created_at, updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7,
-    $8, $9, $10, $11, $12, $12
+    $1, $2, $3, $4, $5, $6, $7, $8,
+    $9, $10, $11, $12, $13, $13
 )
 ON CONFLICT (org_id, topic, dedupe_key) DO NOTHING
 `
@@ -174,6 +249,7 @@ type InsertMessageParams struct {
 	Subject            string             `json:"subject"`
 	DedupeKey          string             `json:"dedupe_key"`
 	Payload            []byte             `json:"payload"`
+	SensitivePayload   bool               `json:"sensitive_payload"`
 	RespectsQuietHours bool               `json:"respects_quiet_hours"`
 	AvailableAt        pgtype.Timestamptz `json:"available_at"`
 	ExpiresAt          pgtype.Timestamptz `json:"expires_at"`
@@ -193,6 +269,7 @@ func (q *Queries) InsertMessage(ctx context.Context, arg InsertMessageParams) (i
 		arg.Subject,
 		arg.DedupeKey,
 		arg.Payload,
+		arg.SensitivePayload,
 		arg.RespectsQuietHours,
 		arg.AvailableAt,
 		arg.ExpiresAt,

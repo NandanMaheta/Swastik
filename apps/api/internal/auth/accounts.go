@@ -217,9 +217,13 @@ func (s *Service) GetUser(ctx context.Context, id uuid.UUID) (UserView, error) {
 	if err != nil {
 		return UserView{}, fmt.Errorf("auth: read user: %w", err)
 	}
+	return viewOf(u), nil
+}
+
+func viewOf(u UserRow) UserView {
 	return UserView{
 		ID: u.ID, OrgID: u.OrgID, Name: u.Name, Email: u.Email, Mobile: u.Mobile, Role: u.Role, Status: u.Status,
 		EmailVerified: u.EmailVerifiedAt != nil, MobileVerified: u.MobileVerifiedAt != nil,
 		CreatedAt: u.CreatedAt, LastSignInAt: u.LastSignInAt,
-	}, nil
+	}
 }

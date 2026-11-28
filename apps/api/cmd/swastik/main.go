@@ -19,11 +19,14 @@ import (
 	"github.com/NandanMaheta/swastik/apps/api/internal/health"
 	"github.com/NandanMaheta/swastik/apps/api/internal/ipomarket"
 	"github.com/NandanMaheta/swastik/apps/api/internal/ipos"
+	"github.com/NandanMaheta/swastik/apps/api/internal/otp"
 	"github.com/NandanMaheta/swastik/apps/api/internal/outbox"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/authz"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/clock"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/config"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/db"
+	"github.com/NandanMaheta/swastik/apps/api/internal/platform/email"
+	"github.com/NandanMaheta/swastik/apps/api/internal/platform/firebaseauth"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/httpx"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/observe"
 	"github.com/NandanMaheta/swastik/apps/api/internal/platform/tickauth"
@@ -107,6 +110,8 @@ type deps struct {
 	Auth *auth.Service
 	// IPOs is the IPO catalogue service; nil registers its operations without one.
 	IPOs *ipos.Service
+	// OTP is the OTP delivery service (feature 004); nil registers its operations without one.
+	OTP *otp.Service
 	// Market is the GMP and subscription service; nil registers its operations without one.
 	Market           *ipomarket.Service
 	WebOrigins       []string
@@ -129,6 +134,7 @@ func buildAPI(d deps) huma.API {
 	auth.Register(api, d.Auth, auth.HandlerConfig{WebOrigins: d.WebOrigins, TrustedProxyHops: d.TrustedProxyHops, ProxySecrets: d.ProxySecrets})
 	ipos.Register(api, d.IPOs)
 	ipomarket.Register(api, d.Market)
+	otp.Register(api, d.OTP, otp.HandlerConfig{TrustedProxyHops: d.TrustedProxyHops, ProxySecrets: d.ProxySecrets})
 	authz.AssertDeclared(api)
 	return api
 }
@@ -181,6 +187,27 @@ func newAuthService(cfg config.Config, txr db.TxRunner, log *slog.Logger) (*auth
 	})
 }
 
+// newOTPService builds the OTP service from the validated configuration. Without a Resend key
+// (local and ci) mails are discarded; without a Firebase project mobile proofs answer
+// otp.not_configured.
+func newOTPService(ctx context.Context, cfg config.Config, txr db.TxRunner, ob *outbox.Service, accounts *auth.Service, log *slog.Logger) (*otp.Service, error) {
+	mailer := email.Discard()
+	if cfg.OTP.ResendAPIKey != "" {
+		mailer = email.NewResend(cfg.OTP.ResendAPIKey, cfg.OTP.EmailFrom)
+	}
+	// The key set is fetched once and then cached: a short timeout keeps a hung Google endpoint
+	// from holding up sign-ups.
+	fbOpts := []firebaseauth.Option{firebaseauth.WithHTTPClient(&http.Client{Timeout: 5 * time.Second})}
+	if cfg.OTP.FirebaseJWKSURL != "" {
+		fbOpts = append(fbOpts, firebaseauth.WithJWKSURL(cfg.OTP.FirebaseJWKSURL))
+	}
+	return otp.New(otp.Deps{
+		Tx: txr, Now: clock.Real, Accounts: accounts, Outbox: ob, Keyring: cfg.Auth.PII, Digests: cfg.OTP.Digests,
+		Proofs: firebaseauth.New(ctx, cfg.OTP.FirebaseProjectID, clock.Real, fbOpts...), Mailer: mailer, Log: log,
+		SendGrace: -1, // the reply time is the response floor, never the send (SC-004)
+	})
+}
+
 func serve(ctx context.Context, log *slog.Logger, cfg config.Config, pool *pgxpool.Pool) error {
 	txr := db.NewTxRunner(pool)
 	ob := outbox.New(txr, clock.Real, log, outbox.DefaultOptions())
@@ -199,10 +226,21 @@ func serve(ctx context.Context, log *slog.Logger, cfg config.Config, pool *pgxpo
 		return err
 	}
 	registerAuthJobs(sched, authSvc)
+	// OTP delivery is off (its operations answer otp.not_configured) until its settings are set.
+	var otpSvc *otp.Service
+	if cfg.OTP.Enabled {
+		if otpSvc, err = newOTPService(ctx, cfg, txr, ob, authSvc, log); err != nil {
+			return err
+		}
+		registerOTPSenders(ob, otpSvc)
+		registerOTPJobs(sched, otpSvc)
+	} else {
+		log.Warn("OTP delivery is not configured: sign-up verification and password reset answer otp.not_configured")
+	}
 
 	api := buildAPI(deps{ //nolint:contextcheck // the tick middleware takes its context from each request
 		Env: cfg.Env, Pool: pool, Tick: sched, TickAuth: selectTickAuth(ctx, log, cfg),
-		Auth: authSvc, IPOs: iposSvc, Market: marketSvc, WebOrigins: cfg.Auth.WebOrigins, TrustedProxyHops: cfg.Auth.TrustedProxyHops,
+		Auth: authSvc, IPOs: iposSvc, OTP: otpSvc, Market: marketSvc, WebOrigins: cfg.Auth.WebOrigins, TrustedProxyHops: cfg.Auth.TrustedProxyHops,
 		ProxySecrets: cfg.Auth.ProxySharedSecrets,
 	})
 	// CORS wraps the whole API: an exact-origin allowlist with credentials, never a wildcard.

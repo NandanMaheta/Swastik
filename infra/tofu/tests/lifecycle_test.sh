@@ -41,5 +41,20 @@ fi
 if grep -rEn --include='*.tf' 'PROXY_KEY' "$root" >/dev/null 2>&1; then
   echo "FAIL: PROXY_KEY must not be managed by tofu (set via secrets.sh / wrangler secret put)" >&2; fail=1
 fi
+# ---- feature 004 (static): otp_enabled reaches the module from both roots, off until the owner has
+# created the secrets (gate G-SECRETS); the Firebase test-only JWKS URL never reaches Cloud Run.
+for e in staging production; do
+  grep -Eq 'variable +"otp_enabled"' "$root/envs/$e/variables.tf" || { echo "FAIL: envs/$e/variables.tf must declare otp_enabled" >&2; fail=1; }
+  grep -Eq "^[[:space:]]*otp_enabled[[:space:]]*=[[:space:]]*var\.otp_enabled" "$root/envs/$e/main.tf" || { echo "FAIL: envs/$e/main.tf must pass otp_enabled to module.env" >&2; fail=1; }
+  awk '/variable +"otp_enabled"/{p=1} p&&/default/{print; exit}' "$root/envs/$e/variables.tf" 2>/dev/null | grep -Eq 'default[[:space:]]*=[[:space:]]*false' ||
+    { echo "FAIL: envs/$e otp_enabled must default to false" >&2; fail=1; }
+  if grep -Eq '^[[:space:]]*otp_enabled[[:space:]]*=[[:space:]]*true' "$root/envs/$e/terraform.tfvars" 2>/dev/null; then
+    echo "FAIL: envs/$e/terraform.tfvars must keep otp_enabled false until the owner has created the OTP secrets (G-SECRETS)" >&2; fail=1
+  fi
+done
+grep -Eq 'variable +"otp_enabled"' "$root/modules/env/variables.tf" || { echo "FAIL: modules/env/variables.tf must declare otp_enabled" >&2; fail=1; }
+if grep -rEn --include='*.tf' 'FIREBASE_JWKS_URL' "$root" >/dev/null 2>&1; then
+  echo "FAIL: FIREBASE_JWKS_URL is local/ci only and must not be set by tofu" >&2; fail=1
+fi
 [ "$fail" -eq 0 ] && echo "lifecycle checks passed"
 exit "$fail"

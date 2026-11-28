@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Create the Secret Manager secrets for one environment (OWNER STEP, run in Cloud Shell).
-# Usage: secrets.sh <staging|production> [--with-auth] [--rotate] [--rotate-proxy] [--push-proxy] [--rotate-blind-index] [--dry-run]
+# Usage: secrets.sh <staging|production> [--with-auth] [--with-otp] [--rotate] [--rotate-proxy] [--push-proxy] [--rotate-blind-index] [--rotate-otp-hmac] [--dry-run]
 #   (default)    the database URL secret and proxy-shared-secrets (bare <b64>, PROXY_SHARED_SECRETS). The
 #                proxy value is also pushed to the Cloudflare Worker as secret PROXY_KEY with
 #                `$WRANGLER_CMD secret put` (default `npx wrangler`, value on stdin); the Worker answers 500
@@ -8,6 +8,11 @@
 #                stored value is re-sent without a new version.
 #   --with-auth  also the 003 auth secrets: JWT_SIGNING_KEYS (k1:<b64>), PII_ENCRYPTION_KEYS (1:<b64>),
 #                BLIND_INDEX_KEY (bare <b64>); distinct random 32-byte values
+#   --with-otp   also the 004 OTP secrets: otp-hmac-key-<env> (OTP_HMAC_KEY, bare <b64> of 32 random
+#                bytes, generated here) and resend-api-key-<env> (RESEND_API_KEY: the Resend API key,
+#                pasted at a second hidden prompt that follows the database URL; only asked when the
+#                secret does not exist yet). Existing OTP secrets are never recreated or versioned.
+#                Afterwards set otp_enabled = true in the environment's tfvars and run the infra workflow.
 #   --push-proxy re-send the stored proxy key to the Worker even if it already has one
 #   --rotate     add a version to the JWT and PII key rings: the current version is read and the new key is
 #                APPENDED (k1:<old>,k2:<new> and 1:<old>,2:<new>). New ids: ROTATE_JWT_KID (default k2) and
@@ -16,6 +21,9 @@
 #                after sessions and data are migrated.
 #   --rotate-proxy       append a new proxy key (old,new) and push the new one to the Worker
 #   --rotate-blind-index  new BLIND_INDEX_KEY version. Existing blind indexes stop matching: REQUIRES A REINDEX.
+#   --rotate-otp-hmac     new OTP_HMAC_KEY version (one new random key, not a ring). Safe, with a cost: open
+#                email codes stop working and the send/check limit counters start from zero; people ask for
+#                a new code. The Resend key is never touched (rotate it in Resend, then add a version by hand).
 # Existing secrets are never recreated and get no new version unless a rotate flag says so.
 # Values never appear on the command line or in output: the database URL is read with a hidden
 # prompt, keys are generated with openssl; both are piped to `--data-file=-`.
@@ -25,22 +33,24 @@ PROJECT="swastik-4fcc9"
 REGION="asia-south1"
 META_ROLE="projects/${PROJECT}/roles/tofuSecretMeta" # created by bootstrap.sh; no versions.access
 usage() {
-  echo "usage: secrets.sh <staging|production> [--with-auth] [--rotate] [--rotate-proxy] [--push-proxy] [--rotate-blind-index] [--dry-run]" >&2
+  echo "usage: secrets.sh <staging|production> [--with-auth] [--with-otp] [--rotate] [--rotate-proxy] [--push-proxy] [--rotate-blind-index] [--rotate-otp-hmac] [--dry-run]" >&2
   exit 2
 }
 
 [ "$#" -ge 1 ] || usage
 env="$1"; shift
 case "$env" in staging | production) ;; *) usage ;; esac
-dry=0; auth=0; rotate=0; rotate_proxy=0; rotate_blind=0; push_proxy=0
+dry=0; auth=0; otp=0; rotate=0; rotate_proxy=0; rotate_blind=0; rotate_hmac=0; push_proxy=0
 for a in "$@"; do
   case "$a" in
     --dry-run) dry=1 ;;
     --with-auth) auth=1 ;;
+    --with-otp) otp=1 ;;
     --rotate) rotate=1 ;;
     --rotate-proxy) rotate_proxy=1 ;;
     --push-proxy) push_proxy=1 ;;
     --rotate-blind-index) rotate_blind=1 ;;
+    --rotate-otp-hmac) rotate_hmac=1 ;;
     *) usage ;;
   esac
 done
@@ -78,7 +88,8 @@ value() {
     db) printf '%s' "$DB_URL" ;;
     jwt) printf 'k1:%s' "$(openssl rand -base64 32)" ;;
     pii) printf '1:%s' "$(openssl rand -base64 32)" ;;
-    blind) openssl rand -base64 32 ;;
+    blind | otphmac) openssl rand -base64 32 ;;
+    resend) printf '%s' "$RESEND_KEY" ;;
     proxy) printf '%s' "$PROXY_VALUE" ;;
     jwt+ | pii+)
       cur=$(current "$2")
@@ -89,7 +100,7 @@ value() {
 }
 add_version() { # name, kind
   if [ "$dry" -eq 1 ]; then
-    if [ "$2" = db ]; then
+    if [ "$2" = db ] || [ "$2" = resend ]; then
       echo "+ (hidden input) | gcloud secrets versions add $1 --data-file=- --project=$PROJECT"
     else
       echo "+ openssl rand -base64 32 ($2) | gcloud secrets versions add $1 --data-file=- --project=$PROJECT"
@@ -164,5 +175,19 @@ if [ "$auth" -eq 1 ]; then
   ensure "jwt-signing-keys-$env" jwt "$([ "$rotate" -eq 1 ] && echo 'jwt+')"
   ensure "pii-encryption-keys-$env" pii "$([ "$rotate" -eq 1 ] && echo 'pii+')"
   ensure "blind-index-key-$env" blind "$([ "$rotate_blind" -eq 1 ] && echo 'blind')"
+fi
+
+if [ "$otp" -eq 1 ] || [ "$rotate_hmac" -eq 1 ]; then
+  resend="resend-api-key-$env"
+  if [ "$otp" -eq 1 ] && ! exists "$resend"; then
+    # The owner pastes the Resend API key; it is read hidden and only ever piped to Secret Manager.
+    read -s -r -p "RESEND_API_KEY for ${env} (from the Resend dashboard, hidden): " RESEND_KEY || true
+    echo >&2
+    [ -n "${RESEND_KEY:-}" ] || { echo "no Resend API key given" >&2; [ "$dry" -eq 1 ] || exit 1; }
+  fi
+  # OTP_HMAC_KEY: created once; a new version only with --rotate-otp-hmac (live codes and limit counters reset).
+  ensure "otp-hmac-key-$env" otphmac "$([ "$rotate_hmac" -eq 1 ] && echo 'otphmac')"
+  if [ "$otp" -eq 1 ]; then ensure "$resend" resend ""; fi
+  unset RESEND_KEY
 fi
 unset DB_URL

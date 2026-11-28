@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/NandanMaheta/swastik/apps/api/internal/auth"
+	"github.com/NandanMaheta/swastik/apps/api/internal/otp"
+	"github.com/NandanMaheta/swastik/apps/api/internal/outbox"
 	"github.com/NandanMaheta/swastik/apps/api/internal/scheduler"
 )
 
@@ -15,4 +17,15 @@ func registerAuthJobs(sch *scheduler.Service, svc *auth.Service) {
 		_, err := svc.Housekeep(ctx, job.OrgID)
 		return err
 	}, scheduler.KindOptions{Recurring: auth.HousekeepingNext})
+}
+
+// registerOTPJobs registers the otp.housekeeping job (feature 004): a recurring job per
+// organisation that runs daily at 03:15 IST.
+func registerOTPJobs(sch *scheduler.Service, svc *otp.Service) { otp.RegisterJobs(sch, svc) }
+
+// registerOTPSenders registers the otp Sender for both outbox topics with 3 attempts: a code that
+// cannot be sent is retried until it expires (10 minutes), never for hours.
+func registerOTPSenders(ob *outbox.Service, svc *otp.Service) {
+	ob.RegisterSender(otp.TopicEmailCode, svc.Sender(), 3)
+	ob.RegisterSender(otp.TopicContactNotice, svc.Sender(), 3)
 }
