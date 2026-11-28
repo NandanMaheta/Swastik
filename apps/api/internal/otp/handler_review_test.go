@@ -125,6 +125,7 @@ type rvGate struct {
 	mailRelease  chan struct{}
 	mailsBlocked atomic.Int32
 	once         sync.Once
+	floorOnce    sync.Once
 }
 
 func newRvGate(t *testing.T, h *hxEnv) *rvGate {
@@ -154,7 +155,7 @@ func newRvGate(t *testing.T, h *hxEnv) *rvGate {
 
 func (g *rvGate) releaseAll() {
 	g.once.Do(func() {
-		close(g.floorOpen)
+		g.openFloor()
 		close(g.mailRelease)
 	})
 	for i := 0; i < 400 && g.mailsBlocked.Load() > 0; i++ {
@@ -180,7 +181,7 @@ func rvProbe(t *testing.T, g *rvGate, send func() *httptest.ResponseRecorder) *h
 		t.Fatalf("answered before the response floor elapsed: %d", rec.Code)
 	default:
 	}
-	close(g.floorOpen) // the floor elapses; the mailer is still blocked
+	g.openFloor() // the floor elapses; the mailer is still blocked
 	select {
 	case rec := <-done:
 		g.armed.Store(false)
@@ -344,3 +345,5 @@ func TestHandler_BR_CLI_04_FirebaseKeySetOutageIs503AndCountsNoRefusal(t *testin
 		t.Errorf("the same proof after the outage = %d %s, want 200: the outage must not have burned it", rec.Code, rec.Body.String())
 	}
 }
+
+func (g *rvGate) openFloor() { g.floorOnce.Do(func() { close(g.floorOpen) }) }
